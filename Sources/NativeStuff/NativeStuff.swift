@@ -1,5 +1,4 @@
-import NAPI
-import CNAPI
+import NodeAPI
 import Foundation
 
 @main struct NativeStuff: NodeModule {
@@ -7,7 +6,7 @@ import Foundation
     var exports: NodeValueConvertible
 
     init(environment: NodeEnvironment) throws {
-        let strObj = try environment.run(script: "new String('hello')")
+        let strObj = try environment.run(script: "('hello')")
         print("type: \(try strObj.type(in: environment))")
 //        let str = try NodeString(NodeSymbol(description: "hi", in: environment), in: environment) // try NodeString(NodeNumber(double: 5, in: environment), in: environment)
         print("Str: \(Result { try NodeString(strObj, in: environment).value(in: environment) })")

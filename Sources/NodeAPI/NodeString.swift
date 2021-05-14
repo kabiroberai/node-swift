@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 
 public final class NodeString: NodeValueStorage {
 

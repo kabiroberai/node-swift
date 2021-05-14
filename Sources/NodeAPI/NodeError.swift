@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 
 public struct NodeError: Error {
     public enum Code {

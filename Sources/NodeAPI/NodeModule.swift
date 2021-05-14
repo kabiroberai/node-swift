@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 
 public protocol NodeModule {
     static var name: String { get }

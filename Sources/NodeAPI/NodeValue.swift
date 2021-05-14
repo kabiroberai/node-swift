@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 
 // MARK: - Value Types
 

@@ -1,5 +1,5 @@
 import Foundation
-import CNAPI
+import CNodeAPI
 
 // A NodeEnvironment instance usually corresponds to a single callback
 // into native code. You **must not** allow instances of this to escape

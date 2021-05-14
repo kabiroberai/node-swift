@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 
 private class CallbackWrapper {
     let callback: NodeFunction.Callback

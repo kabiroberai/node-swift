@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "NativeStuff",
+    name: "NodeAPI",
     products: [
         .library(
             name: "NativeStuff",
@@ -13,19 +13,14 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        // TODO: Rename to NodeAPI?
-        .target(name: "CNAPI"),
+        .target(name: "CNodeAPI"),
         .target(
-            name: "NAPIC",
-            dependencies: ["CNAPI"]
-        ),
-        .target(
-            name: "NAPI",
-            dependencies: ["CNAPI", "NAPIC"]
+            name: "NodeAPI",
+            dependencies: ["CNodeAPI"]
         ),
         .target(
             name: "NativeStuff",
-            dependencies: ["NAPI"],
+            dependencies: ["NodeAPI"],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]
         ),
         .testTarget(

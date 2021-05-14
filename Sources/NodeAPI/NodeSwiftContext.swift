@@ -1,5 +1,5 @@
 import Foundation
-import CNAPI
+import CNodeAPI
 
 // A single NodeSwiftContext corresponds to an instance
 // of the module. It persists across instances of NodeEnvironment

@@ -1,4 +1,4 @@
-import CNAPI
+import CNodeAPI
 import Foundation
 
 public final class NodeObject: NodeValueStorage {
