@@ -1,0 +1,11 @@
+{
+  "name": "napi-swift",
+  "version": "1.0.0",
+  "description": "NAPI Swift Test",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kabir Oberai",
+  "license": "UNLICENSED"
+}
