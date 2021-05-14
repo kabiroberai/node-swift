@@ -4,28 +4,31 @@ import Foundation
 public final class NodeObject: NodeValueStorage {
 
     public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in env: NodeEnvironment) throws {
-        // TODO: Do we really need this?
-        let nodeVal = try value.nodeValue(in: env)
-        let object = try env.run(script: "Object")
-        guard try nodeVal.isInstance(of: object, in: env) else {
-            throw NodeError(.objectExpected)
-        }
-        self.storedValue = nodeVal
+    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
+        self.storedValue = try value.nodeValue(in: ctx)
     }
 
-    public init(coercing value: NodeValueConvertible, in env: NodeEnvironment) throws {
+    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+        let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_object(env.raw, value.nodeValue(in: env).rawValue(in: env), &coerced))
-        self.storedValue = NodeValue(raw: coerced, in: env)
+        try env.check(napi_coerce_to_object(env.raw, value.nodeValue(in: ctx).rawValue(), &coerced))
+        self.storedValue = NodeValue(raw: coerced, in: ctx)
     }
 
-    public init(newObjectIn env: NodeEnvironment) throws {
+    public init(newObjectIn ctx: NodeContext) throws {
+        let env = ctx.environment
         var obj: napi_value!
         try env.check(napi_create_object(env.raw, &obj))
-        storedValue = NodeValue(raw: obj, in: env)
+        storedValue = NodeValue(raw: obj, in: ctx)
     }
 
+}
+
+extension Dictionary: NodeValueLiteral, NodeValueConvertible where Key == String, Value: NodeValueConvertible {
+    func storage(in ctx: NodeContext) throws -> NodeObject {
+        // TODO: Implement
+        fatalError("TODO: Support dictionary literals")
+    }
 }
 
 // MARK: - Type Tags
@@ -39,22 +42,24 @@ extension NodeObject {
     }
 
     // can be called at most once per value
-    public func setTypeTag(_ tag: UUID, in env: NodeEnvironment) throws {
+    public func setTypeTag(_ tag: UUID) throws {
+        let env = storedValue.environment
         try withTypeTag(tag) {
             try env.check(
                 napi_type_tag_object(
-                    env.raw, storedValue.rawValue(in: env), $0
+                    env.raw, storedValue.rawValue(), $0
                 )
             )
         }
     }
 
-    public func hasTypeTag(_ tag: UUID, in env: NodeEnvironment) throws -> Bool {
+    public func hasTypeTag(_ tag: UUID) throws -> Bool {
+        let env = storedValue.environment
         var result = false
         try withTypeTag(tag) {
             try env.check(
                 napi_check_object_type_tag(
-                    env.raw, storedValue.rawValue(in: env), $0, &result
+                    env.raw, storedValue.rawValue(), $0, &result
                 )
             )
         }

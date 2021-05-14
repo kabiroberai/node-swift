@@ -8,35 +8,32 @@ private class CallbackWrapper {
 }
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
-    try? NodeEnvironment.withRaw(rawEnv) { env -> napi_value in
+    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         var argc: Int = 0
-        try env.check(napi_get_cb_info(env.raw, info, &argc, nil, nil, nil))
+        try ctx.environment.check(napi_get_cb_info(ctx.environment.raw, info, &argc, nil, nil, nil))
         var this: napi_value!
         var data: UnsafeMutableRawPointer!
         let args = try [napi_value?](unsafeUninitializedCapacity: argc) { buf, len in
             len = 0
-            try env.check(napi_get_cb_info(env.raw, info, &argc, buf.baseAddress, &this, &data))
+            try ctx.environment.check(napi_get_cb_info(ctx.environment.raw, info, &argc, buf.baseAddress, &this, &data))
             len = argc
-        }.map { NodeValue(raw: $0!, in: env) }
+        }.map { NodeValue(raw: $0!, in: ctx) }
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
-        return try callback.callback(env, NodeValue(raw: this, in: env), args).rawValue(in: env)
+        return try callback.callback(ctx, NodeValue(raw: this, in: ctx), args).nodeValue(in: ctx).rawValue()
     }
 }
 
 public final class NodeFunction: NodeValueStorage {
 
-    public typealias Callback = (_ env: NodeEnvironment, _ this: NodeValue, _ args: [NodeValue]) throws -> NodeValue
+    public typealias Callback = (_ ctx: NodeContext, _ this: NodeValue, _ args: [NodeValue]) throws -> NodeValueConvertible
 
     public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in env: NodeEnvironment) throws {
-        let nodeValue = try value.nodeValue(in: env)
-        guard try nodeValue.type(in: env) == .function else {
-            throw NodeError(.functionExpected)
-        }
-        self.storedValue = nodeValue
+    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
+        self.storedValue = try value.nodeValue(in: ctx)
     }
 
-    public init(in env: NodeEnvironment, name: String, callback: @escaping Callback) throws {
+    public init(in ctx: NodeContext, name: String, callback: @escaping Callback) throws {
+        let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
         let data = Unmanaged.passRetained(wrapper)
         var name = name
@@ -54,30 +51,36 @@ public final class NodeFunction: NodeValueStorage {
                 )
             }
         }
-        let nodeValue = NodeValue(raw: value, in: env)
-        try nodeValue.addFinalizer(in: env) { _ in data.release() }
+        let nodeValue = NodeValue(raw: value, in: ctx)
+        try nodeValue.addFinalizer { _ in data.release() }
         self.storedValue = nodeValue
     }
 
-    public func call(in env: NodeEnvironment, receiver: NodeValue, args: [NodeValue]) throws -> NodeValue {
+    public func call(
+        withContext ctx: NodeContext,
+        receiver: NodeValueConvertible,
+        args: [NodeValueConvertible]
+    ) throws -> NodeValue {
+        let env = ctx.environment
         var ret: napi_value!
         let rawArgs = try args.map { arg -> napi_value? in
-            try arg.rawValue(in: env)
+            try arg.nodeValue(in: ctx).rawValue()
         }
         try env.check(
             napi_call_function(
                 env.raw,
-                receiver.rawValue(in: env),
-                storedValue.rawValue(in: env),
+                receiver.nodeValue(in: ctx).rawValue(),
+                storedValue.rawValue(),
                 rawArgs.count, rawArgs,
                 &ret
             )
         )
-        return NodeValue(raw: ret, in: env)
+        return NodeValue(raw: ret, in: ctx)
     }
 
-    public func callAsFunction(in env: NodeEnvironment, _ args: NodeValue...) throws -> NodeValue {
-        try call(in: env, receiver: NodeValue(undefinedIn: env), args: args)
+    @discardableResult
+    public func callAsFunction(withContext ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
+        try call(withContext: ctx, receiver: ctx.undefined(), args: args)
     }
 
 }

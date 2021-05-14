@@ -3,33 +3,36 @@ import CNodeAPI
 public final class NodeString: NodeValueStorage {
 
     public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in env: NodeEnvironment) throws {
-        let nodeValue = try value.nodeValue(in: env)
-        guard try nodeValue.type(in: env) == .string else {
-            throw NodeError(.stringExpected)
-        }
-        self.storedValue = nodeValue
+    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
+        self.storedValue = try value.nodeValue(in: ctx)
     }
 
-    public init(coercing value: NodeValueConvertible, in env: NodeEnvironment) throws {
+    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+        let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_string(env.raw, value.nodeValue(in: env).rawValue(in: env), &coerced))
-        self.storedValue = NodeValue(raw: coerced, in: env)
+        try env.check(
+            napi_coerce_to_string(env.raw, value.nodeValue(in: ctx).rawValue(), &coerced)
+        )
+        self.storedValue = NodeValue(raw: coerced, in: ctx)
     }
 
-    public init(_ string: String, in env: NodeEnvironment) throws {
+    public init(_ string: String, in ctx: NodeContext) throws {
+        let env = ctx.environment
         var result: napi_value!
         var string = string
         try string.withUTF8 { buf in
             try buf.withMemoryRebound(to: Int8.self) { newBuf in
-                try env.check(napi_create_string_utf8(env.raw, newBuf.baseAddress, newBuf.count, &result))
+                try env.check(
+                    napi_create_string_utf8(env.raw, newBuf.baseAddress, newBuf.count, &result)
+                )
             }
         }
-        self.storedValue = NodeValue(raw: result, in: env)
+        self.storedValue = NodeValue(raw: result, in: ctx)
     }
 
-    public func value(in env: NodeEnvironment) throws -> String {
-        let nodeVal = try storedValue.rawValue(in: env)
+    public func value() throws -> String {
+        let env = storedValue.environment
+        let nodeVal = try storedValue.rawValue()
         var length: Int = 0
         try env.check(napi_get_value_string_utf8(env.raw, nodeVal, nil, 0, &length))
         // napi nul-terminates strings
@@ -39,4 +42,10 @@ public final class NodeString: NodeValueStorage {
         return String(bytesNoCopy: buf, length: length, encoding: .utf8, freeWhenDone: true)!
     }
 
+}
+
+extension String: NodeValueLiteral {
+    func storage(in ctx: NodeContext) throws -> NodeString {
+        try NodeString(self, in: ctx)
+    }
 }

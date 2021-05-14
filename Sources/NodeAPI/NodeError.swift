@@ -95,18 +95,3 @@ public struct NodeError: Error {
         self.details = details
     }
 }
-
-extension NodeEnvironment {
-    func check(_ status: napi_status) throws {
-        guard let code = NodeError.Code(status: status) else { return }
-        var extended: UnsafePointer<napi_extended_error_info>!
-        let extendedCode = napi_get_last_error_info(raw, &extended)
-        let details: NodeError.Details?
-        if extendedCode == napi_ok {
-            details = .init(raw: extended.pointee)
-        } else {
-            details = nil
-        }
-        throw NodeError(code, details: details)
-    }
-}

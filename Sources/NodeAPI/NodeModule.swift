@@ -2,7 +2,7 @@ import CNodeAPI
 
 public protocol NodeModule {
     static var name: String { get }
-    init(environment: NodeEnvironment) throws
+    init(context: NodeContext) throws
     var exports: NodeValueConvertible { get }
 }
 
@@ -16,12 +16,12 @@ private var globalModule: NodeModule.Type?
 
 private func registerModule(rawEnv: napi_env!, exports: napi_value!) -> napi_value? {
     // the passed in exports is merely a convenience
-    try? NodeEnvironment.withRaw(rawEnv) { env in
+    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         try globalModule!
-            .init(environment: env)
+            .init(context: ctx)
             .exports
-            .nodeValue(in: env)
-            .rawValue(in: env)
+            .nodeValue(in: ctx)
+            .rawValue()
     }
 }
 
