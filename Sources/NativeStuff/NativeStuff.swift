@@ -6,17 +6,21 @@ import Foundation
     var exports: NodeValueConvertible
 
     init(context: NodeContext) throws {
+        let res = try NodeObject(context.run(script: "[1, 15]"))
+        let num = try NodeNumber(res[1].get(in: context))
+        print("Num: \(num)")
+
         let strObj = try context.run(script: "('hello')")
         print("type: \(try strObj.type())")
 //        let str = try NodeString(NodeSymbol(description: "hi", in: environment), in: environment) // try NodeString(NodeNumber(double: 5, in: environment), in: environment)
-        print("Str: \(Result { try NodeString(strObj, in: context).value() })")
+        print("Str: \(Result { try NodeString(strObj).value() })")
 
         let doStuff = try NodeFunction(in: context, name: "doStuff") { ctx, this, args in
             print("Called! Arg 0: \(try args.first?.type() ?? .undefined)")
             return try ctx.undefined()
         }
         exports = doStuff
-        try doStuff(withContext: context, "hello", 15)
+        try doStuff(in: context, "hello", 15)
 
         let obj = try NodeObject(newObjectIn: context)
         let tag = UUID()
@@ -27,9 +31,9 @@ import Foundation
             print("First copy of global: \($0)")
         }
         let global = try context.global()
-        print("typeof global == \(try global.type())")
         try context.addCleanupHook {
-            print("Cleanup. Global: \(global)")
+            _ = global
+            print("Cleanup!")
         }
     }
 

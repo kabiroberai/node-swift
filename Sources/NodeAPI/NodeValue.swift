@@ -1,12 +1,21 @@
 import CNodeAPI
 
-public final class NodeValue: NodeValueStorage {
+public final class NodeValue: NodeValueConvertible, CustomStringConvertible {
     private enum Guts {
         case unmanaged(napi_value)
         case managed(napi_ref, NodeEnvironment.InstanceData)
     }
 
-    public var storedValue: NodeValue { self }
+    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
+        self
+    }
+
+    public var description: String {
+        let desc = try? NodeContext.withUnmanagedContext(environment: environment) { ctx -> String in
+            try NodeString(coercing: self, in: ctx).value()
+        }
+        return desc ?? "<unknown NodeValue>"
+    }
 
     let environment: NodeEnvironment
     private var guts: Guts
@@ -22,7 +31,6 @@ public final class NodeValue: NodeValueStorage {
     }
 
     func persist() throws {
-        print("Persisting \(self)")
         switch guts {
         case .managed:
             break // already persisted
@@ -50,10 +58,8 @@ public final class NodeValue: NodeValueStorage {
         // TODO: Use napi_threadsafe_function instead of the deadRef strategy
         switch guts {
         case .unmanaged:
-            print("Deinit unmanaged \(self)")
             break
         case let .managed(ref, instanceData):
-            print("Register managed \(self) for deinit")
             instanceData.addDeadRef(ref)
         }
     }
@@ -65,11 +71,24 @@ public protocol NodeValueConvertible {
     func nodeValue(in ctx: NodeContext) throws -> NodeValue
 }
 
-protocol NodeValueStorage: NodeValueConvertible {
+public protocol NodeName: NodeValueConvertible {}
+
+public protocol NodeValueStorage: NodeValueConvertible, CustomStringConvertible {
     var storedValue: NodeValue { get }
+    init(_ storedValue: NodeValue)
 }
 
 extension NodeValueStorage {
+    public init(_ value: NodeValueStorage) {
+        self.init(value.storedValue)
+    }
+
+    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
+        try self.init(value.nodeValue(in: ctx))
+    }
+
+    public var description: String { "\(storedValue)" }
+
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         storedValue
     }

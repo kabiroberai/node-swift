@@ -2,9 +2,9 @@ import CNodeAPI
 
 public final class NodeNumber: NodeValueStorage {
 
-    public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
-        self.storedValue = try value.nodeValue(in: ctx)
+    public var storedValue: NodeValue
+    public init(_ value: NodeValue) {
+        self.storedValue = value
     }
 
     public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
@@ -14,14 +14,14 @@ public final class NodeNumber: NodeValueStorage {
         self.storedValue = NodeValue(raw: coerced, in: ctx)
     }
 
-    public init(double: Double, in ctx: NodeContext) throws {
+    public init(_ double: Double, in ctx: NodeContext) throws {
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_create_double(env.raw, double, &result))
         self.storedValue = NodeValue(raw: result, in: ctx)
     }
 
-    public init(integer: Int64, in ctx: NodeContext) throws {
+    public init(_ integer: Int64, in ctx: NodeContext) throws {
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_create_int64(env.raw, integer, &result))
@@ -53,12 +53,12 @@ public final class NodeNumber: NodeValueStorage {
 
 extension Int64: NodeValueLiteral {
     func storage(in ctx: NodeContext) throws -> NodeNumber {
-        try NodeNumber(integer: self, in: ctx)
+        try NodeNumber(self, in: ctx)
     }
 }
 
 extension Double: NodeValueLiteral {
     func storage(in ctx: NodeContext) throws -> NodeNumber {
-        try NodeNumber(double: self, in: ctx)
+        try NodeNumber(self, in: ctx)
     }
 }

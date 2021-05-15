@@ -1,10 +1,10 @@
 import CNodeAPI
 
-public final class NodeString: NodeValueStorage {
+public final class NodeString: NodeValueStorage, NodeName {
 
-    public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
-        self.storedValue = try value.nodeValue(in: ctx)
+    public var storedValue: NodeValue
+    public init(_ value: NodeValue) {
+        self.storedValue = value
     }
 
     public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
@@ -44,7 +44,7 @@ public final class NodeString: NodeValueStorage {
 
 }
 
-extension String: NodeValueLiteral {
+extension String: NodeValueLiteral, NodeName, NodeValueConvertible {
     func storage(in ctx: NodeContext) throws -> NodeString {
         try NodeString(self, in: ctx)
     }

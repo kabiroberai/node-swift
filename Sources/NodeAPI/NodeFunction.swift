@@ -27,9 +27,9 @@ public final class NodeFunction: NodeValueStorage {
 
     public typealias Callback = (_ ctx: NodeContext, _ this: NodeValue, _ args: [NodeValue]) throws -> NodeValueConvertible
 
-    public let storedValue: NodeValue
-    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
-        self.storedValue = try value.nodeValue(in: ctx)
+    public var storedValue: NodeValue
+    public init(_ value: NodeValue) {
+        self.storedValue = value
     }
 
     public init(in ctx: NodeContext, name: String, callback: @escaping Callback) throws {
@@ -57,7 +57,7 @@ public final class NodeFunction: NodeValueStorage {
     }
 
     public func call(
-        withContext ctx: NodeContext,
+        in ctx: NodeContext,
         receiver: NodeValueConvertible,
         args: [NodeValueConvertible]
     ) throws -> NodeValue {
@@ -79,8 +79,8 @@ public final class NodeFunction: NodeValueStorage {
     }
 
     @discardableResult
-    public func callAsFunction(withContext ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-        try call(withContext: ctx, receiver: ctx.undefined(), args: args)
+    public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
+        try call(in: ctx, receiver: ctx.undefined(), args: args)
     }
 
 }

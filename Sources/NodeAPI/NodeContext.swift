@@ -98,6 +98,13 @@ public final class NodeContext {
         try Self.withContext(environment: environment, isManaged: false, do: action)
     }
 
+    // similar to withUnmanaged but creates a brand new context. For use internally
+    // when a temporary value is needed but the method doesn't have access to a
+    // context
+    static func withUnmanagedContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
+        try withContext(environment: environment, do: action)
+    }
+
     public static var current: NodeContext {
         guard let last = Thread.current.withContextStack(\.last) else {
             fatalError("There is no current NodeContext")
@@ -226,10 +233,10 @@ extension NodeContext {
 
 extension NodeContext {
 
-    public func global() throws -> NodeValue {
+    public func global() throws -> NodeObject {
         var val: napi_value!
         try environment.check(napi_get_global(environment.raw, &val))
-        return NodeValue(raw: val, in: self)
+        return try NodeObject(NodeValue(raw: val, in: self), in: self)
     }
 
     public func null() throws -> NodeValue {
@@ -287,12 +294,11 @@ extension NodeContext {
 
     @discardableResult
     public func run(script: String) throws -> NodeValue {
-        let nodeScript = try NodeString(script, in: self)
         var val: napi_value!
         try environment.check(
             napi_run_script(
                 environment.raw,
-                nodeScript.nodeValue(in: self).rawValue(),
+                script.nodeValue(in: self).rawValue(),
                 &val
             )
         )
