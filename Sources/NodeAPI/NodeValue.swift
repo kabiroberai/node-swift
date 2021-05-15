@@ -12,7 +12,7 @@ public final class NodeValue: NodeValueConvertible, CustomStringConvertible {
 
     public var description: String {
         let desc = try? NodeContext.withUnmanagedContext(environment: environment) { ctx -> String in
-            try NodeString(coercing: self, in: ctx).value()
+            try NodeString(coercing: self, in: ctx).string()
         }
         return desc ?? "<unknown NodeValue>"
     }
@@ -28,6 +28,10 @@ public final class NodeValue: NodeValueConvertible, CustomStringConvertible {
         // Also if users really need performance they can use
         // NodeEnvironment.withUnmanaged
         ctx.registerValue(self)
+    }
+
+    public func `as`<T: NodeValueStorage>(_ type: T.Type) -> T {
+        T(self)
     }
 
     func persist() throws {
@@ -79,10 +83,6 @@ public protocol NodeValueStorage: NodeValueConvertible, CustomStringConvertible 
 }
 
 extension NodeValueStorage {
-    public init(_ value: NodeValueStorage) {
-        self.init(value.storedValue)
-    }
-
     public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
         try self.init(value.nodeValue(in: ctx))
     }
@@ -91,6 +91,14 @@ extension NodeValueStorage {
 
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         storedValue
+    }
+
+    public func `as`(_ type: NodeValue.Type) -> NodeValue {
+        storedValue
+    }
+
+    public func `as`<T: NodeValueStorage>(_ type: T.Type) -> T {
+        T(storedValue)
     }
 }
 

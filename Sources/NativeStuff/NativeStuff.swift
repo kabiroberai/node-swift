@@ -6,14 +6,14 @@ import Foundation
     var exports: NodeValueConvertible
 
     init(context: NodeContext) throws {
-        let res = try NodeObject(context.run(script: "[1, 15]"))
-        let num = try NodeNumber(res[1].get(in: context))
+        let res = try context.run(script: "[1, 15]").as(NodeObject.self)
+        let num = try res[1].get(in: context).as(NodeNumber.self)
         print("Num: \(num)")
 
         let strObj = try context.run(script: "('hello')")
         print("type: \(try strObj.type())")
 //        let str = try NodeString(NodeSymbol(description: "hi", in: environment), in: environment) // try NodeString(NodeNumber(double: 5, in: environment), in: environment)
-        print("Str: \(Result { try NodeString(strObj).value() })")
+        print("Str: \(strObj)")
 
         let doStuff = try NodeFunction(in: context, name: "doStuff") { ctx, this, args in
             print("Called! Arg 0: \(try args.first?.type() ?? .undefined)")

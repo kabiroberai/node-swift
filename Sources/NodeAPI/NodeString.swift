@@ -30,7 +30,7 @@ public final class NodeString: NodeValueStorage, NodeName {
         self.storedValue = NodeValue(raw: result, in: ctx)
     }
 
-    public func value() throws -> String {
+    public func string() throws -> String {
         let env = storedValue.environment
         let nodeVal = try storedValue.rawValue()
         var length: Int = 0
