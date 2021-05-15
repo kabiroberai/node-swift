@@ -15,12 +15,16 @@ async function* getFiles(dir) {
 }
 
 let libExt;
+let ldFlags;
 switch (process.platform) {
     case "darwin":
         libExt = "dylib";
+        ldFlags = p => `-L. -l${p} -rpath @loader_path/..`;
         break;
     case "linux":
         libExt = "so";
+        ldFlags = p => 
+            `-L. -Wl,--no-as-needed -l${p} -Wl,--as-needed -Wl,-rpath,\\'$$\\'ORIGIN/..`;
         break;
     case "win32":
         libExt = "dll";
@@ -33,6 +37,11 @@ const sourceExts = ["swift", "c", "cc", "cpp"];
 
 function outputPath(productName) {
     return `./build/lib${productName}.${libExt}`;
+}
+
+async function forceSymlink(target, path) {
+    if (existsSync(path)) await unlink(path);
+    await symlink(target, path);
 }
 
 (async () => {
@@ -53,13 +62,15 @@ function outputPath(productName) {
         args.push("--show-bin-path");
         const dir = spawnSync("swift", args).stdout.toString().trim();
         const output = outputPath(productName);
-        if (existsSync(output)) await unlink(output);
-        await symlink(`${dir}/lib${productName}.${libExt}`, output);
+        await Promise.all([
+            forceSymlink(`${dir}/lib${productName}.${libExt}`, output),
+            forceSymlink(config, "build/curr")
+        ]);
     } else if (mode === 'output') {
         const productName = process.argv[3];
         console.log(outputPath(productName));
     } else if (mode === 'ldflags') {
         const productName = process.argv[3];
-        console.log(`-L. -l${productName} -rpath @loader_path/..`)
+        console.log(ldFlags(productName));
     }
 })();

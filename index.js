@@ -1,6 +1,6 @@
 console.log("JS: startup");
 
-const res = require("./build/Debug/NativeStuff.node");
+const res = require("./build/curr/NativeStuff.node");
 console.log("JS: called require()");
 console.log(`JS: exports = ${res}`);
 console.log(res());
