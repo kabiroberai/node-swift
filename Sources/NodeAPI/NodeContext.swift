@@ -41,39 +41,57 @@ public final class NodeContext {
 
     private static func withContext<T>(
         environment env: NodeEnvironment,
-        isManaged: Bool,
+        isTopLevel: Bool,
         do action: (NodeContext) throws -> T
     ) throws -> T {
-        // TODO: Convert Swift errors -> JS exceptions?
-        // note: if we do that, we should special-case stuff like
-        // NodeError.Code.pendingException
         let ret: T
         #if DEBUG
         weak var weakCtx: NodeContext?
         defer {
             if let weakCtx = weakCtx {
-                fatalError("\(weakCtx) escaped its expected scope")
+                nodeFatalError("\(weakCtx) escaped its expected scope")
             }
         }
         #endif
         do {
-            let ctx = NodeContext(environment: env, isManaged: isManaged)
+            let ctx = NodeContext(environment: env, isManaged: isTopLevel)
             Thread.current.withContextStack { $0.append(ctx) }
             defer { Thread.current.withContextStack { _ = $0.removeLast() } }
             // delete dead refs from any previous envs
             try? env.instanceData().deleteDeadRefs()
-            ret = try action(ctx)
-            if isManaged {
-                for val in ctx.values {
-                    try val.value?.persist()
+            do {
+                ret = try action(ctx)
+                if isTopLevel {
+                    for val in ctx.values {
+                        try val.value?.persist()
+                    }
+                    ctx.values.removeAll()
+                } else {
+                    #if DEBUG
+                    if let escaped = ctx.values.lazy.compactMap({ $0.value }).first {
+                        nodeFatalError("\(escaped) escaped unmanaged NodeContext")
+                    }
+                    #endif
                 }
-                ctx.values.removeAll()
-            } else {
-                #if DEBUG
-                if let escaped = ctx.values.lazy.compactMap({ $0.value }).first {
-                    fatalError("\(escaped) escaped unmanaged NodeContext")
+            } catch let error where isTopLevel {
+                switch error {
+                case let nodeError as NodeError:
+                    try? ctx.throw(nodeError)
+                // TODO: handle specific error types
+                // and let's maybe not throw a *string* in the general case?
+//                case let error as NodeAPIError:
+//                    break
+//                case let error where type(of: error) is NSError.Type:
+//                    let cocoaError = error as NSError
+//                    break
+                case let error:
+                    try? ctx.throw("\(type(of: error)): \(error)".nodeValue(in: ctx).as(NodeError.self))
+                    break
                 }
-                #endif
+                // we have to bail before the return statement somehow.
+                // isTopLevel:true is accompanied by try? so what we
+                // throw here doesn't really matter
+                throw error
             }
             #if DEBUG
             weakCtx = ctx
@@ -87,8 +105,14 @@ public final class NodeContext {
     //
     // Upon completion of `action`, we can persist any node values that were
     // escaped, and perform other necessary cleanup.
-    static func withContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
-        try withContext(environment: environment, isManaged: true, do: action)
+    static func withContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) -> T? {
+        try? withContext(environment: environment, isTopLevel: true, do: action)
+    }
+
+    // same as below but sometimes we want an unmanaged context (for internal use)
+    // without using an existing managed context so calling this directly suffices
+    static func withUnmanagedContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
+        try withContext(environment: environment, isTopLevel: false, do: action)
     }
 
     // Calls `action` with a NodeContext which does not manage NodeValueConvertible
@@ -97,19 +121,24 @@ public final class NodeContext {
     // which in turn is exactly the lifetime of the closure. This trades away safety for
     // performance.
     public func withUnmanaged<T>(do action: (NodeContext) throws -> T) throws -> T {
-        try Self.withContext(environment: environment, isManaged: false, do: action)
+        try Self.withUnmanagedContext(environment: environment, do: action)
     }
 
-    // similar to withUnmanaged but creates a brand new context. For use internally
-    // when a temporary value is needed but the method doesn't have access to a
-    // context
-    static func withUnmanagedContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
-        try withContext(environment: environment, do: action)
+    // TODO: Add the ability to escape a single NodeValue from withUnmanaged
+
+    private func `throw`(_ error: NodeError) throws {
+        try environment.check(napi_throw(environment.raw, error.rawValue(in: self)))
+    }
+
+    public func throwUncaught(_ error: NodeError) throws {
+        try environment.check(
+            napi_fatal_exception(environment.raw, error.rawValue(in: self))
+        )
     }
 
     public static var current: NodeContext {
         guard let last = Thread.current.withContextStack(\.last) else {
-            fatalError("There is no current NodeContext")
+            nodeFatalError("There is no current NodeContext")
         }
         return last
     }

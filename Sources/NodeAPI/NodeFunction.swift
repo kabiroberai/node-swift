@@ -8,7 +8,7 @@ private class CallbackWrapper {
 }
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
-    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
+    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         var argc: Int = 0
         try ctx.environment.check(napi_get_cb_info(ctx.environment.raw, info, &argc, nil, nil, nil))
         var this: napi_value!

@@ -9,16 +9,39 @@ final class NodeEnvironment {
     }
 
     func check(_ status: napi_status) throws {
-        guard let code = NodeError.Code(status: status) else { return }
+        guard status != napi_ok else { return }
+
+        // always catch JS errors and convert them into `NodeError`s.
+        // If the user doesn't handle them, we'll convert them back into JS
+        // exceptions in the top level NodeContext.withContext
+        var isExceptionPending = false
+        if status == napi_pending_exception {
+            isExceptionPending = true
+        } else {
+            napi_is_exception_pending(raw, &isExceptionPending)
+        }
+        var exception: napi_value!
+        if isExceptionPending {
+            if napi_get_and_clear_last_exception(raw, &exception) == napi_ok {
+                // exceptions shouldn't be frequent so using .current is okay
+                throw NodeValueBase(raw: exception, in: .current).as(NodeError.self)
+            } else {
+                // there's a pending exception but we couldn't fetch it wtf
+                throw NodeAPIError(.unknown)
+            }
+        }
+
+        guard let code = NodeAPIError.Code(status: status) else { return }
+
         var extended: UnsafePointer<napi_extended_error_info>!
         let extendedCode = napi_get_last_error_info(raw, &extended)
-        let details: NodeError.Details?
+        let details: NodeAPIError.Details?
         if extendedCode == napi_ok {
             details = .init(raw: extended.pointee)
         } else {
             details = nil
         }
-        throw NodeError(code, details: details)
+        throw NodeAPIError(code, details: details)
     }
 }
 
@@ -30,7 +53,7 @@ private func finalizeInstanceData(
     guard let rawEnv = rawEnv,
           let data = data
     else { return }
-    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
+    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         // the object will be deinitialized after finalize is
         // called, since we called take*Retained*Value
         try Unmanaged<NodeEnvironment.InstanceData>.fromOpaque(data)

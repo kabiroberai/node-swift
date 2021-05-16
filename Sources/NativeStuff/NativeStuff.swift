@@ -6,6 +6,11 @@ import Foundation
     var exports: NodeValueConvertible
 
     init(context: NodeContext) throws {
+        try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _, _ in
+            print("Called our timeout")
+            return try ctx.undefined()
+        }, 1000)
+
         let res = try context.run(script: "[1, 15]").as(NodeObject.self)
         let num = try res[1].get(in: context).as(NodeNumber.self)
         print("Num: \(num)")

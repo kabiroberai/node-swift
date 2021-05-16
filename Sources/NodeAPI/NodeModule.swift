@@ -16,7 +16,7 @@ private var globalModule: NodeModule.Type?
 
 private func registerModule(rawEnv: napi_env!, exports: napi_value!) -> napi_value? {
     // the passed in exports is merely a convenience
-    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
+    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         try globalModule!
             .init(context: ctx)
             .exports

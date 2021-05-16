@@ -186,7 +186,7 @@ private class FinalizeWrapper {
 }
 
 private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    try? NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
+    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         try Unmanaged<FinalizeWrapper>
             .fromOpaque(data)
             .takeRetainedValue() // releases the wrapper post-call
