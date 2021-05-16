@@ -20,8 +20,7 @@ private func registerModule(rawEnv: napi_env!, exports: napi_value!) -> napi_val
         try globalModule!
             .init(context: ctx)
             .exports
-            .nodeValue(in: ctx)
-            .rawValue()
+            .rawValue(in: ctx)
     }
 }
 

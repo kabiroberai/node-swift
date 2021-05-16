@@ -29,8 +29,8 @@ public final class NodeContext {
     }
 
     // a list of values created with this context
-    private var values: [WeakBox<NodeValue>] = []
-    func registerValue(_ value: NodeValue) {
+    private var values: [WeakBox<NodeValueBase>] = []
+    func registerValue(_ value: NodeValueBase) {
         // if we're in debug mode, register the value even in
         // unmanaged mode, to allow us to do sanity checks
         #if !DEBUG
@@ -45,6 +45,8 @@ public final class NodeContext {
         do action: (NodeContext) throws -> T
     ) throws -> T {
         // TODO: Convert Swift errors -> JS exceptions?
+        // note: if we do that, we should special-case stuff like
+        // NodeError.Code.pendingException
         let ret: T
         #if DEBUG
         weak var weakCtx: NodeContext?
@@ -124,20 +126,21 @@ extension NodeContext {
         try action()
     }
 
-    public func withScope(perform action: @escaping () throws -> NodeValue) throws -> NodeValue {
+    public func withScope<V: NodeValue>(perform action: @escaping () throws -> V) throws -> V {
         var scope: napi_handle_scope!
         try environment.check(napi_open_escapable_handle_scope(environment.raw, &scope))
         defer { napi_close_escapable_handle_scope(environment.raw, scope) }
         let val = try action()
         var escaped: napi_value!
-        try environment.check(napi_escape_handle(environment.raw, scope, val.rawValue(), &escaped))
-        return NodeValue(raw: escaped, in: self)
+        try environment.check(napi_escape_handle(environment.raw, scope, val.base.rawValue(), &escaped))
+        return NodeValueBase(raw: escaped, in: self).as(V.self)
     }
 
-    public func withScope(perform action: @escaping () throws -> NodeValue?) throws -> NodeValue? {
-        struct NilValueError: Error {}
+    private struct NilValueError: Error {}
+
+    public func withScope<V: NodeValue>(perform action: @escaping () throws -> V?) throws -> V? {
         do {
-            return try withScope { () throws -> NodeValue in
+            return try withScope { () throws -> V in
                 if let val = try action() {
                     return val
                 } else {
@@ -236,19 +239,19 @@ extension NodeContext {
     public func global() throws -> NodeObject {
         var val: napi_value!
         try environment.check(napi_get_global(environment.raw, &val))
-        return try NodeObject(NodeValue(raw: val, in: self), in: self)
+        return NodeValueBase(raw: val, in: self).as(NodeObject.self)
     }
 
     public func null() throws -> NodeValue {
         var val: napi_value!
         try environment.check(napi_get_null(environment.raw, &val))
-        return NodeValue(raw: val, in: self)
+        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
     }
 
     public func undefined() throws -> NodeValue {
         var val: napi_value!
         try environment.check(napi_get_undefined(environment.raw, &val))
-        return NodeValue(raw: val, in: self)
+        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
     }
 
 }
@@ -278,10 +281,10 @@ extension NodeContext {
         return NodeVersion(raw: version.pointee)
     }
 
-    public func apiVersion() throws -> UInt32 {
+    public func apiVersion() throws -> Int {
         var version: UInt32 = 0
         try environment.check(napi_get_version(environment.raw, &version))
-        return version
+        return Int(version)
     }
 
     // returns the adjusted value
@@ -298,11 +301,11 @@ extension NodeContext {
         try environment.check(
             napi_run_script(
                 environment.raw,
-                script.nodeValue(in: self).rawValue(),
+                script.rawValue(in: self),
                 &val
             )
         )
-        return NodeValue(raw: val, in: self)
+        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
     }
 
 }

@@ -17,22 +17,26 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
             len = 0
             try ctx.environment.check(napi_get_cb_info(ctx.environment.raw, info, &argc, buf.baseAddress, &this, &data))
             len = argc
-        }.map { NodeValue(raw: $0!, in: ctx) }
+        }.map { NodeValueBase(raw: $0!, in: ctx).as(AnyNodeValue.self) }
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
-        return try callback.callback(ctx, NodeValue(raw: this, in: ctx), args).nodeValue(in: ctx).rawValue()
+        return try callback.callback(
+            ctx,
+            NodeValueBase(raw: this, in: ctx).as(AnyNodeValue.self),
+            args
+        ).rawValue(in: ctx)
     }
 }
 
-public final class NodeFunction: NodeValueStorage {
+public final class NodeFunction: NodeValue {
 
     public typealias Callback = (_ ctx: NodeContext, _ this: NodeValue, _ args: [NodeValue]) throws -> NodeValueConvertible
 
-    public var storedValue: NodeValue
-    public init(_ value: NodeValue) {
-        self.storedValue = value
+    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
+        self.base = base
     }
 
-    public init(in ctx: NodeContext, name: String, callback: @escaping Callback) throws {
+    public init(name: String = "", in ctx: NodeContext, callback: @escaping Callback) throws {
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
         let data = Unmanaged.passRetained(wrapper)
@@ -51,9 +55,8 @@ public final class NodeFunction: NodeValueStorage {
                 )
             }
         }
-        let nodeValue = NodeValue(raw: value, in: ctx)
-        try nodeValue.addFinalizer { _ in data.release() }
-        self.storedValue = nodeValue
+        self.base = NodeValueBase(raw: value, in: ctx)
+        try addFinalizer { _ in data.release() }
     }
 
     public func call(
@@ -64,18 +67,18 @@ public final class NodeFunction: NodeValueStorage {
         let env = ctx.environment
         var ret: napi_value!
         let rawArgs = try args.map { arg -> napi_value? in
-            try arg.nodeValue(in: ctx).rawValue()
+            try arg.rawValue(in: ctx)
         }
         try env.check(
             napi_call_function(
                 env.raw,
-                receiver.nodeValue(in: ctx).rawValue(),
-                storedValue.rawValue(),
+                receiver.rawValue(in: ctx),
+                base.rawValue(),
                 rawArgs.count, rawArgs,
                 &ret
             )
         )
-        return NodeValue(raw: ret, in: ctx)
+        return NodeValueBase(raw: ret, in: ctx).as(AnyNodeValue.self)
     }
 
     @discardableResult

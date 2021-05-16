@@ -1,20 +1,9 @@
 import CNodeAPI
 
-public final class NodeValue: NodeValueConvertible, CustomStringConvertible {
+@_spi(NodeAPI) public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
         case managed(napi_ref, NodeEnvironment.InstanceData)
-    }
-
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        self
-    }
-
-    public var description: String {
-        let desc = try? NodeContext.withUnmanagedContext(environment: environment) { ctx -> String in
-            try NodeString(coercing: self, in: ctx).string()
-        }
-        return desc ?? "<unknown NodeValue>"
     }
 
     let environment: NodeEnvironment
@@ -30,7 +19,7 @@ public final class NodeValue: NodeValueConvertible, CustomStringConvertible {
         ctx.registerValue(self)
     }
 
-    public func `as`<T: NodeValueStorage>(_ type: T.Type) -> T {
+    func `as`<T: NodeValue>(_ type: T.Type) -> T {
         T(self)
     }
 
@@ -75,92 +64,114 @@ public protocol NodeValueConvertible {
     func nodeValue(in ctx: NodeContext) throws -> NodeValue
 }
 
+extension NodeValueConvertible {
+    func rawValue(in ctx: NodeContext) throws -> napi_value {
+        try nodeValue(in: ctx).base.rawValue()
+    }
+}
+
 public protocol NodeName: NodeValueConvertible {}
 
-public protocol NodeValueStorage: NodeValueConvertible, CustomStringConvertible {
-    var storedValue: NodeValue { get }
-    init(_ storedValue: NodeValue)
+public protocol NodeValue: NodeValueConvertible, CustomStringConvertible {
+    @_spi(NodeAPI) var base: NodeValueBase { get }
+    @_spi(NodeAPI) init(_ base: NodeValueBase)
 }
 
-extension NodeValueStorage {
-    public init(_ value: NodeValueConvertible, in ctx: NodeContext) throws {
-        try self.init(value.nodeValue(in: ctx))
+public protocol NodeValueCoercible: NodeValue {
+    init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws
+}
+
+extension NodeValue {
+    public func nodeValue(in ctx: NodeContext) throws -> NodeValue { self }
+
+    public func `as`<T: NodeValue>(_ type: T.Type) -> T { T(base) }
+
+    public var description: String {
+        let desc = try? NodeContext.withUnmanagedContext(environment: base.environment) { ctx -> String in
+            try NodeString(coercing: self, in: ctx).string()
+        }
+        return desc ?? "\(Self.self)"
     }
 
-    public var description: String { "\(storedValue)" }
-
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        storedValue
-    }
-
-    public func `as`(_ type: NodeValue.Type) -> NodeValue {
-        storedValue
-    }
-
-    public func `as`<T: NodeValueStorage>(_ type: T.Type) -> T {
-        T(storedValue)
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        var isEqual = false
+        try? NodeContext.withUnmanagedContext(environment: lhs.base.environment) { ctx in
+            try ctx.environment.check(
+                napi_strict_equals(
+                    ctx.environment.raw,
+                    lhs.base.rawValue(),
+                    rhs.base.rawValue(),
+                    &isEqual
+                )
+            )
+        }
+        return isEqual
     }
 }
 
-protocol NodeValueLiteral: NodeValueConvertible {
-    associatedtype Storage: NodeValueStorage
-    func storage(in ctx: NodeContext) throws -> Storage
-}
+// We could technically piggyback off WeakMap to get Hashable support
+// by creating an obj => number mapping (where the number can simply
+// be the current size of the map at the time of insertion).
+// But even though that's O(1), there's a large constant factor +
+// the possibility for node to throw exceptions, which complicates
+// matters. But maybe someday.
+protocol ConcreteNodeValue: NodeValue, Equatable {}
 
-extension NodeValueLiteral {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try storage(in: ctx).storedValue
+public struct AnyNodeValue: ConcreteNodeValue {
+    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
+        self.base = base
     }
 }
 
 // MARK: - Value Types
 
-extension NodeValue {
+public enum NodeValueType {
+    case undefined
+    case null
+    case boolean
+    case number
+    case string
+    case symbol
+    case object
+    case function
+    case external
+    case bigint
 
-    public enum ValueType {
-        case undefined
-        case null
-        case boolean
-        case number
-        case string
-        case symbol
-        case object
-        case function
-        case external
-        case bigint
-
-        init?(raw: napi_valuetype) {
-            switch raw {
-            case napi_undefined:
-                self = .undefined
-            case napi_null:
-                self = .null
-            case napi_boolean:
-                self = .boolean
-            case napi_number:
-                self = .number
-            case napi_string:
-                self = .string
-            case napi_symbol:
-                self = .symbol
-            case napi_object:
-                self = .object
-            case napi_function:
-                self = .function
-            case napi_external:
-                self = .external
-            case napi_bigint:
-                self = .bigint
-            default:
-                return nil
-            }
+    init?(raw: napi_valuetype) {
+        switch raw {
+        case napi_undefined:
+            self = .undefined
+        case napi_null:
+            self = .null
+        case napi_boolean:
+            self = .boolean
+        case napi_number:
+            self = .number
+        case napi_string:
+            self = .string
+        case napi_symbol:
+            self = .symbol
+        case napi_object:
+            self = .object
+        case napi_function:
+            self = .function
+        case napi_external:
+            self = .external
+        case napi_bigint:
+            self = .bigint
+        default:
+            return nil
         }
     }
+}
 
-    public func type() throws -> ValueType {
+extension NodeValue {
+
+    public func type() throws -> NodeValueType {
         var type = napi_undefined
-        try environment.check(napi_typeof(environment.raw, rawValue(), &type))
-        return ValueType(raw: type)!
+        try base.environment.check(napi_typeof(base.environment.raw, base.rawValue(), &type))
+        return NodeValueType(raw: type)!
     }
 
 }
@@ -187,7 +198,9 @@ extension NodeValue {
 
     public func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
         let data = Unmanaged.passRetained(FinalizeWrapper(finalizer: finalizer)).toOpaque()
-        try environment.check(napi_add_finalizer(environment.raw, rawValue(), data, cFinalizer, nil, nil))
+        try base.environment.check(
+            napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)
+        )
     }
 
 }

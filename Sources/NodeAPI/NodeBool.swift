@@ -1,37 +1,37 @@
 import CNodeAPI
 
-public final class NodeBool: NodeValueStorage {
+public final class NodeBool: NodeValue, NodeValueCoercible {
 
-    public var storedValue: NodeValue
-    public init(_ value: NodeValue) {
-        self.storedValue = value
+    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
+        self.base = base
     }
 
     public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_bool(env.raw, value.nodeValue(in: ctx).rawValue(), &coerced))
-        self.storedValue = NodeValue(raw: coerced, in: ctx)
+        try env.check(napi_coerce_to_bool(env.raw, value.rawValue(in: ctx), &coerced))
+        self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
     public init(_ bool: Bool, in ctx: NodeContext) throws {
         let env = ctx.environment
         var val: napi_value!
         try env.check(napi_get_boolean(env.raw, bool, &val))
-        storedValue = NodeValue(raw: val, in: ctx)
+        base = NodeValueBase(raw: val, in: ctx)
     }
 
-    public func value() throws -> Bool {
-        let env = storedValue.environment
+    public func bool() throws -> Bool {
+        let env = base.environment
         var value = false
-        try env.check(napi_get_value_bool(env.raw, storedValue.rawValue(), &value))
+        try env.check(napi_get_value_bool(env.raw, base.rawValue(), &value))
         return value
     }
 
 }
 
-extension Bool: NodeValueLiteral {
-    func storage(in ctx: NodeContext) throws -> NodeBool {
+extension Bool: NodeValueConvertible {
+    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         try NodeBool(self, in: ctx)
     }
 }

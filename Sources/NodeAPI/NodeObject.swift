@@ -2,32 +2,32 @@ import CNodeAPI
 import Foundation
 
 @dynamicMemberLookup
-public final class NodeObject: NodeValueStorage {
+public final class NodeObject: NodeValue {
 
-    public var storedValue: NodeValue
-    public init(_ value: NodeValue) {
-        self.storedValue = value
+    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
+        self.base = base
     }
 
     public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_object(env.raw, value.nodeValue(in: ctx).rawValue(), &coerced))
-        self.storedValue = NodeValue(raw: coerced, in: ctx)
+        try env.check(napi_coerce_to_object(env.raw, value.rawValue(in: ctx), &coerced))
+        self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(newObjectIn ctx: NodeContext) throws {
+    public init(in ctx: NodeContext) throws {
         let env = ctx.environment
         var obj: napi_value!
         try env.check(napi_create_object(env.raw, &obj))
-        storedValue = NodeValue(raw: obj, in: ctx)
+        base = NodeValueBase(raw: obj, in: ctx)
     }
 
 }
 
-extension Dictionary: NodeValueLiteral, NodeValueConvertible where Key == String, Value: NodeValueConvertible {
-    func storage(in ctx: NodeContext) throws -> NodeObject {
-        let obj = try NodeObject(newObjectIn: ctx)
+extension Dictionary: NodeValueConvertible where Key == String, Value: NodeValueConvertible {
+    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
+        let obj = try NodeObject(in: ctx)
         // TODO: Use defineOwnProperties?
         for (key, value) in self {
             try obj[key].set(to: value)
@@ -40,13 +40,23 @@ extension Dictionary: NodeValueLiteral, NodeValueConvertible where Key == String
 
 extension NodeObject {
 
+    @dynamicMemberLookup
     public class DynamicProperty {
-        public let object: NodeObject
-        public let key: NodeValueConvertible
+        let environment: NodeEnvironment
+        let key: NodeValueConvertible
+        // Defer resolution until it's necessary. This allows users
+        // to chain dynamic lookups without needing to pass in a
+        // new context for each call
+        let resolveObject: (NodeContext) throws -> NodeObject
 
-        init(object: NodeObject, key: NodeValueConvertible) {
-            self.object = object
+        init(
+            environment: NodeEnvironment,
+            key: NodeValueConvertible,
+            resolveObject: @escaping (NodeContext) throws -> NodeObject
+        ) {
+            self.environment = environment
             self.key = key
+            self.resolveObject = resolveObject
         }
 
         public func get(in ctx: NodeContext) throws -> NodeValue {
@@ -54,21 +64,21 @@ extension NodeObject {
             try ctx.environment.check(
                 napi_get_property(
                     ctx.environment.raw,
-                    object.storedValue.rawValue(),
-                    key.nodeValue(in: ctx).rawValue(),
+                    resolveObject(ctx).base.rawValue(),
+                    key.rawValue(in: ctx),
                     &ret
                 )
             )
-            return NodeValue(raw: ret, in: ctx)
+            return NodeValueBase(raw: ret, in: ctx).as(AnyNodeValue.self)
         }
 
         public func set(to value: NodeValueConvertible) throws {
-            try NodeContext.withUnmanagedContext(environment: object.storedValue.environment) { ctx in
+            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 _ = try ctx.environment.check(napi_set_property(
                     ctx.environment.raw,
-                    object.storedValue.rawValue(),
-                    key.nodeValue(in: ctx).rawValue(),
-                    value.nodeValue(in: ctx).rawValue()
+                    resolveObject(ctx).base.rawValue(),
+                    key.rawValue(in: ctx),
+                    value.rawValue(in: ctx)
                 ))
             }
         }
@@ -76,11 +86,11 @@ extension NodeObject {
         @discardableResult
         public func delete(key: NodeValueConvertible) throws -> Bool {
             var result = false
-            try NodeContext.withUnmanagedContext(environment: object.storedValue.environment) { ctx in
+            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 try ctx.environment.check(napi_delete_property(
                     ctx.environment.raw,
-                    object.storedValue.rawValue(),
-                    key.nodeValue(in: ctx).rawValue(),
+                    resolveObject(ctx).base.rawValue(),
+                    key.rawValue(in: ctx),
                     &result
                 ))
             }
@@ -89,11 +99,11 @@ extension NodeObject {
 
         public func exists() throws -> Bool {
             var result = false
-            try NodeContext.withUnmanagedContext(environment: object.storedValue.environment) { ctx in
+            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 try ctx.environment.check(napi_has_property(
                     ctx.environment.raw,
-                    object.storedValue.rawValue(),
-                    key.nodeValue(in: ctx).rawValue(),
+                    resolveObject(ctx).base.rawValue(),
+                    key.rawValue(in: ctx),
                     &result
                 ))
             }
@@ -102,13 +112,28 @@ extension NodeObject {
 
         @discardableResult
         public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-            try NodeFunction(get(in: ctx), in: ctx)
-                .call(in: ctx, receiver: object, args: args)
+            try get(in: ctx)
+                .as(NodeFunction.self)
+                .call(in: ctx, receiver: resolveObject(ctx), args: args)
+        }
+
+        public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
+            DynamicProperty(environment: environment, key: key) {
+                try self.get(in: $0).as(NodeObject.self)
+            }
+        }
+
+        public subscript(key: NodeValueConvertible) -> DynamicProperty {
+            property(forKey: key)
+        }
+
+        public subscript(dynamicMember key: String) -> DynamicProperty {
+            property(forKey: key)
         }
     }
 
     public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
-        DynamicProperty(object: self, key: key)
+        DynamicProperty(environment: base.environment, key: key) { _ in self }
     }
 
     public subscript(key: NodeValueConvertible) -> DynamicProperty {
@@ -121,11 +146,11 @@ extension NodeObject {
 
     public func hasOwnProperty(_ key: NodeName) throws -> Bool {
         var result = false
-        try NodeContext.withUnmanagedContext(environment: storedValue.environment) { ctx in
+        try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
             try ctx.environment.check(napi_has_own_property(
                 ctx.environment.raw,
-                storedValue.rawValue(),
-                key.nodeValue(in: ctx).rawValue(),
+                base.rawValue(),
+                key.rawValue(in: ctx),
                 &result
             ))
         }
@@ -133,19 +158,19 @@ extension NodeObject {
     }
 
     public func freeze() throws {
-        try storedValue.environment.check(
+        try base.environment.check(
             napi_object_freeze(
-                storedValue.environment.raw,
-                storedValue.rawValue()
+                base.environment.raw,
+                base.rawValue()
             )
         )
     }
 
     public func seal() throws {
-        try storedValue.environment.check(
+        try base.environment.check(
             napi_object_seal(
-                storedValue.environment.raw,
-                storedValue.rawValue()
+                base.environment.raw,
+                base.rawValue()
             )
         )
     }
@@ -164,23 +189,23 @@ extension NodeObject {
 
     // can be called at most once per value
     public func setTypeTag(_ tag: UUID) throws {
-        let env = storedValue.environment
+        let env = base.environment
         try withTypeTag(tag) {
             try env.check(
                 napi_type_tag_object(
-                    env.raw, storedValue.rawValue(), $0
+                    env.raw, base.rawValue(), $0
                 )
             )
         }
     }
 
     public func hasTypeTag(_ tag: UUID) throws -> Bool {
-        let env = storedValue.environment
+        let env = base.environment
         var result = false
         try withTypeTag(tag) {
             try env.check(
                 napi_check_object_type_tag(
-                    env.raw, storedValue.rawValue(), $0, &result
+                    env.raw, base.rawValue(), $0, &result
                 )
             )
         }
