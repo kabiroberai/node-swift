@@ -2,7 +2,6 @@ import CNodeAPI
 
 public struct NodeAPIError: Error {
     public enum Code {
-        case unknown
         case invalidArg
         case objectExpected
         case stringExpected
@@ -12,6 +11,7 @@ public struct NodeAPIError: Error {
         case booleanExpected
         case arrayExpected
         case genericFailure
+        case pendingException
         case cancelled
         case escapeCalledTwice
         case handleScopeMismatch
@@ -46,6 +46,8 @@ public struct NodeAPIError: Error {
                 self = .arrayExpected
             case napi_generic_failure:
                 self = .genericFailure
+            case napi_pending_exception:
+                self = .pendingException
             case napi_cancelled:
                 self = .cancelled
             case napi_escape_called_twice:
@@ -69,17 +71,17 @@ public struct NodeAPIError: Error {
             case napi_would_deadlock:
                 self = .wouldDeadlock
             default:
-                self = .unknown
+                self = .genericFailure
             }
         }
     }
 
     public struct Details {
-        public let message: String
+        public let message: String?
         public let engineErrorCode: UInt32
 
         init(raw: napi_extended_error_info) {
-            self.message = String(cString: raw.error_message)
+            self.message = raw.error_message.map(String.init(cString:))
             self.engineErrorCode = raw.engine_error_code
         }
     }

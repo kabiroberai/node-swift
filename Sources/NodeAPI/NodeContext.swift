@@ -23,11 +23,6 @@ public final class NodeContext {
         self.isManaged = isManaged
     }
 
-    private class WeakBox<T: AnyObject> {
-        weak var value: T?
-        init(value: T) { self.value = value }
-    }
-
     // a list of values created with this context
     private var values: [WeakBox<NodeValueBase>] = []
     func registerValue(_ value: NodeValueBase) {
@@ -36,7 +31,7 @@ public final class NodeContext {
         #if !DEBUG
         guard isManaged else { return }
         #endif
-        values.append(WeakBox(value: value))
+        values.append(WeakBox(value))
     }
 
     private static func withContext<T>(
@@ -57,13 +52,11 @@ public final class NodeContext {
             let ctx = NodeContext(environment: env, isManaged: isTopLevel)
             Thread.current.withContextStack { $0.append(ctx) }
             defer { Thread.current.withContextStack { _ = $0.removeLast() } }
-            // delete dead refs from any previous envs
-            try? env.instanceData().deleteDeadRefs()
             do {
                 ret = try action(ctx)
                 if isTopLevel {
                     for val in ctx.values {
-                        try val.value?.persist()
+                        try val.value?.persist(in: ctx)
                     }
                     ctx.values.removeAll()
                 } else {
@@ -126,6 +119,8 @@ public final class NodeContext {
 
     // TODO: Add the ability to escape a single NodeValue from withUnmanaged
 
+    // this is for internal use. In user code, errors that bubble up to the top
+    // will automatically be thrown to JS.
     private func `throw`(_ error: NodeError) throws {
         try environment.check(napi_throw(environment.raw, error.rawValue(in: self)))
     }
@@ -199,7 +194,7 @@ public final class CleanupHook {
 
 private func cCleanupHook(payload: UnsafeMutableRawPointer?) {
     guard let payload = payload else { return }
-    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeUnretainedValue()
+    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue()
     switch hook.hook {
     case .sync(let callback):
         callback()
@@ -210,7 +205,7 @@ private func cCleanupHook(payload: UnsafeMutableRawPointer?) {
 
 private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload: UnsafeMutableRawPointer!) {
     guard let payload = payload else { return }
-    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeUnretainedValue()
+    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue()
     switch hook.hook {
     case .sync:
         break
@@ -232,6 +227,7 @@ extension NodeContext {
 
     // action must call the passed in completion handler once it is done with
     // its cleanup
+    @discardableResult
     public func addAsyncCleanupHook(action: @escaping (@escaping () -> Void) -> Void) throws -> CleanupHook {
         let token = CleanupHook(hook: .async(action))
         try environment.check(napi_add_async_cleanup_hook(

@@ -27,7 +27,7 @@ final class NodeEnvironment {
                 throw NodeValueBase(raw: exception, in: .current).as(NodeError.self)
             } else {
                 // there's a pending exception but we couldn't fetch it wtf
-                throw NodeAPIError(.unknown)
+                throw NodeAPIError(.genericFailure)
             }
         }
 
@@ -50,16 +50,8 @@ private func finalizeInstanceData(
     data: UnsafeMutableRawPointer?,
     hint: UnsafeMutableRawPointer?
 ) {
-    guard let rawEnv = rawEnv,
-          let data = data
-    else { return }
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
-        // the object will be deinitialized after finalize is
-        // called, since we called take*Retained*Value
-        try Unmanaged<NodeEnvironment.InstanceData>.fromOpaque(data)
-            .takeRetainedValue()
-            .finalize(in: ctx)
-    }
+    guard let data = data else { return }
+    Unmanaged<NodeEnvironment.InstanceData>.fromOpaque(data).release()
 }
 
 extension NodeEnvironment {
@@ -68,40 +60,8 @@ extension NodeEnvironment {
     // as long as they correspond to the same instance of the
     // module.
     final class InstanceData {
-        let environment: NodeEnvironment
+        var releaseData: NodeThreadsafeFunction<napi_ref>?
         var userData: Any?
-
-        init(environment: NodeEnvironment) {
-            self.environment = environment
-        }
-
-        // ghetto garbage collection
-        private let lock = DispatchQueue(label: "node-swift-context")
-        private var deadRefs: [napi_ref] = []
-
-        // thread-safe
-        func addDeadRef(_ ref: napi_ref) {
-            lock.sync { deadRefs.append(ref) }
-        }
-
-        // thread-safe
-        func deleteDeadRefs() throws {
-            let refs = lock.sync { () -> [napi_ref] in
-                let refs = deadRefs
-                deadRefs.removeAll()
-                return refs
-            }
-            for ref in refs {
-                try environment.check(
-                    napi_delete_reference(environment.raw, ref)
-                )
-            }
-        }
-
-        func finalize(in ctx: NodeContext) throws {
-            // remove any remaining dead refs
-            try deleteDeadRefs()
-        }
     }
 
     func instanceData() throws -> InstanceData {
@@ -111,7 +71,7 @@ extension NodeEnvironment {
             return Unmanaged<InstanceData>.fromOpaque(data)
                 .takeUnretainedValue()
         }
-        let context = InstanceData(environment: self)
+        let context = InstanceData()
         let rawContext = Unmanaged.passRetained(context).toOpaque()
         try check(napi_set_instance_data(raw, rawContext, finalizeInstanceData, nil))
         return context

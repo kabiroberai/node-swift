@@ -2,7 +2,7 @@ import CNodeAPI
 import Foundation
 
 @dynamicMemberLookup
-public final class NodeObject: NodeValue {
+public final class NodeObject: NodeValue, NodeObjectConvertible {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
@@ -25,7 +25,7 @@ public final class NodeObject: NodeValue {
 
 }
 
-extension Dictionary: NodeValueConvertible where Key == String, Value: NodeValueConvertible {
+extension Dictionary: NodeValueConvertible, NodeObjectConvertible where Key == String, Value: NodeValueConvertible {
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         let obj = try NodeObject(in: ctx)
         // TODO: Use defineOwnProperties?

@@ -6,8 +6,9 @@ import Foundation
     var exports: NodeValueConvertible
 
     init(context: NodeContext) throws {
+        let captured = try NodeString("hi", in: context)
         try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _, _ in
-            print("Called our timeout")
+            print("Called our timeout! Captured: \(captured)")
             return try ctx.undefined()
         }, 1000)
 
@@ -22,7 +23,7 @@ import Foundation
 
         let doStuff = try NodeFunction(name: "doStuff", in: context) { ctx, this, args in
             print("Called! Arg 0: \(try args.first?.type() ?? .undefined)")
-            return try ctx.undefined()
+            return 5
         }
         exports = doStuff
         try doStuff(in: context, "hello", 15)
@@ -39,6 +40,13 @@ import Foundation
         try context.addCleanupHook {
             _ = global
             print("Cleanup!")
+        }
+
+        let tsfn = try NodeThreadsafeFunction(asyncResourceName: "DISPATCH_CB", in: context) { ctx in
+            print("dispatch callback")
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
+            try? tsfn()
         }
     }
 

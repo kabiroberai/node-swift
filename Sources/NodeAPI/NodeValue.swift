@@ -3,7 +3,7 @@ import CNodeAPI
 @_spi(NodeAPI) public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
-        case managed(napi_ref, NodeEnvironment.InstanceData)
+        case managed(napi_ref, release: NodeThreadsafeFunction<napi_ref>, isBoxed: Bool)
     }
 
     let environment: NodeEnvironment
@@ -23,14 +23,48 @@ import CNodeAPI
         T(self)
     }
 
-    func persist() throws {
+    private func getReleaseFunction(in ctx: NodeContext) throws -> NodeThreadsafeFunction<napi_ref> {
+        let instanceData = try ctx.environment.instanceData()
+        if let fn = instanceData.releaseData { return fn }
+        let fn = try NodeThreadsafeFunction<napi_ref>(
+            asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
+            keepsMainThreadAlive: false,
+            in: ctx
+        ) { ctx, ref in
+            try ctx.environment.check(
+                napi_delete_reference(ctx.environment.raw, ref)
+            )
+        }
+        instanceData.releaseData = fn
+        return fn
+    }
+
+    func persist(in ctx: NodeContext) throws {
         switch guts {
         case .managed:
             break // already persisted
         case .unmanaged(let raw):
+            // TODO: create and use isObject method
+            let type = try self.as(AnyNodeValue.self).type()
+            let boxedRaw: napi_value
+            let isBoxed: Bool
+            if type == .object || type == .function {
+                boxedRaw = raw
+                isBoxed = false
+            } else {
+                // we can't create a ref out of a non-object so box the value
+                // into an object with the actual value at obj[0]. Use NAPI
+                // APIs directly to avoid causing recursion
+                var obj: napi_value!
+                try environment.check(napi_create_object(environment.raw, &obj))
+                try environment.check(napi_set_element(environment.raw, obj, 0, raw))
+                boxedRaw = obj
+                isBoxed = true
+            }
             var ref: napi_ref!
-            try environment.check(napi_create_reference(environment.raw, raw, 1, &ref))
-            self.guts = .managed(ref, try environment.instanceData())
+            try environment.check(napi_create_reference(environment.raw, boxedRaw, 1, &ref))
+            let release = try getReleaseFunction(in: ctx)
+            self.guts = .managed(ref, release: release, isBoxed: isBoxed)
         }
     }
 
@@ -38,22 +72,27 @@ import CNodeAPI
         switch guts {
         case .unmanaged(let val):
             return val
-        case .managed(let ref, _):
+        case .managed(let ref, _, let isBoxed):
             var val: napi_value!
             try environment.check(napi_get_reference_value(environment.raw, ref, &val))
-            return val
+            if isBoxed {
+                var result: napi_value!
+                try environment.check(napi_get_element(environment.raw, val, 0, &result))
+                return result
+            } else {
+                return val
+            }
         }
     }
 
     deinit {
         // this can be called on any thread, so we can't just use `environment`
-        // directly here.
-        // TODO: Use napi_threadsafe_function instead of the deadRef strategy
+        // directly here. Instead, we utilize a threadsafe release function
         switch guts {
         case .unmanaged:
             break
-        case let .managed(ref, instanceData):
-            instanceData.addDeadRef(ref)
+        case let .managed(ref, release, _):
+            try? release(ref)
         }
     }
 }
@@ -71,6 +110,7 @@ extension NodeValueConvertible {
 }
 
 public protocol NodeName: NodeValueConvertible {}
+public protocol NodeObjectConvertible: NodeValueConvertible {}
 
 public protocol NodeValue: NodeValueConvertible, CustomStringConvertible {
     @_spi(NodeAPI) var base: NodeValueBase { get }
@@ -90,7 +130,7 @@ extension NodeValue {
         let desc = try? NodeContext.withUnmanagedContext(environment: base.environment) { ctx -> String in
             try NodeString(coercing: self, in: ctx).string()
         }
-        return desc ?? "\(Self.self)"
+        return desc ?? "<invalid \(Self.self)>"
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {

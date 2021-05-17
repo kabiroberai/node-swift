@@ -7,4 +7,4 @@ console.log(res());
 
 setTimeout(() => {
     console.log("JS: setTimeout() called back");
-}, 1000);
+}, 2000);
