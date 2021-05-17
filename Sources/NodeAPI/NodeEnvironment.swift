@@ -45,45 +45,52 @@ final class NodeEnvironment {
     }
 }
 
+// MARK: - Instance Data
+
+private typealias InstanceData = Box<[ObjectIdentifier: Any]>
+
+public class NodeInstanceDataKey<T> {
+    public init() {}
+}
+
 private func finalizeInstanceData(
     env rawEnv: napi_env?,
     data: UnsafeMutableRawPointer?,
     hint: UnsafeMutableRawPointer?
 ) {
     guard let data = data else { return }
-    Unmanaged<NodeEnvironment.InstanceData>.fromOpaque(data).release()
+    Unmanaged<InstanceData>.fromOpaque(data).release()
 }
 
 extension NodeEnvironment {
-    // A single InstanceData corresponds to an instance of the
-    // module. It persists across instances of NodeEnvironment
-    // as long as they correspond to the same instance of the
-    // module.
-    final class InstanceData {
-        var releaseData: NodeThreadsafeFunction<napi_ref>?
-        var userData: Any?
-    }
-
-    func instanceData() throws -> InstanceData {
+    private func instanceDataDict() throws -> InstanceData {
         var data: UnsafeMutableRawPointer?
         try check(napi_get_instance_data(raw, &data))
         if let data = data {
             return Unmanaged<InstanceData>.fromOpaque(data)
                 .takeUnretainedValue()
         }
-        let context = InstanceData()
-        let rawContext = Unmanaged.passRetained(context).toOpaque()
-        try check(napi_set_instance_data(raw, rawContext, finalizeInstanceData, nil))
-        return context
+        let obj = InstanceData([:])
+        let rawObj = Unmanaged.passRetained(obj).toOpaque()
+        try check(napi_set_instance_data(raw, rawObj, finalizeInstanceData, nil))
+        return obj
+    }
+
+    func instanceData<T>(for key: NodeInstanceDataKey<T>) throws -> T? {
+        try instanceDataDict().value[ObjectIdentifier(key)] as? T
+    }
+
+    func setInstanceData<T>(_ value: T?, for key: NodeInstanceDataKey<T>) throws {
+        try instanceDataDict().value[ObjectIdentifier(key)] = value
     }
 }
 
 extension NodeContext {
-    public func userData() throws -> Any? {
-        try environment.instanceData().userData
+    public func instanceData<T>(for key: NodeInstanceDataKey<T>) throws -> T? {
+        try environment.instanceData(for: key)
     }
 
-    public func setUserData(_ value: Any?) throws {
-        try environment.instanceData().userData = value
+    public func setInstanceData<T>(_ value: T?, for key: NodeInstanceDataKey<T>) throws {
+        try environment.setInstanceData(value, for: key)
     }
 }

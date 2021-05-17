@@ -1,6 +1,9 @@
 import CNodeAPI
 
 @_spi(NodeAPI) public final class NodeValueBase {
+    private static let threadsafeFunctionKey =
+        NodeInstanceDataKey<NodeThreadsafeFunction<napi_ref>>()
+
     private enum Guts {
         case unmanaged(napi_value)
         case managed(napi_ref, release: NodeThreadsafeFunction<napi_ref>, isBoxed: Bool)
@@ -19,13 +22,12 @@ import CNodeAPI
         ctx.registerValue(self)
     }
 
-    func `as`<T: NodeValue>(_ type: T.Type) -> T {
-        T(self)
-    }
+    func `as`<T: NodeValue>(_ type: T.Type) -> T { T(self) }
 
     private func getReleaseFunction(in ctx: NodeContext) throws -> NodeThreadsafeFunction<napi_ref> {
-        let instanceData = try ctx.environment.instanceData()
-        if let fn = instanceData.releaseData { return fn }
+        if let fn = try ctx.environment.instanceData(for: Self.threadsafeFunctionKey) {
+            return fn
+        }
         let fn = try NodeThreadsafeFunction<napi_ref>(
             asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
             keepsMainThreadAlive: false,
@@ -35,7 +37,7 @@ import CNodeAPI
                 napi_delete_reference(ctx.environment.raw, ref)
             )
         }
-        instanceData.releaseData = fn
+        try ctx.environment.setInstanceData(fn, for: Self.threadsafeFunctionKey)
         return fn
     }
 
@@ -157,7 +159,7 @@ extension NodeValue {
 // matters. But maybe someday.
 protocol ConcreteNodeValue: NodeValue, Equatable {}
 
-public struct AnyNodeValue: ConcreteNodeValue {
+struct AnyNodeValue: ConcreteNodeValue {
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {
         self.base = base
