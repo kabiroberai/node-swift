@@ -7,7 +7,7 @@ import Foundation
 
     init(context: NodeContext) throws {
         let captured = try NodeString("hi", in: context)
-        try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _, _ in
+        try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _ in
             print("Called our timeout! Captured: \(captured)")
             return try ctx.undefined()
         }, 1000)
@@ -21,26 +21,37 @@ import Foundation
         let strObj = try context.run(script: "('hello')")
         print("'\(strObj)' is a \(try strObj.type())")
 
-        let doStuff = try NodeFunction(name: "doStuff", in: context) { ctx, this, args in
-            print("Called! Arg 0: \(try args.first?.type() ?? .undefined)")
+        let doStuff = try NodeFunction(name: "doStuff", in: context) { ctx, info in
+            print("Called! Arg 0: \(try info.arguments.first?.type() ?? .undefined)")
             return 5
         }
         exports = doStuff
         try doStuff(in: context, "hello", 15)
 
+        let key = NodeWrappedDataKey<String>()
         let obj = try NodeObject(in: context)
-        let tag = UUID()
-        try obj.setTypeTag(tag)
-        print("Has random tag (should be false): \(try obj.hasTypeTag(UUID()))")
-        print("Has our tag (should be true): \(try obj.hasTypeTag(tag))")
+        try obj.setWrappedValue("hello", forKey: key)
+        print("wrapped value: \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
+        try obj.setWrappedValue(nil, forKey: key)
+        print("wrapped value (shouldn't be found): \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
+
         try withExtendedLifetime(context.global()) {
             print("First copy of global: \($0)")
         }
-        let global = try context.global()
-        try context.addCleanupHook {
-            _ = global
-            print("Cleanup!")
+
+        class CleanupHandler {
+            let global: NodeObject
+            init(global: NodeObject) {
+                self.global = global
+            }
+            deinit {
+                print("Cleanup!")
+            }
         }
+        let global = try context.global()
+        let cleanupHandler = CleanupHandler(global: global)
+
+        try context.setInstanceData(cleanupHandler, for: .init())
 
         let tsfn = try NodeThreadsafeFunction(asyncResourceName: "DISPATCH_CB", in: context) { ctx in
             print("dispatch callback")

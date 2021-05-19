@@ -217,32 +217,3 @@ extension NodeValue {
     }
 
 }
-
-// MARK: - Finalizers
-
-private class FinalizeWrapper {
-    let finalizer: (NodeContext) throws -> Void
-    init(finalizer: @escaping (NodeContext) throws -> Void) {
-        self.finalizer = finalizer
-    }
-}
-
-private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
-        try Unmanaged<FinalizeWrapper>
-            .fromOpaque(data)
-            .takeRetainedValue() // releases the wrapper post-call
-            .finalizer(ctx)
-    }
-}
-
-extension NodeValue {
-
-    public func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
-        let data = Unmanaged.passRetained(FinalizeWrapper(finalizer: finalizer)).toOpaque()
-        try base.environment.check(
-            napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)
-        )
-    }
-
-}

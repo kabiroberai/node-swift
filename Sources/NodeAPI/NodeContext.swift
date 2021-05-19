@@ -180,81 +180,49 @@ extension NodeContext {
 
 // MARK: - Cleanup Hooks
 
-public final class CleanupHook {
-    enum Hook {
-        case sync(() -> Void)
-        case async((@escaping () -> Void) -> Void)
-    }
-    let hook: Hook
-    var asyncHandle: napi_async_cleanup_hook_handle?
-    fileprivate init(hook: Hook) {
-        self.hook = hook
-    }
-}
-
-private func cCleanupHook(payload: UnsafeMutableRawPointer?) {
-    guard let payload = payload else { return }
-    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue()
-    switch hook.hook {
-    case .sync(let callback):
-        callback()
-    case .async:
-        break
+public final class AsyncCleanupHook {
+    let callback: (@escaping () -> Void) -> Void
+    var handle: napi_async_cleanup_hook_handle!
+    fileprivate init(callback: @escaping (@escaping () -> Void) -> Void) {
+        self.callback = callback
     }
 }
 
 private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload: UnsafeMutableRawPointer!) {
     guard let payload = payload else { return }
-    let hook = Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue()
-    switch hook.hook {
-    case .sync:
-        break
-    case .async(let callback):
-        callback { napi_remove_async_cleanup_hook(handle) }
-    }
+    let hook = Unmanaged<AsyncCleanupHook>.fromOpaque(payload).takeRetainedValue()
+    hook.callback { napi_remove_async_cleanup_hook(handle) }
 }
 
 extension NodeContext {
-    @discardableResult
-    public func addCleanupHook(action: @escaping () -> Void) throws -> CleanupHook {
-        let token = CleanupHook(hook: .sync(action))
-        try environment.check(napi_add_env_cleanup_hook(
-            environment.raw, cCleanupHook,
-            Unmanaged.passRetained(token).toOpaque()
-        ))
-        return token
-    }
+
+    // we choose not to implement sync cleanup hooks because those can be replicated by
+    // using instanceData + a deinitializer
 
     // action must call the passed in completion handler once it is done with
     // its cleanup
     @discardableResult
-    public func addAsyncCleanupHook(action: @escaping (@escaping () -> Void) -> Void) throws -> CleanupHook {
-        let token = CleanupHook(hook: .async(action))
+    public func addAsyncCleanupHook(
+        action: @escaping (@escaping () -> Void) -> Void
+    ) throws -> AsyncCleanupHook {
+        let token = AsyncCleanupHook(callback: action)
         try environment.check(napi_add_async_cleanup_hook(
             environment.raw,
-            cAsyncCleanupHook(handle:payload:),
+            cAsyncCleanupHook,
             Unmanaged.passRetained(token).toOpaque(),
-            &token.asyncHandle
+            &token.handle
         ))
         return token
     }
 
-    public func removeCleanupHook(_ hook: CleanupHook) throws {
+    public func removeCleanupHook(_ hook: AsyncCleanupHook) throws {
         let arg = Unmanaged.passUnretained(hook)
         defer { arg.release() }
-        switch hook.hook {
-        case .sync:
-            try environment.check(
-                napi_remove_env_cleanup_hook(
-                    environment.raw, cCleanupHook, arg.toOpaque()
-                )
-            )
-        case .async:
-            try environment.check(
-                napi_remove_async_cleanup_hook(hook.asyncHandle!)
-            )
-        }
+        try environment.check(
+            napi_remove_async_cleanup_hook(hook.handle)
+        )
     }
+
 }
 
 // MARK: - Globals

@@ -16,6 +16,16 @@ public final class NodeObject: NodeValue, NodeObjectConvertible {
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
+    public init(in ctx: NodeContext, constructor: NodeFunction, arguments: [NodeValueConvertible] = []) throws {
+        let env = ctx.environment
+        let argv = try arguments.map { arg -> napi_value? in try arg.rawValue(in: ctx) }
+        var result: napi_value!
+        try env.check(
+            napi_new_instance(env.raw, constructor.base.rawValue(), arguments.count, argv, &result)
+        )
+        self.base = NodeValueBase(raw: result, in: ctx)
+    }
+
     public init(in ctx: NodeContext) throws {
         let env = ctx.environment
         var obj: napi_value!
@@ -114,7 +124,7 @@ extension NodeObject {
         public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
             try get(in: ctx)
                 .as(NodeFunction.self)
-                .call(in: ctx, receiver: resolveObject(ctx), args: args)
+                .call(in: ctx, receiver: resolveObject(ctx), arguments: args)
         }
 
         public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
@@ -177,9 +187,22 @@ extension NodeObject {
 
 }
 
-// MARK: - Type Tags
+// MARK: - Wrap
+
+public class NodeWrappedDataKey<T> {
+    public init() {}
+}
+
+private typealias WrappedData = Box<[ObjectIdentifier: Any]>
+
+private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+    Unmanaged<WrappedData>.fromOpaque(data).release()
+}
 
 extension NodeObject {
+
+    // we could make this public but its functionality can pretty much be
+    // replicated by the wrapped value stuff
 
     private func withTypeTag<T>(_ tag: UUID, do action: (UnsafePointer<napi_type_tag>) throws -> T) rethrows -> T {
         try withUnsafePointer(to: tag.uuid) {
@@ -188,7 +211,7 @@ extension NodeObject {
     }
 
     // can be called at most once per value
-    public func setTypeTag(_ tag: UUID) throws {
+    fileprivate func setTypeTag(_ tag: UUID) throws {
         let env = base.environment
         try withTypeTag(tag) {
             try env.check(
@@ -199,7 +222,7 @@ extension NodeObject {
         }
     }
 
-    public func hasTypeTag(_ tag: UUID) throws -> Bool {
+    fileprivate func hasTypeTag(_ tag: UUID) throws -> Bool {
         let env = base.environment
         var result = false
         try withTypeTag(tag) {
@@ -211,5 +234,54 @@ extension NodeObject {
         }
         return result
     }
+
+}
+
+extension NodeObject {
+
+    private static let ourTypeTag = UUID()
+
+    public func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
+        let env = base.environment
+        let id = ObjectIdentifier(key)
+        let raw = try base.rawValue()
+        if try hasTypeTag(Self.ourTypeTag) {
+            var objRaw: UnsafeMutableRawPointer!
+            try env.check(napi_unwrap(env.raw, raw, &objRaw))
+            let objUnmanaged = Unmanaged<WrappedData>.fromOpaque(objRaw)
+            let obj = objUnmanaged.takeUnretainedValue()
+            obj.value[id] = key
+            // remove the wrapper if the dict is now empty
+            if obj.value.isEmpty {
+                try env.check(napi_remove_wrap(env.raw, raw, nil))
+                objUnmanaged.release()
+            }
+        } else if let wrap = wrap {
+            let obj = WrappedData([:])
+            obj.value[id] = wrap
+            let objUnmanaged = Unmanaged<WrappedData>.passRetained(obj)
+            let objRaw = objUnmanaged.toOpaque()
+            do {
+                try env.check(napi_wrap(env.raw, raw, objRaw, cFinalizer, nil, nil))
+            } catch {
+                objUnmanaged.release()
+                throw error
+            }
+            try setTypeTag(Self.ourTypeTag)
+        }
+    }
+
+    public func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
+        guard try hasTypeTag(Self.ourTypeTag) else { return nil }
+        let env = base.environment
+        var objRaw: UnsafeMutableRawPointer!
+        try env.check(napi_unwrap(env.raw, base.rawValue(), &objRaw))
+        let obj = Unmanaged<WrappedData>.fromOpaque(objRaw).takeUnretainedValue()
+        return obj.value[ObjectIdentifier(key)] as? T
+    }
+
+    // NOTE: We choose not to expose the finalizer features since everything it does
+    // is replicated by our wrappedValue implementation (users can use deinitializers
+    // in their wrapped values to determine when an object is finalized)
 
 }
