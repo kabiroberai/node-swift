@@ -21,11 +21,9 @@ let package = Package(
         .target(
             name: "NativeStuff",
             dependencies: ["NodeAPI"],
-            linkerSettings: [.unsafeFlags(["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]
-        ),
-        .testTarget(
-            name: "NativeStuffTests",
-            dependencies: ["NativeStuff"]
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])
+            ]
         ),
     ]
 )
