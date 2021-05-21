@@ -3,13 +3,7 @@
   "version": "1.0.0",
   "description": "Swift Package builder for NPM",
   "bin": "./lib/index.js",
-  "spm": {
-    "product": "NativeStuff"
-  },
   "scripts": {
-    "build": "./npm-build-swift.js release",
-    "build:debug": "./npm-build-swift.js debug",
-    "postinstall": "npm run build",
     "test": "node test"
   },
   "author": "Kabir Oberai",

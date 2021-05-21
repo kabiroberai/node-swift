@@ -1,0 +1,19 @@
+{
+  "name": "napi-swift-example",
+  "version": "1.0.0",
+  "description": "NAPI Swift Example",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm-build-swift release",
+    "build:debug": "npm-build-swift debug",
+    "postinstall": "npm run build"
+  },
+  "author": "Kabir Oberai",
+  "license": "UNLICENSED",
+  "spm": {
+    "product": "MyExample"
+  },
+  "dependencies": {
+    "npm-build-swift": "file:.."
+  }
+}
