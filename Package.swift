@@ -6,10 +6,9 @@ let package = Package(
     name: "NodeAPI",
     products: [
         .library(
-            name: "NativeStuff",
-            type: .dynamic,
-            targets: ["NativeStuff"]
-        ),
+            name: "NodeAPI",
+            targets: ["NodeAPI"]
+        )
     ],
     dependencies: [],
     targets: [
@@ -17,13 +16,6 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI"]
-        ),
-        .target(
-            name: "NativeStuff",
-            dependencies: ["NodeAPI"],
-            linkerSettings: [
-                .unsafeFlags(["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])
-            ]
-        ),
+        )
     ]
 )
