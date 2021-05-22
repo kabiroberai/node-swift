@@ -1,5 +1,5 @@
 const fs = require("fs").promises;
-const build = require("../lib/build");
+const builder = require("../lib/builder");
 const { spawnSync } = require("child_process");
 const { forceSymlink } = require("../lib/utils");
 
@@ -12,8 +12,8 @@ function usage() {
 
 async function runSuite(suite, child) {
     console.log(`Running suite '${suite}'`);
-    await build("debug", suite);
-    await forceSymlink("../../.build", `./suites/${suite}/.build`);
+    await builder.build("debug", suite);
+    await forceSymlink("../../build", `./suites/${suite}/build`);
     require(`./suites/${suite}`);
 }
 
@@ -41,6 +41,7 @@ async function runAll() {
     switch (command) {
         case "all":
             if (process.argv.length > 3) usage();
+            await builder.clean();
             await runAll();
             break;
         case "_suite":
@@ -49,6 +50,7 @@ async function runAll() {
         case "suite":
             if (process.argv.length !== 4) usage();
             const suite = process.argv[3];
+            if (!child) await builder.clean();
             await runSuite(suite, child);
             break;
         default:

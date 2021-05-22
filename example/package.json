@@ -1,19 +1,18 @@
 {
   "name": "node-swift-example",
   "version": "1.0.0",
-  "description": "Node Swift Example",
+  "description": "Example node-swift package",
   "main": "index.js",
   "scripts": {
-    "build": "node-swift build",
-    "build:debug": "node-swift build --debug",
-    "install": "npm run build"
+    "install": "node-swift rebuild"
   },
-  "author": "Kabir Oberai",
-  "license": "CC0-1.0",
   "swift": {
     "product": "MyExample"
   },
+  "author": "Kabir Oberai",
+  "license": "CC0-1.0",
   "dependencies": {
     "node-swift": "file:.."
-  }
+  },
+  "private": true
 }

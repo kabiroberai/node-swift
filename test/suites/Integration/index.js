@@ -1,7 +1,7 @@
 console.log("JS: startup");
 
 const assert = require("assert");
-const res = require("./.build/curr/Integration.node");
+const res = require("./build/Integration.node");
 console.log("JS: called require()");
 console.log(`JS: exports = ${res}`);
 const r = res();

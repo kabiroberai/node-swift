@@ -1,6 +1,7 @@
 .DS_Store
 node_modules
 .build
+build
 xcuserdata/
 DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
