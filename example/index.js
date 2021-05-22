@@ -1,2 +1,2 @@
-const myExample = require("./build/MyExample.node");
-console.log(`Native module exported "${myExample}"`);
+module.exports = require("./build/MyExample.node");
+console.log(`Exported: "${module.exports}"`);
