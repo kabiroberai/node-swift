@@ -10,7 +10,7 @@
   },
   "author": "Kabir Oberai",
   "license": "UNLICENSED",
-  "spm": {
+  "swift": {
     "product": "MyExample"
   },
   "dependencies": {
