@@ -7,22 +7,18 @@ let package = Package(
     products: [
         .library(
             name: "MyExample",
-            type: .dynamic,
+            type: .static,
             targets: ["MyExample"]
         )
     ],
     dependencies: [
-        .package(name: "NodeAPI", path: "node_modules/npm-build-swift")
+        .package(path: "node_modules/node-swift")
     ],
     targets: [
         .target(
             name: "MyExample",
-            dependencies: ["NodeAPI"],
-            linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "-undefined",
-                    "-Xlinker", "dynamic_lookup"
-                ])
+            dependencies: [
+                .product(name: "NodeAPI", package: "node-swift")
             ]
         )
     ]

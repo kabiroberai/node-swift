@@ -5,26 +5,20 @@ import Foundation
 
 let package = Package(
     name: "NodeAPITests",
-    dependencies: [.package(name: "NodeAPI", path: "..")]
+    dependencies: [.package(name: "node-swift", path: "..")]
 )
 
 func addSuite(_ suite: String) {
     package.products.append(.library(
         name: suite,
-        type: .dynamic,
+        type: .static,
         targets: [suite]
     ))
     package.targets.append(.target(
         name: suite,
-        dependencies: ["NodeAPI"],
+        dependencies: [.product(name: "NodeAPI", package: "node-swift")],
         path: "suites/\(suite)",
-        exclude: ["index.js"],
-        linkerSettings: [
-            .unsafeFlags([
-                "-Xlinker", "-undefined",
-                "-Xlinker", "dynamic_lookup"
-            ])
-        ]
+        exclude: ["index.js"]
     ))
 }
 

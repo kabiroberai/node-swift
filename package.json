@@ -1,7 +1,7 @@
 {
-  "name": "npm-build-swift",
+  "name": "node-swift",
   "version": "1.0.0",
-  "description": "Swift Package builder for NPM",
+  "description": "Support for creating Node modules in Swift",
   "bin": "./lib/index.js",
   "scripts": {
     "test": "node test"

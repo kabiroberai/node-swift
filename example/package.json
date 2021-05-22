@@ -1,11 +1,11 @@
 {
-  "name": "napi-swift-example",
+  "name": "node-swift-example",
   "version": "1.0.0",
-  "description": "NAPI Swift Example",
+  "description": "Node Swift Example",
   "main": "index.js",
   "scripts": {
-    "build": "npm-build-swift release",
-    "build:debug": "npm-build-swift debug",
+    "build": "node-swift build",
+    "build:debug": "node-swift build --debug",
     "postinstall": "npm run build"
   },
   "author": "Kabir Oberai",
@@ -14,6 +14,6 @@
     "product": "MyExample"
   },
   "dependencies": {
-    "npm-build-swift": "file:.."
+    "node-swift": "file:.."
   }
 }

@@ -1,0 +1,1 @@
+void CNodeAPI_stub() {}
