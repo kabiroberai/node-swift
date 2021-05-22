@@ -6,10 +6,10 @@
   "scripts": {
     "build": "node-swift build",
     "build:debug": "node-swift build --debug",
-    "postinstall": "npm run build"
+    "install": "npm run build"
   },
   "author": "Kabir Oberai",
-  "license": "UNLICENSED",
+  "license": "CC0-1.0",
   "swift": {
     "product": "MyExample"
   },

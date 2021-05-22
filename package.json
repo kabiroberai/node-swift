@@ -1,17 +1,19 @@
 {
   "name": "node-swift",
   "version": "1.0.0",
+  "repository": "kabiroberai/node-swift",
   "description": "Support for creating Node modules in Swift",
   "bin": "./lib/index.js",
   "scripts": {
     "test": "node test"
   },
   "author": "Kabir Oberai",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "devDependencies": {
     "mocha": "^8.4.0"
   },
   "dependencies": {
     "import-cwd": "^3.0.0"
-  }
+  },
+  "private": true
 }
