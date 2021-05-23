@@ -11,7 +11,6 @@ let package = Package(
 func addSuite(_ suite: String) {
     package.products.append(.library(
         name: suite,
-        type: .static,
         targets: [suite]
     ))
     package.targets.append(.target(

@@ -6,9 +6,6 @@
   "scripts": {
     "install": "node-swift rebuild"
   },
-  "swift": {
-    "product": "MyExample"
-  },
   "author": "Kabir Oberai",
   "license": "CC0-1.0",
   "dependencies": {

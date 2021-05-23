@@ -7,7 +7,6 @@ let package = Package(
     products: [
         .library(
             name: "MyExample",
-            type: .static,
             targets: ["MyExample"]
         )
     ],
