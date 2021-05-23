@@ -11,7 +11,7 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
     }
 }
 
-public final class NodeFunction: NodeValue {
+public final class NodeFunction: NodeObject {
 
     public struct CallbackInfo {
         public let this: NodeValue
@@ -30,13 +30,13 @@ public final class NodeFunction: NodeValue {
                 len = 0
                 try env.check(napi_get_cb_info(env.raw, raw, &argc, buf.baseAddress, &this, &data))
                 len = argc
-            }.map { NodeValueBase(raw: $0!, in: ctx).as(AnyNodeValue.self) }
+            }.map { try NodeValueBase(raw: $0!, in: ctx).concrete() }
 
             var newTarget: napi_value?
             try env.check(napi_get_new_target(env.raw, raw, &newTarget))
 
-            self.this = NodeValueBase(raw: this, in: ctx).as(AnyNodeValue.self)
-            self.target = newTarget.map { NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
+            self.this = try NodeValueBase(raw: this, in: ctx).concrete()
+            self.target = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
             self.data = data
             self.arguments = args
         }
@@ -44,9 +44,18 @@ public final class NodeFunction: NodeValue {
 
     public typealias Callback = (_ ctx: NodeContext, _ info: CallbackInfo) throws -> NodeValueConvertible
 
-    @_spi(NodeAPI) public let base: NodeValueBase
-    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
-        self.base = base
+    @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
+        super.init(base)
+    }
+
+    // this may seem useless since .function is handled in NodeValueType, but
+    // consider the following example:
+    // try NodeObject(
+    //   in: ctx,
+    //   constructor: ctx.global().Function.get(in: ctx)
+    // ).as(NodeFunction.self)
+    override class func isObjectType(for value: NodeValueBase) throws -> Bool {
+        try value.type() == .function
     }
 
     private static let callbackKey = NodeWrappedDataKey<CallbackWrapper>()
@@ -70,11 +79,11 @@ public final class NodeFunction: NodeValue {
                 )
             }
         }
-        self.base = NodeValueBase(raw: value, in: ctx)
+        super.init(NodeValueBase(raw: value, in: ctx))
         // we retain CallbackWrapper using the wrappedValue functionality instead of
         // using Unmanaged.passRetained for data, since napi_create_function doesn't
         // accept a finalizer
-        try self.as(NodeObject.self).setWrappedValue(wrapper, forKey: Self.callbackKey)
+        try setWrappedValue(wrapper, forKey: Self.callbackKey)
     }
 
     public func call(
@@ -96,12 +105,12 @@ public final class NodeFunction: NodeValue {
                 &ret
             )
         )
-        return NodeValueBase(raw: ret, in: ctx).as(AnyNodeValue.self)
+        return try NodeValueBase(raw: ret, in: ctx).concrete()
     }
 
     @discardableResult
     public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-        try call(in: ctx, receiver: ctx.undefined(), arguments: args)
+        try call(in: ctx, receiver: NodeUndefined(in: ctx), arguments: args)
     }
 
 }

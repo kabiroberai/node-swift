@@ -1,6 +1,13 @@
 import NodeAPI
 import Foundation
 
+// to unwrap the existential
+private extension NodeValue {
+    func type() -> NodeValue.Type {
+        Self.self
+    }
+}
+
 @main struct NativeStuff: NodeModule {
 
     var exports: NodeValueConvertible
@@ -9,20 +16,20 @@ import Foundation
         let captured = try NodeString("hi", in: context)
         try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _ in
             print("Called our timeout! Captured: \(captured)")
-            return try ctx.undefined()
+            return try NodeUndefined(in: ctx)
         }, 1000)
 
-        let res = try context.run(script: "[1, 15]").as(NodeObject.self)
-        let num = try res[1].get(in: context).as(NodeNumber.self)
+        let res = try context.run(script: "[1, 15]") as! NodeObject
+        let num = try res[1].get(in: context) as! NodeNumber
         print("Num: \(num)")
 
         print("Symbol.iterator is a \(try context.global().Symbol.iterator.get(in: context).type())")
 
         let strObj = try context.run(script: "('hello')")
-        print("'\(strObj)' is a \(try strObj.type())")
+        print("'\(strObj)' is a \(strObj.type())")
 
         let doStuff = try NodeFunction(name: "doStuff", in: context) { ctx, info in
-            print("Called! Arg 0: \(try info.arguments.first?.type() ?? .undefined)")
+            print("Called! Arg 0 type: \(info.arguments.first?.type() as Any)")
             return 5
         }
         exports = doStuff

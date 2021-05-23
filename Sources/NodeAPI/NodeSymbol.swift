@@ -2,10 +2,6 @@ import CNodeAPI
 
 public final class NodeSymbol: NodeValue, NodeName {
 
-    public enum SymbolError: Error {
-        case invalidSymbol
-    }
-
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {
         self.base = base

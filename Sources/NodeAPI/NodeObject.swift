@@ -2,11 +2,16 @@ import CNodeAPI
 import Foundation
 
 @dynamicMemberLookup
-public final class NodeObject: NodeValue, NodeObjectConvertible {
+public class NodeObject: NodeValue, NodeObjectConvertible {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         self.base = base
+    }
+
+    class func isObjectType(for value: NodeValueBase) throws -> Bool {
+        let type = try value.type()
+        return type == .object || type == .function
     }
 
     public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
@@ -31,6 +36,14 @@ public final class NodeObject: NodeValue, NodeObjectConvertible {
         var obj: napi_value!
         try env.check(napi_create_object(env.raw, &obj))
         base = NodeValueBase(raw: obj, in: ctx)
+    }
+
+    public func isInstance(of constructor: NodeFunction) throws -> Bool {
+        var result = false
+        try base.environment.check(
+            napi_instanceof(base.environment.raw, base.rawValue(), constructor.base.rawValue(), &result)
+        )
+        return result
     }
 
 }
@@ -79,7 +92,7 @@ extension NodeObject {
                     &ret
                 )
             )
-            return NodeValueBase(raw: ret, in: ctx).as(AnyNodeValue.self)
+            return try NodeValueBase(raw: ret, in: ctx).concrete()
         }
 
         public func set(to value: NodeValueConvertible) throws {
@@ -122,14 +135,18 @@ extension NodeObject {
 
         @discardableResult
         public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-            try get(in: ctx)
-                .as(NodeFunction.self)
-                .call(in: ctx, receiver: resolveObject(ctx), arguments: args)
+            guard let fn = try self.get(in: ctx).as(NodeFunction.self) else {
+                throw NodeAPIError(.functionExpected)
+            }
+            return try fn.call(in: ctx, receiver: resolveObject(ctx), arguments: args)
         }
 
         public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
             DynamicProperty(environment: environment, key: key) {
-                try self.get(in: $0).as(NodeObject.self)
+                guard let obj = try self.get(in: $0).as(NodeObject.self) else {
+                    throw NodeAPIError(.objectExpected)
+                }
+                return obj
             }
         }
 

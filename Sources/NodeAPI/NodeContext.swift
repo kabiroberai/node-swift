@@ -68,8 +68,8 @@ public final class NodeContext {
                 }
             } catch let error where isTopLevel {
                 switch error {
-                case let nodeError as NodeError:
-                    try? ctx.throw(nodeError)
+                case let throwable as NodeThrowable:
+                    try? ctx.throw(throwable)
                 // TODO: handle specific error types
                 // and let's maybe not throw a *string* in the general case?
 //                case let error as NodeAPIError:
@@ -78,7 +78,7 @@ public final class NodeContext {
 //                    let cocoaError = error as NSError
 //                    break
                 case let error:
-                    try? ctx.throw("\(type(of: error)): \(error)".nodeValue(in: ctx).as(NodeError.self))
+                    try? ctx.throw(NodeThrowable("\(type(of: error)): \(error)".nodeValue(in: ctx)))
                     break
                 }
                 // we have to bail before the return statement somehow.
@@ -121,13 +121,13 @@ public final class NodeContext {
 
     // this is for internal use. In user code, errors that bubble up to the top
     // will automatically be thrown to JS.
-    private func `throw`(_ error: NodeError) throws {
-        try environment.check(napi_throw(environment.raw, error.rawValue(in: self)))
+    private func `throw`(_ throwable: NodeThrowable) throws {
+        try environment.check(napi_throw(environment.raw, throwable.exception.rawValue(in: self)))
     }
 
-    public func throwUncaught(_ error: NodeError) throws {
+    public func throwUncaught(_ throwable: NodeThrowable) throws {
         try environment.check(
-            napi_fatal_exception(environment.raw, error.rawValue(in: self))
+            napi_fatal_exception(environment.raw, throwable.exception.rawValue(in: self))
         )
     }
 
@@ -157,7 +157,7 @@ extension NodeContext {
         let val = try action()
         var escaped: napi_value!
         try environment.check(napi_escape_handle(environment.raw, scope, val.base.rawValue(), &escaped))
-        return NodeValueBase(raw: escaped, in: self).as(V.self)
+        return try NodeValueBase(raw: escaped, in: self).as(V.self)!
     }
 
     private struct NilValueError: Error {}
@@ -225,30 +225,6 @@ extension NodeContext {
 
 }
 
-// MARK: - Globals
-
-extension NodeContext {
-
-    public func global() throws -> NodeObject {
-        var val: napi_value!
-        try environment.check(napi_get_global(environment.raw, &val))
-        return NodeValueBase(raw: val, in: self).as(NodeObject.self)
-    }
-
-    public func null() throws -> NodeValue {
-        var val: napi_value!
-        try environment.check(napi_get_null(environment.raw, &val))
-        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
-    }
-
-    public func undefined() throws -> NodeValue {
-        var val: napi_value!
-        try environment.check(napi_get_undefined(environment.raw, &val))
-        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
-    }
-
-}
-
 // MARK: - Misc
 
 public struct NodeVersion {
@@ -266,6 +242,12 @@ public struct NodeVersion {
 }
 
 extension NodeContext {
+
+    public func global() throws -> NodeObject {
+        var val: napi_value!
+        try environment.check(napi_get_global(environment.raw, &val))
+        return try NodeValueBase(raw: val, in: self).as(NodeObject.self)!
+    }
 
     public func nodeVersion() throws -> NodeVersion {
         // "The returned buffer is statically allocated and does not need to be freed"
@@ -298,7 +280,7 @@ extension NodeContext {
                 &val
             )
         )
-        return NodeValueBase(raw: val, in: self).as(AnyNodeValue.self)
+        return try NodeValueBase(raw: val, in: self).concrete()
     }
 
 }

@@ -22,8 +22,6 @@ import CNodeAPI
         ctx.registerValue(self)
     }
 
-    func `as`<T: NodeValue>(_ type: T.Type) -> T { T(self) }
-
     private func getReleaseFunction(in ctx: NodeContext) throws -> NodeThreadsafeFunction<napi_ref> {
         if let fn = try ctx.environment.instanceData(for: Self.threadsafeFunctionKey) {
             return fn
@@ -46,11 +44,9 @@ import CNodeAPI
         case .managed:
             break // already persisted
         case .unmanaged(let raw):
-            // TODO: create and use isObject method
-            let type = try self.as(AnyNodeValue.self).type()
             let boxedRaw: napi_value
             let isBoxed: Bool
-            if type == .object || type == .function {
+            if try NodeObject.isObjectType(for: self) {
                 boxedRaw = raw
                 isBoxed = false
             } else {
@@ -126,8 +122,6 @@ public protocol NodeValueCoercible: NodeValue {
 extension NodeValue {
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue { self }
 
-    public func `as`<T: NodeValue>(_ type: T.Type) -> T { T(base) }
-
     public var description: String {
         let desc = try? NodeContext.withUnmanagedContext(environment: base.environment) { ctx -> String in
             try NodeString(coercing: self, in: ctx).string()
@@ -157,18 +151,16 @@ extension NodeValue {
 // But even though that's O(1), there's a large constant factor +
 // the possibility for node to throw exceptions, which complicates
 // matters. But maybe someday.
+// TODO: Use this
 protocol ConcreteNodeValue: NodeValue, Equatable {}
-
-struct AnyNodeValue: ConcreteNodeValue {
-    @_spi(NodeAPI) public let base: NodeValueBase
-    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
-        self.base = base
-    }
-}
 
 // MARK: - Value Types
 
-public enum NodeValueType {
+enum NodeValueType {
+    struct UnknownTypeError: Error {
+        public let type: napi_valuetype
+    }
+
     case undefined
     case null
     case boolean
@@ -180,7 +172,7 @@ public enum NodeValueType {
     case external
     case bigint
 
-    init?(raw: napi_valuetype) {
+    init(raw: napi_valuetype) throws {
         switch raw {
         case napi_undefined:
             self = .undefined
@@ -203,17 +195,71 @@ public enum NodeValueType {
         case napi_bigint:
             self = .bigint
         default:
-            return nil
+            throw UnknownTypeError(type: raw)
+        }
+    }
+
+    var concreteType: NodeValue.Type {
+        switch self {
+        case .undefined:
+            return NodeUndefined.self
+        case .null:
+            return NodeNull.self
+        case .boolean:
+            return NodeBool.self
+        case .number:
+            return NodeNumber.self
+        case .string:
+            return NodeString.self
+        case .symbol:
+            return NodeSymbol.self
+        case .external:
+            return NodeExternal.self
+        case .bigint:
+            return NodeBigInt.self
+        case .function:
+            return NodeFunction.self
+        case .object:
+            return NodeObject.self
         }
     }
 }
 
+extension NodeValueBase {
+
+    func type() throws -> NodeValueType {
+        var type = napi_undefined
+        try environment.check(napi_typeof(environment.raw, rawValue(), &type))
+        return try NodeValueType(raw: type)
+    }
+
+    func concrete() throws -> NodeValue {
+        try type().concreteType.init(self)
+    }
+
+    func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
+        if try self.type().concreteType == type {
+            return T(self)
+        } else if let objectType = type as? NodeObject.Type {
+            guard try objectType.isObjectType(for: self) else {
+                return nil
+            }
+            return T(self)
+        } else {
+            return nil
+        }
+    }
+
+}
+
 extension NodeValue {
 
-    public func type() throws -> NodeValueType {
-        var type = napi_undefined
-        try base.environment.check(napi_typeof(base.environment.raw, base.rawValue(), &type))
-        return NodeValueType(raw: type)!
+    func type() throws -> NodeValueType {
+        try base.type()
+    }
+
+    public func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
+        try base.as(T.self)
     }
 
 }
