@@ -19,7 +19,8 @@ private extension NodeValue {
             return try NodeUndefined(in: ctx)
         }, 1000)
 
-        let res = try context.run(script: "[1, 15]") as! NodeObject
+        let res = try context.run(script: "[1, 15]").as(NodeArray.self)!
+        print("Count: \(try res.count())")
         let num = try res[1].get(in: context) as! NodeNumber
         print("Num: \(num)")
 
