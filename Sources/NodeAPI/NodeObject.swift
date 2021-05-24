@@ -51,10 +51,9 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
 extension Dictionary: NodeValueConvertible, NodeObjectConvertible where Key == String, Value: NodeValueConvertible {
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         let obj = try NodeObject(in: ctx)
-        // TODO: Use defineOwnProperties?
-        for (key, value) in self {
-            try obj[key].set(to: value)
-        }
+        try obj.define(properties: map {
+            NodePropertyDescriptor(name: $0, attributes: .defaultProperty, value: .data($1))
+        })
         return obj
     }
 }
@@ -107,7 +106,7 @@ extension NodeObject {
         }
 
         @discardableResult
-        public func delete(key: NodeValueConvertible) throws -> Bool {
+        public func delete() throws -> Bool {
             var result = false
             try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 try ctx.environment.check(napi_delete_property(
@@ -184,6 +183,93 @@ extension NodeObject {
         return result
     }
 
+    public enum KeyCollectionMode {
+        case includePrototypes
+        case ownOnly
+
+        var raw: napi_key_collection_mode {
+            switch self {
+            case .includePrototypes:
+                return napi_key_include_prototypes
+            case .ownOnly:
+                return napi_key_own_only
+            }
+        }
+    }
+
+    public enum KeyConversion {
+        case keepNumbers
+        case numbersToStrings
+
+        var raw: napi_key_conversion {
+            switch self {
+            case .keepNumbers:
+                return napi_key_keep_numbers
+            case .numbersToStrings:
+                return napi_key_numbers_to_strings
+            }
+        }
+    }
+
+    public struct KeyFilter: RawRepresentable, OptionSet {
+        public let rawValue: UInt32
+        public init(rawValue: UInt32) {
+            self.rawValue = rawValue
+        }
+
+        init(_ raw: napi_key_filter) {
+            self.rawValue = raw.rawValue
+        }
+        var raw: napi_key_filter { .init(rawValue) }
+
+        public static let allProperties = KeyFilter(napi_key_all_properties)
+        public static let writable = KeyFilter(napi_key_writable)
+        public static let enumerable = KeyFilter(napi_key_enumerable)
+        public static let configurable = KeyFilter(napi_key_configurable)
+        public static let skipStrings = KeyFilter(napi_key_skip_strings)
+        public static let skipSymbols = KeyFilter(napi_key_skip_symbols)
+    }
+
+    public func propertyNames(
+        collectionMode: KeyCollectionMode,
+        filter: KeyFilter,
+        conversion: KeyConversion,
+        in ctx: NodeContext
+    ) throws -> NodeArray {
+        var result: napi_value!
+        try ctx.environment.check(
+            napi_get_all_property_names(
+                ctx.environment.raw,
+                base.rawValue(),
+                collectionMode.raw,
+                filter.raw,
+                conversion.raw,
+                &result
+            )
+        )
+        return NodeArray(NodeValueBase(raw: result, in: ctx))
+    }
+
+    public func define(properties: [NodePropertyDescriptor]) throws {
+        try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
+            let env = ctx.environment
+            var descriptors: [napi_property_descriptor] = []
+            var callbacks: [NodePropertyDescriptor.Callbacks] = []
+            for prop in properties {
+                let (desc, cb) = try prop.raw(in: ctx)
+                descriptors.append(desc)
+                if let cb = cb {
+                    callbacks.append(cb)
+                }
+            }
+            try env.check(napi_define_properties(env.raw, base.rawValue(), properties.count, descriptors))
+            if !callbacks.isEmpty {
+                // retain new callbacks
+                try addFinalizer { _ in _ = callbacks }
+            }
+        }
+    }
+
     public func freeze() throws {
         try base.environment.check(
             napi_object_freeze(
@@ -212,7 +298,7 @@ public class NodeWrappedDataKey<T> {
 
 private typealias WrappedData = Box<[ObjectIdentifier: Any]>
 
-private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+private func cWrapFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
     Unmanaged<WrappedData>.fromOpaque(data).release()
 }
 
@@ -279,7 +365,7 @@ extension NodeObject {
             let objUnmanaged = Unmanaged<WrappedData>.passRetained(obj)
             let objRaw = objUnmanaged.toOpaque()
             do {
-                try env.check(napi_wrap(env.raw, raw, objRaw, cFinalizer, nil, nil))
+                try env.check(napi_wrap(env.raw, raw, objRaw, cWrapFinalizer, nil, nil))
             } catch {
                 objUnmanaged.release()
                 throw error
@@ -297,8 +383,30 @@ extension NodeObject {
         return obj.value[ObjectIdentifier(key)] as? T
     }
 
-    // NOTE: We choose not to expose the finalizer features since everything it does
-    // is replicated by our wrappedValue implementation (users can use deinitializers
-    // in their wrapped values to determine when an object is finalized)
+}
+
+// MARK: - Finalizers
+
+private typealias FinalizeWrapper = Box<(NodeContext) throws -> Void>
+
+private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
+        try Unmanaged<FinalizeWrapper>
+            .fromOpaque(data)
+            .takeRetainedValue() // releases the wrapper post-call
+            .value(ctx)
+    }
+}
+
+extension NodeValue {
+
+    // Wrap should be sufficient in most cases, but finalizers are handy
+    // when you don't want to tag the object
+    public func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
+        let data = Unmanaged.passRetained(FinalizeWrapper(finalizer)).toOpaque()
+        try base.environment.check(
+            napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)
+        )
+    }
 
 }

@@ -11,7 +11,7 @@ final class NodeEnvironment {
     func check(_ status: napi_status) throws {
         guard status != napi_ok else { return }
 
-        // always catch JS errors and convert them into `NodeThrowable`s.
+        // always catch JS errors and convert them into `NodeException`s.
         // If the user doesn't handle them, we'll convert them back into JS
         // exceptions in the top level NodeContext.withContext
         var isExceptionPending = false
@@ -24,7 +24,7 @@ final class NodeEnvironment {
         if isExceptionPending {
             if napi_get_and_clear_last_exception(raw, &exception) == napi_ok {
                 // exceptions shouldn't be frequent so using .current is okay
-                throw NodeThrowable(try NodeValueBase(raw: exception, in: .current).concrete())
+                throw NodeException(try NodeValueBase(raw: exception, in: .current).concrete())
             } else {
                 // there's a pending exception but we couldn't fetch it wtf
                 throw NodeAPIError(.genericFailure)

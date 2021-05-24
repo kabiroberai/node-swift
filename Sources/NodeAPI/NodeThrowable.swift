@@ -1,6 +1,10 @@
 import CNodeAPI
 
-public struct NodeThrowable: Error {
+public protocol NodeExceptionConvertible: Error {
+    var exception: NodeValue { get }
+}
+
+public struct NodeException: NodeExceptionConvertible {
     public let exception: NodeValue
     public init(_ exception: NodeValue) {
         self.exception = exception

@@ -14,7 +14,7 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
 public final class NodeFunction: NodeObject {
 
     public struct CallbackInfo {
-        public let this: NodeValue
+        public let this: NodeObject?
         public let target: NodeFunction? // new.target
         public let arguments: [NodeValue]
         let data: UnsafeMutableRawPointer
@@ -35,7 +35,7 @@ public final class NodeFunction: NodeObject {
             var newTarget: napi_value?
             try env.check(napi_get_new_target(env.raw, raw, &newTarget))
 
-            self.this = try NodeValueBase(raw: this, in: ctx).concrete()
+            self.this = try NodeValueBase(raw: this, in: ctx).as(NodeObject.self)
             self.target = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
             self.data = data
             self.arguments = args
@@ -58,8 +58,6 @@ public final class NodeFunction: NodeObject {
         try value.type() == .function
     }
 
-    private static let callbackKey = NodeWrappedDataKey<CallbackWrapper>()
-
     public init(name: String = "", in ctx: NodeContext, callback: @escaping Callback) throws {
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
@@ -80,10 +78,10 @@ public final class NodeFunction: NodeObject {
             }
         }
         super.init(NodeValueBase(raw: value, in: ctx))
-        // we retain CallbackWrapper using the wrappedValue functionality instead of
+        // we retain CallbackWrapper using the finalizer functionality instead of
         // using Unmanaged.passRetained for data, since napi_create_function doesn't
         // accept a finalizer
-        try setWrappedValue(wrapper, forKey: Self.callbackKey)
+        try addFinalizer { _ in _ = wrapper }
     }
 
     public func call(

@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeError: NodeObject {
+public final class NodeError: NodeObject, NodeExceptionConvertible {
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -12,6 +12,8 @@ public final class NodeError: NodeObject {
         try env.check(napi_is_error(env.raw, value.rawValue(), &result))
         return result
     }
+
+    public var exception: NodeValue { self }
 
     public init(nodeErrorCode code: String, message: String, in ctx: NodeContext) throws {
         let env = ctx.environment

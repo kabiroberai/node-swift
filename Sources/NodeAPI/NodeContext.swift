@@ -68,7 +68,7 @@ public final class NodeContext {
                 }
             } catch let error where isTopLevel {
                 switch error {
-                case let throwable as NodeThrowable:
+                case let throwable as NodeExceptionConvertible:
                     try? ctx.throw(throwable)
                 // TODO: handle specific error types
                 // and let's maybe not throw a *string* in the general case?
@@ -78,7 +78,7 @@ public final class NodeContext {
 //                    let cocoaError = error as NSError
 //                    break
                 case let error:
-                    try? ctx.throw(NodeThrowable("\(type(of: error)): \(error)".nodeValue(in: ctx)))
+                    try? ctx.throw(NodeException("\(type(of: error)): \(error)".nodeValue(in: ctx)))
                     break
                 }
                 // we have to bail before the return statement somehow.
@@ -121,11 +121,11 @@ public final class NodeContext {
 
     // this is for internal use. In user code, errors that bubble up to the top
     // will automatically be thrown to JS.
-    private func `throw`(_ throwable: NodeThrowable) throws {
+    private func `throw`(_ throwable: NodeExceptionConvertible) throws {
         try environment.check(napi_throw(environment.raw, throwable.exception.rawValue(in: self)))
     }
 
-    public func throwUncaught(_ throwable: NodeThrowable) throws {
+    public func throwUncaught(_ throwable: NodeExceptionConvertible) throws {
         try environment.check(
             napi_fatal_exception(environment.raw, throwable.exception.rawValue(in: self))
         )
