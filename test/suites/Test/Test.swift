@@ -25,10 +25,14 @@ import NodeAPI
                             return try Data(contentsOf: url)
                         } set: { ctx, info in
                             let url = try info.this!.wrappedValue(forKey: fileKey)!
-                            guard let newFile = try info.arguments[0].as(NodeBuffer.self) else {
-                                throw try NodeError(typeErrorCode: "ERR_INVALID_ARG_TYPE", message: "Expected buffer", in: ctx)
+                            guard let newFile = try info.arguments[0].as(NodeTypedArray<UInt8>.self) else {
+                                throw try NodeError(
+                                    typeErrorCode: "ERR_INVALID_ARG_TYPE",
+                                    message: "Expected Buffer or Uint8Array",
+                                    in: ctx
+                                )
                             }
-                            try newFile.withUnsafeMutableBytes(Data.init(_:)).write(to: url, options: .atomic)
+                            try newFile.withUnsafeMutableBytes(Data.init(buffer:)).write(to: url, options: .atomic)
                             return try NodeUndefined(in: ctx)
                         }
                     ),
