@@ -49,7 +49,7 @@ final class NodeEnvironment {
 
 private typealias InstanceData = Box<[ObjectIdentifier: Any]>
 
-public class NodeInstanceDataKey<T> {
+public final class NodeInstanceDataKey<T> {
     public init() {}
 }
 

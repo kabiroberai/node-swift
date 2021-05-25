@@ -1,12 +1,10 @@
 import CNodeAPI
 import Foundation
 
-// TODO: Make most declarations final
-
 @dynamicMemberLookup
 public class NodeObject: NodeValue, NodeObjectConvertible {
 
-    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public final let base: NodeValueBase
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         self.base = base
     }
@@ -40,7 +38,7 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
         base = NodeValueBase(raw: obj, in: ctx)
     }
 
-    public func isInstance(of constructor: NodeFunction) throws -> Bool {
+    public final func isInstance(of constructor: NodeFunction) throws -> Bool {
         var result = false
         try base.environment.check(
             napi_instanceof(base.environment.raw, base.rawValue(), constructor.base.rawValue(), &result)
@@ -65,7 +63,7 @@ extension Dictionary: NodeValueConvertible, NodeObjectConvertible where Key == S
 extension NodeObject {
 
     @dynamicMemberLookup
-    public class DynamicProperty {
+    public final class DynamicProperty {
         let environment: NodeEnvironment
         let key: NodeValueConvertible
         // Defer resolution until it's necessary. This allows users
@@ -160,19 +158,19 @@ extension NodeObject {
         }
     }
 
-    public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
+    public final func property(forKey key: NodeValueConvertible) -> DynamicProperty {
         DynamicProperty(environment: base.environment, key: key) { _ in self }
     }
 
-    public subscript(key: NodeValueConvertible) -> DynamicProperty {
+    public final subscript(key: NodeValueConvertible) -> DynamicProperty {
         property(forKey: key)
     }
 
-    public subscript(dynamicMember key: String) -> DynamicProperty {
+    public final subscript(dynamicMember key: String) -> DynamicProperty {
         property(forKey: key)
     }
 
-    public func hasOwnProperty(_ key: NodeName) throws -> Bool {
+    public final func hasOwnProperty(_ key: NodeName) throws -> Bool {
         var result = false
         try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
             try ctx.environment.check(napi_has_own_property(
@@ -232,7 +230,7 @@ extension NodeObject {
         public static let skipSymbols = KeyFilter(napi_key_skip_symbols)
     }
 
-    public func propertyNames(
+    public final func propertyNames(
         collectionMode: KeyCollectionMode,
         filter: KeyFilter,
         conversion: KeyConversion,
@@ -252,7 +250,7 @@ extension NodeObject {
         return NodeArray(NodeValueBase(raw: result, in: ctx))
     }
 
-    public func define(properties: [NodePropertyDescriptor]) throws {
+    public final func define(properties: [NodePropertyDescriptor]) throws {
         try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
             let env = ctx.environment
             var descriptors: [napi_property_descriptor] = []
@@ -272,14 +270,14 @@ extension NodeObject {
         }
     }
 
-    public func prototype(in ctx: NodeContext) throws -> NodeValue {
+    public final func prototype(in ctx: NodeContext) throws -> NodeValue {
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_get_prototype(env.raw, base.rawValue(), &result))
         return try NodeValueBase(raw: result, in: ctx).concrete()
     }
 
-    public func freeze() throws {
+    public final func freeze() throws {
         try base.environment.check(
             napi_object_freeze(
                 base.environment.raw,
@@ -288,7 +286,7 @@ extension NodeObject {
         )
     }
 
-    public func seal() throws {
+    public final func seal() throws {
         try base.environment.check(
             napi_object_seal(
                 base.environment.raw,
@@ -301,7 +299,7 @@ extension NodeObject {
 
 // MARK: - Wrap
 
-public class NodeWrappedDataKey<T> {
+public final class NodeWrappedDataKey<T> {
     public init() {}
 }
 
@@ -353,7 +351,7 @@ extension NodeObject {
 
     private static let ourTypeTag = UUID()
 
-    public func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
+    public final func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
         let env = base.environment
         let id = ObjectIdentifier(key)
         let raw = try base.rawValue()
@@ -383,7 +381,7 @@ extension NodeObject {
         }
     }
 
-    public func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
+    public final func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
         guard try hasTypeTag(Self.ourTypeTag) else { return nil }
         let env = base.environment
         var objRaw: UnsafeMutableRawPointer!
@@ -411,7 +409,7 @@ extension NodeObject {
 
     // Wrap should be sufficient in most cases, but finalizers are handy
     // when you don't want to tag the object
-    public func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
+    public final func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
         let data = Unmanaged.passRetained(FinalizeWrapper(finalizer)).toOpaque()
         try base.environment.check(
             napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)
