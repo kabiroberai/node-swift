@@ -12,6 +12,11 @@ import CNodeAPI
     let environment: NodeEnvironment
     private var guts: Guts
     init(raw: napi_value, in ctx: NodeContext) {
+        // TODO: Can we always assume that starting off as unmanaged is safe?
+        // If a value is "owned" by some object, and we create an unmanaged ref
+        // to it, could it be garbage collected while the user still needs it?
+        // Maybe we need to add an extra argument to this init which allows us
+        // to specify whether the value was created with get or create semantics
         self.guts = .unmanaged(raw)
         self.environment = ctx.environment
         // this isn't the most performant solution to escaping NodeValues but
@@ -158,7 +163,7 @@ protocol ConcreteNodeValue: NodeValue, Equatable {}
 
 enum NodeValueType {
     struct UnknownTypeError: Error {
-        public let type: napi_valuetype
+        let type: napi_valuetype
     }
 
     case undefined

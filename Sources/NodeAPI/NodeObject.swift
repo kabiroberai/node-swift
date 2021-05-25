@@ -1,6 +1,8 @@
 import CNodeAPI
 import Foundation
 
+// TODO: Make most declarations final
+
 @dynamicMemberLookup
 public class NodeObject: NodeValue, NodeObjectConvertible {
 
@@ -405,7 +407,7 @@ private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint:
     }
 }
 
-extension NodeValue {
+extension NodeObject {
 
     // Wrap should be sufficient in most cases, but finalizers are handy
     // when you don't want to tag the object
