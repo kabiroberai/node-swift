@@ -1,9 +1,9 @@
 import Foundation
 import CNodeAPI
 
-private typealias Hint = Box<(NodeArrayBuffer.Deallocator, UnsafeMutableRawBufferPointer)>
+typealias Hint = Box<(NodeArrayBuffer.Deallocator, UnsafeMutableRawBufferPointer)>
 
-private func cFinalizer(_: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+func cBufFinalizer(_: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
     let (hint, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
     hint.apply(with: bytes)
 }
@@ -52,7 +52,7 @@ public final class NodeArrayBuffer: NodeObject {
         let env = ctx.environment
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()
-        try env.check(napi_create_external_arraybuffer(env.raw, bytes.baseAddress, bytes.count, cFinalizer, hint, &result))
+        try env.check(napi_create_external_arraybuffer(env.raw, bytes.baseAddress, bytes.count, cBufFinalizer, hint, &result))
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 

@@ -22,13 +22,13 @@ import NodeAPI
                         attributes: .defaultProperty,
                         value: .computed { ctx, info in
                             let url = try info.this!.wrappedValue(forKey: fileKey)!
-                            return try String(contentsOf: url)
+                            return try Data(contentsOf: url)
                         } set: { ctx, info in
                             let url = try info.this!.wrappedValue(forKey: fileKey)!
-                            guard let newFile = try info.arguments[0].as(NodeString.self) else {
-                                throw try NodeError(typeErrorCode: "ERR_INVALID_ARG_TYPE", message: "Expected string", in: ctx)
+                            guard let newFile = try info.arguments[0].as(NodeBuffer.self) else {
+                                throw try NodeError(typeErrorCode: "ERR_INVALID_ARG_TYPE", message: "Expected buffer", in: ctx)
                             }
-                            try newFile.string().write(to: url, atomically: true, encoding: .utf8)
+                            try newFile.withUnsafeMutableBytes(Data.init(_:)).write(to: url, options: .atomic)
                             return try NodeUndefined(in: ctx)
                         }
                     ),
