@@ -270,6 +270,13 @@ extension NodeObject {
         }
     }
 
+    public func prototype(in ctx: NodeContext) throws -> NodeValue {
+        let env = ctx.environment
+        var result: napi_value!
+        try env.check(napi_get_prototype(env.raw, base.rawValue(), &result))
+        return try NodeValueBase(raw: result, in: ctx).concrete()
+    }
+
     public func freeze() throws {
         try base.environment.check(
             napi_object_freeze(
