@@ -33,7 +33,7 @@ extension String {
             // we're on Darwin so we know that freeWhenDone uses libc free
             let buf = malloc(length).bindMemory(to: UInt8.self, capacity: length)
             let actualLength = try initializer(UnsafeMutableBufferPointer(start: buf, count: length))
-            self.init(bytesNoCopy: buf, length: actualLength - 1, encoding: .utf8, freeWhenDone: true)
+            self.init(bytesNoCopy: buf, length: actualLength, encoding: .utf8, freeWhenDone: true)
         }
         #endif
     }
