@@ -40,9 +40,9 @@ extension NodeModule {
 
         var rawMod = napi_module()
         rawMod.nm_version = NAPI_MODULE_VERSION
-        rawMod.nm_filename = UnsafePointer(strdup(#file))
+        rawMod.nm_filename = UnsafePointer(#file.copiedCString())
         rawMod.nm_register_func = registerModule
-        rawMod.nm_modname = UnsafePointer(strdup(name))
+        rawMod.nm_modname = UnsafePointer(#file.copiedCString())
 
         let mod = UnsafeMutablePointer<napi_module>.allocate(capacity: 1)
         mod.initialize(to: rawMod)

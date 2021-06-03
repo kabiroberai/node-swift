@@ -37,9 +37,12 @@ public final class NodeString: NodeValue, NodeName, NodeValueCoercible {
         try env.check(napi_get_value_string_utf8(env.raw, nodeVal, nil, 0, &length))
         // napi nul-terminates strings
         let totLength = length + 1
-        let buf = malloc(totLength).bindMemory(to: Int8.self, capacity: totLength)
-        try env.check(napi_get_value_string_utf8(env.raw, nodeVal, buf, totLength, &length))
-        return String(bytesNoCopy: buf, length: length, encoding: .utf8, freeWhenDone: true)!
+        return try String(portableUnsafeUninitializedCapacity: totLength) {
+            try $0.withMemoryRebound(to: CChar.self) {
+                try env.check(napi_get_value_string_utf8(env.raw, nodeVal, $0.baseAddress!, totLength, &length))
+                return length
+            }
+        }!
     }
 
 }

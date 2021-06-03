@@ -1,7 +1,6 @@
 const fs = require("fs").promises;
 const builder = require("../lib/builder");
 const { spawnSync } = require("child_process");
-const { forceSymlink } = require("../lib/utils");
 
 process.chdir(__dirname);
 
@@ -13,7 +12,6 @@ function usage() {
 async function runSuite(suite, child) {
     console.log(`Running suite '${suite}'`);
     await builder.build("debug", suite);
-    await forceSymlink("../../build", `./suites/${suite}/build`);
     require(`./suites/${suite}`);
 }
 

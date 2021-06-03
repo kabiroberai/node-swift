@@ -21,8 +21,8 @@ public struct NodePropertyDescriptor {
     typealias Callbacks = Box<(getterOrMethod: NodeFunction.Callback?, setter: NodeFunction.Callback?)>
 
     public struct Attributes: RawRepresentable, OptionSet {
-        public let rawValue: UInt32
-        public init(rawValue: UInt32) {
+        public let rawValue: CEnum
+        public init(rawValue: CEnum) {
             self.rawValue = rawValue
         }
 

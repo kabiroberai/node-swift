@@ -212,8 +212,8 @@ extension NodeObject {
     }
 
     public struct KeyFilter: RawRepresentable, OptionSet {
-        public let rawValue: UInt32
-        public init(rawValue: UInt32) {
+        public let rawValue: CEnum
+        public init(rawValue: CEnum) {
             self.rawValue = rawValue
         }
 

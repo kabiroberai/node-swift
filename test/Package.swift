@@ -3,9 +3,15 @@
 import PackageDescription
 import Foundation
 
+// using ".." doesn't work on Windows
+let nodeSwiftPath = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+    .path
+
 let package = Package(
     name: "NodeAPITests",
-    dependencies: [.package(name: "node-swift", path: "..")]
+    dependencies: [.package(name: "node-swift", path: nodeSwiftPath)]
 )
 
 func addSuite(_ suite: String) {
@@ -17,7 +23,7 @@ func addSuite(_ suite: String) {
         name: suite,
         dependencies: [.product(name: "NodeAPI", package: "node-swift")],
         path: "suites/\(suite)",
-        exclude: ["build", "index.js"]
+        exclude: ["index.js"]
     ))
 }
 
