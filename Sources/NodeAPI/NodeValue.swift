@@ -263,6 +263,18 @@ extension NodeValue {
         try base.type()
     }
 
+    // TODO: Ideally, NodeObject would be a class cluster such that
+    // (for example) initializing a NodeObject with a Date type would
+    // return a NodeDate. Doing that would allow casting with normal
+    // Swift syntax like `as?` instead of using this. But we should
+    // first figure out an efficient way to determine which type an
+    // object is.
+    //
+    // Also, maybe NodeValueBase could have a private initializer, and
+    // all code would have to go through a static method such as
+    // `NodeValueBase.create(raw:in:) -> NodeValue` in order to create
+    // a value. The create method would check the type() and return an
+    // instance of the appropriate class.
     public func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
         try base.as(T.self)
     }

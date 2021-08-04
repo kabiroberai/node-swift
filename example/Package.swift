@@ -8,7 +8,7 @@ let package = Package(
         .library(
             name: "MyExample",
             targets: ["MyExample"]
-        )
+        ),
     ],
     dependencies: [
         .package(path: "node_modules/node-swift")

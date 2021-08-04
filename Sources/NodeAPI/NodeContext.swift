@@ -1,16 +1,6 @@
 import Foundation
 import CNodeAPI
 
-private extension Thread {
-    private static let contextKey = ObjectIdentifier(NodeContext.self)
-    func withContextStack<T>(_ action: (inout [NodeContext]) throws -> T) rethrows -> T {
-        var stack = threadDictionary[Self.contextKey] as? [NodeContext] ?? []
-        let ret = try action(&stack)
-        threadDictionary[Self.contextKey] = stack
-        return ret
-    }
-}
-
 // A call context that manages allocations in native code.
 // You **must not** allow NodeContext instances to escape
 // the scope in which they were called.
@@ -50,8 +40,8 @@ public final class NodeContext {
         #endif
         do {
             let ctx = NodeContext(environment: env, isManaged: isTopLevel)
-            Thread.current.withContextStack { $0.append(ctx) }
-            defer { Thread.current.withContextStack { _ = $0.removeLast() } }
+            node_context_push(Unmanaged.passUnretained(ctx).toOpaque())
+            defer { node_context_pop() }
             do {
                 ret = try action(ctx)
                 if isTopLevel {
@@ -132,10 +122,10 @@ public final class NodeContext {
     }
 
     public static var current: NodeContext {
-        guard let last = Thread.current.withContextStack(\.last) else {
+        guard let last = node_context_peek() else {
             nodeFatalError("There is no current NodeContext")
         }
-        return last
+        return Unmanaged.fromOpaque(last).takeUnretainedValue()
     }
 }
 
