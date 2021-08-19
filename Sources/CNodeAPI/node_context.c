@@ -20,7 +20,7 @@ const void *node_context_pop(void) {
     struct node_context *old_head = node_context_head;
     node_context_head = old_head->next;
     const void *value = old_head->value;
-    free(node_context_head);
+    free(old_head);
     return value;
 }
 
