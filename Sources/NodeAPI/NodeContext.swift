@@ -170,6 +170,8 @@ extension NodeContext {
 
 // MARK: - Cleanup Hooks
 
+#if !NAPI_VERSIONED || NAPI_GE_8
+
 public final class AsyncCleanupHook {
     let callback: (@escaping () -> Void) -> Void
     var handle: napi_async_cleanup_hook_handle!
@@ -214,6 +216,8 @@ extension NodeContext {
     }
 
 }
+
+#endif
 
 // MARK: - Misc
 

@@ -277,6 +277,7 @@ extension NodeObject {
         return try NodeValueBase(raw: result, in: ctx).concrete()
     }
 
+    #if !NAPI_VERSIONED || NAPI_GE_8
     public final func freeze() throws {
         try base.environment.check(
             napi_object_freeze(
@@ -294,10 +295,13 @@ extension NodeObject {
             )
         )
     }
+    #endif
 
 }
 
-// MARK: - Wrap
+// MARK: - Object Wrap
+
+#if !NAPI_VERSIONED || NAPI_GE_8
 
 public final class NodeWrappedDataKey<T> {
     public init() {}
@@ -391,6 +395,8 @@ extension NodeObject {
     }
 
 }
+
+#endif
 
 // MARK: - Finalizers
 

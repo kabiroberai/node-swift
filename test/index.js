@@ -9,16 +9,16 @@ function usage() {
     process.exit(1);
 }
 
-async function runSuite(suite, child) {
+async function runSuite(suite, isChild) {
     console.log(`Running suite '${suite}'`);
-    await builder.build("debug", suite);
+    await builder.build("debug", { product: suite });
     require(`./suites/${suite}`);
 }
 
 async function runAll() {
     const suites = (await fs.readdir("suites")).filter(f => !f.startsWith("."));
     for (const suite of suites) {
-        // invoke child processes because that way lifetime stuff
+        // invoke isChild processes because that way lifetime stuff
         // is handled on a per-test basis
         const status = spawnSync(
             "node", [__filename, "_suite", suite],
@@ -35,7 +35,7 @@ async function runAll() {
 
 (async () => {
     const command = process.argv[2] || "all";
-    let child = false;
+    let isChild = false;
     switch (command) {
         case "all":
             if (process.argv.length > 3) usage();
@@ -43,13 +43,13 @@ async function runAll() {
             await runAll();
             break;
         case "_suite":
-            child = true;
+            isChild = true;
             // fallthrough
         case "suite":
             if (process.argv.length !== 4) usage();
             const suite = process.argv[3];
-            if (!child) await builder.clean();
-            await runSuite(suite, child);
+            if (!isChild) await builder.clean();
+            await runSuite(suite, isChild);
             break;
         default:
             usage();

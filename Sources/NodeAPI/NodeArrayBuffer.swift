@@ -64,6 +64,8 @@ public final class NodeArrayBuffer: NodeObject {
         return try body(UnsafeMutableRawBufferPointer(start: data, count: count))
     }
 
+    #if !NAPI_VERSIONED || NAPI_GE_7
+
     public func detach() throws {
         try base.environment.check(
             napi_detach_arraybuffer(base.environment.raw, base.rawValue())
@@ -77,5 +79,7 @@ public final class NodeArrayBuffer: NodeObject {
         )
         return result
     }
+
+    #endif
 
 }

@@ -31,16 +31,15 @@ public struct NodePropertyDescriptor {
         }
         var raw: napi_property_attributes { .init(rawValue) }
 
-        public static let `default` = Attributes(napi_default)
-        public static let defaultMethod = Attributes(napi_default_method)
-        public static let defaultProperty = Attributes(napi_default_jsproperty)
-
         public static let writable = Attributes(napi_writable)
         public static let enumerable = Attributes(napi_enumerable)
         public static let configurable = Attributes(napi_configurable)
-
         // ignored by define(properties:)
         public static let `static` = Attributes(napi_static)
+
+        public static let `default`: Attributes = []
+        public static let defaultMethod: Attributes = [.writable, .configurable]
+        public static let defaultProperty: Attributes = [.writable, .enumerable, .configurable]
     }
 
     public enum Value {
