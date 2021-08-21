@@ -168,12 +168,13 @@ public class NodeAnyTypedArray: NodeObject {
         var data: UnsafeMutableRawPointer?
         var count = 0
         try env.check(napi_get_typedarray_info(env.raw, base.rawValue(), nil, &count, &data, nil, nil))
+        // TODO: Do we need to advance `data` by `offset`/a multiple of offset?
         return try body(UnsafeMutableRawBufferPointer(start: data, count: count))
     }
 
 }
 
-public final class NodeTypedArray<Element: NodeTypedArrayElement>: NodeAnyTypedArray {
+public class NodeTypedArray<Element: NodeTypedArrayElement>: NodeAnyTypedArray {
 
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
         try isObjectType(for: value, kind: Element.kind)

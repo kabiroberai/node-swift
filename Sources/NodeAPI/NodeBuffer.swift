@@ -1,7 +1,7 @@
 import Foundation
 import CNodeAPI
 
-public final class NodeBuffer: NodeObject {
+public final class NodeBuffer: NodeTypedArray<UInt8> {
 
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
         let env = value.environment
@@ -41,18 +41,16 @@ public final class NodeBuffer: NodeObject {
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 
-    public func withUnsafeMutableBytes<T>(_ body: (UnsafeMutableRawBufferPointer) throws -> T) throws -> T {
-        let env = base.environment
-        var data: UnsafeMutableRawPointer?
-        var count = 0
-        try env.check(napi_get_buffer_info(env.raw, base.rawValue(), &data, &count))
-        return try body(UnsafeMutableRawBufferPointer(start: data, count: count))
-    }
-
 }
 
 extension Data: NodeValueConvertible {
     public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
         try NodeBuffer(copying: self, in: ctx)
+    }
+}
+
+extension NodeTypedArray where Element == UInt8 {
+    public func data() throws -> Data {
+        try withUnsafeMutableBytes(Data.init(_:))
     }
 }
