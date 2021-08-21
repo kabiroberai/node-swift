@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "repository": "kabiroberai/node-swift",
   "description": "Support for creating Node modules in Swift",
-  "bin": "./lib/index.js",
+  "bin": "./lib/cli.js",
+  "main": "./lib/builder.js",
   "scripts": {
     "test": "node test"
   },
