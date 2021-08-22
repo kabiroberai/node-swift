@@ -1,9 +1,28 @@
 import CNodeAPI
 
-@_spi(NodeAPI) public final class NodeValueBase {
+private extension NodeContext {
     private static let threadsafeFunctionKey =
         NodeInstanceDataKey<NodeThreadsafeFunction<napi_ref>>()
 
+    func getReleaseFunction() throws -> NodeThreadsafeFunction<napi_ref> {
+        if let fn = try environment.instanceData(for: Self.threadsafeFunctionKey) {
+            return fn
+        }
+        let fn = try NodeThreadsafeFunction<napi_ref>(
+            asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
+            keepsMainThreadAlive: false,
+            in: self
+        ) { ctx, ref in
+            try ctx.environment.check(
+                napi_delete_reference(ctx.environment.raw, ref)
+            )
+        }
+        try environment.setInstanceData(fn, for: Self.threadsafeFunctionKey)
+        return fn
+    }
+}
+
+@_spi(NodeAPI) public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
         case managed(napi_ref, release: NodeThreadsafeFunction<napi_ref>, isBoxed: Bool)
@@ -12,36 +31,25 @@ import CNodeAPI
     let environment: NodeEnvironment
     private var guts: Guts
     init(raw: napi_value, in ctx: NodeContext) {
-        // TODO: Can we always assume that starting off as unmanaged is safe?
-        // If a value is "owned" by some object, and we create an unmanaged ref
-        // to it, could it be garbage collected while the user still needs it?
-        // Maybe we need to add an extra argument to this init which allows us
-        // to specify whether the value was created with get or create semantics
         self.guts = .unmanaged(raw)
         self.environment = ctx.environment
         // this isn't the most performant solution to escaping NodeValues but
         // it's worth noting that even JSC seems to do something similar:
-        // https://github.com/WebKit/WebKit/blob/dc23fbec330747c0fcd0e068c9103c05c65e4bf1/Source/JavaScriptCore/API/JSWrapperMap.mm
+        // https://github.com/WebKit/WebKit/blob/dc23fbec330747c0fcd0e068c9103c05c65e4bf1/Source/JavaScriptCore/API/JSWrapperMap.mm#L641-L673
         // Also if users really need performance they can use
         // NodeEnvironment.withUnmanaged
         ctx.registerValue(self)
     }
 
-    private func getReleaseFunction(in ctx: NodeContext) throws -> NodeThreadsafeFunction<napi_ref> {
-        if let fn = try ctx.environment.instanceData(for: Self.threadsafeFunctionKey) {
-            return fn
-        }
-        let fn = try NodeThreadsafeFunction<napi_ref>(
-            asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
-            keepsMainThreadAlive: false,
-            in: ctx
-        ) { ctx, ref in
-            try ctx.environment.check(
-                napi_delete_reference(ctx.environment.raw, ref)
-            )
-        }
-        try ctx.environment.setInstanceData(fn, for: Self.threadsafeFunctionKey)
-        return fn
+    // TODO: Figure out if/where this is needed:
+    // If a value is "owned" by some object, and we create an unmanaged ref
+    // to it, could it be garbage collected while the user still needs it?
+    init(managedRaw raw: napi_value, in ctx: NodeContext) throws {
+        self.guts = .unmanaged(raw)
+        self.environment = ctx.environment
+        // don't register with ctx here; doing so would include the
+        // receiver in the check for whether it escaped
+        try persist(in: ctx)
     }
 
     func persist(in ctx: NodeContext) throws {
@@ -66,7 +74,7 @@ import CNodeAPI
             }
             var ref: napi_ref!
             try environment.check(napi_create_reference(environment.raw, boxedRaw, 1, &ref))
-            let release = try getReleaseFunction(in: ctx)
+            let release = try ctx.getReleaseFunction()
             self.guts = .managed(ref, release: release, isBoxed: isBoxed)
         }
     }
