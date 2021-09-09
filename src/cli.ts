@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
-const builder = require("./builder");
+import * as builder from "./builder";
 
-function usage() {
+function usage(): never {
     console.log("Usage: node-swift [rebuild [--debug] | build [--debug] | clean]");
     process.exit(1);
 }
 
-async function doClean(checkArgs) {
+async function doClean(checkArgs: boolean = false) {
     if (checkArgs && process.argv.length !== 3) usage();
     await builder.clean();
 }
 
 async function doBuild() {
-    let mode;
+    let mode: builder.BuildMode;
     if (process.argv.length === 3) {
         mode = "release";
     } else if (process.argv.length === 4 && process.argv[3] === "--debug") {

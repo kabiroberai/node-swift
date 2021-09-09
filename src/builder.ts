@@ -1,7 +1,7 @@
-const { promises: { rm, rename, realpath } } = require("fs");
-const { spawnSync } = require("child_process");
-const { forceSymlink } = require("./utils");
-const path = require("path");
+import { rm, rename, realpath } from "fs/promises";
+import { spawnSync } from "child_process";
+import { forceSymlink } from "./utils";
+import path from "path";
 
 const buildDir = "build";
 
@@ -9,11 +9,30 @@ const buildDir = "build";
 // (probably doesn't need to be changed)
 const winHost = "node.exe";
 
-async function clean() {
+export type BuildMode = "release" | "debug";
+
+export type ConfigFlags = string | string[];
+
+export interface Config {
+    packagePath?: string
+    product?: string
+
+    triple?: string
+    macVersion?: string
+    napi?: number | "experimental"
+
+    spmFlags?: ConfigFlags
+    cFlags?: ConfigFlags
+    swiftFlags?: ConfigFlags
+    cxxFlags?: ConfigFlags
+    linkerFlags?: ConfigFlags
+}
+
+export async function clean() {
     await rm(buildDir, { recursive: true, force: true });
 }
 
-async function getWinLib() {
+async function getWinLib(): Promise<string> {
     let filename;
     switch (process.arch) {
         case "x64":
@@ -27,8 +46,8 @@ async function getWinLib() {
     return path.join(__dirname, "..", "vendored", "node", "lib", filename);
 }
 
-function getFlags(config, name) {
-    const flags = config[name];
+function getFlags(config: Config, name: string) {
+    const flags = (config as any)[name];
     if (typeof flags === "undefined") {
         return [];
     } else if (typeof flags === "string") {
@@ -40,7 +59,7 @@ function getFlags(config, name) {
     }
 }
 
-async function build(mode, config = {}) {
+export async function build(mode: BuildMode, config: Config = {}): Promise<string> {
     let spmFlags = getFlags(config, "spmFlags");
     let cFlags = getFlags(config, "cFlags");
     let swiftFlags = getFlags(config, "swiftFlags");
@@ -70,7 +89,7 @@ async function build(mode, config = {}) {
     let napi = config.napi;
 
     if (typeof config.triple === "string") {
-        spmFlags.push('--triple', config.triple);
+        spmFlags.push("--triple", config.triple);
     } else if (typeof config.triple !== "undefined") {
         throw new Error("Invalid value for triple option.");
     }
@@ -92,23 +111,23 @@ async function build(mode, config = {}) {
         cFlags.flatMap(f => ["-Xcc", f]),
         swiftFlags.flatMap(f => ["-Xswiftc", f]),
         cxxFlags.flatMap(f => ["-Xcxx", f]),
-        linkerFlags.flatMap(f => ["-Xlinker", f]),
-    )
+        linkerFlags.flatMap(f => ["-Xlinker", f])
+    );
 
     const dump = spawnSync(
-        "swift", 
+        "swift",
         [
-            "package", 
+            "package",
             "dump-package",
             "--package-path", packagePath,
-            ...allFlags
+            ...allFlags,
         ],
         { stdio: ["inherit", "pipe", "inherit"] }
     );
     if (dump.status !== 0) {
         throw new Error(`swift package dump-package exited with status ${dump.status}`);
     }
-    const parsedPackage = JSON.parse(dump.stdout);
+    const parsedPackage = JSON.parse(dump.stdout.toString());
     if (typeof product === "undefined") {
         const products = parsedPackage.products;
         if (products.length === 0) {
@@ -133,13 +152,13 @@ async function build(mode, config = {}) {
             libName = "libNodeSwiftHost.dylib";
             ldflags = [
                 "-Xlinker", "-undefined",
-                "-Xlinker", "dynamic_lookup"
+                "-Xlinker", "dynamic_lookup",
             ];
             break;
         case "linux":
             libName = "libNodeSwiftHost.so";
             ldflags = [
-                "-Xlinker", "-undefined"
+                "-Xlinker", "-undefined",
             ];
             break;
         case "win32":
@@ -147,7 +166,7 @@ async function build(mode, config = {}) {
             ldflags = [
                 "-Xlinker", await getWinLib(),
                 "-Xlinker", "delayimp.lib",
-                "-Xlinker", `/DELAYLOAD:${winHost}`
+                "-Xlinker", `/DELAYLOAD:${winHost}`,
             ];
             break;
         default:
@@ -163,7 +182,7 @@ async function build(mode, config = {}) {
     // TODO: Maybe simplify this by making NodeAPI a dynamic target, which
     // can serve as where we put the flags?
     const result = spawnSync(
-        "swift", 
+        "swift",
         [
             "build",
             "-c", mode,
@@ -171,18 +190,18 @@ async function build(mode, config = {}) {
             "--build-path", buildDir,
             "--package-path", path.join(__dirname, "..", "NodeSwiftHost"),
             ...ldflags,
-            ...allFlags
+            ...allFlags,
         ],
-        { 
-            stdio: "inherit", 
-            env: { 
+        {
+            stdio: "inherit",
+            env: {
                 "NODE_SWIFT_TARGET_PACKAGE": parsedPackage.name,
                 "NODE_SWIFT_TARGET_PATH": packagePath,
                 "NODE_SWIFT_TARGET_NAME": product,
                 "NODE_SWIFT_HOST_BINARY": winHost,
                 "NODE_SWIFT_TARGET_MAC_VERSION": macVersion,
-                ...process.env
-            }
+                ...process.env,
+            },
         }
     );
     if (result.status !== 0) {
@@ -197,11 +216,9 @@ async function build(mode, config = {}) {
     );
 
     await forceSymlink(
-        path.join(mode, `${product}.node`), 
+        path.join(mode, `${product}.node`),
         path.join(buildDir, `${product}.node`)
     );
 
     return binaryPath;
 }
-
-module.exports = { clean, build };

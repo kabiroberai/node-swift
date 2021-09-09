@@ -6,12 +6,30 @@
   "bin": "./lib/cli.js",
   "main": "./lib/builder.js",
   "scripts": {
-    "test": "node test"
+    "test": "node test",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "lint": "eslint ."
   },
+  "files": [
+    "lib",
+    "NodeSwiftHost",
+    "Sources",
+    "vendored",
+    "Package.swift"
+  ],
   "author": "Kabir Oberai",
   "license": "MIT",
   "devDependencies": {
-    "mocha": "^8.4.0"
+    "@types/node": "^16.9.0",
+    "@typescript-eslint/eslint-plugin": "^4.31.0",
+    "@typescript-eslint/parser": "^4.31.0",
+    "eslint": "^7.2.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-airbnb-typescript": "^14.0.0",
+    "eslint-plugin-import": "^2.22.1",
+    "mocha": "^8.4.0",
+    "typescript": "^4.4.2"
   },
   "dependencies": {
     "import-cwd": "^3.0.0"
