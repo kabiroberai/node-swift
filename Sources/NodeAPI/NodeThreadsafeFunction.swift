@@ -30,6 +30,14 @@ private typealias AnyCallback = (NodeContext, Any) throws -> Void
 public final class NodeThreadsafeFunction<Input> {
     public typealias Callback = (NodeContext, Input) throws -> Void
 
+    // the callbackHandle is effectively an atomic indicator of
+    // whether the tsfn finalizer has been called. The only thing
+    // holding a strong ref to this is the threadsafe
+    // function itself, and that ref is released when cFinalizer
+    // is invoked, therefore making this handle nil
+    private weak var _callbackHandle: Box<AnyCallback>?
+    private var isValid: Bool { _callbackHandle != nil }
+
     public private(set) var keepsMainThreadAlive: Bool
     private let raw: napi_threadsafe_function
     // must be called from the main thread; and the callback will be called on
@@ -42,10 +50,11 @@ public final class NodeThreadsafeFunction<Input> {
         in ctx: NodeContext,
         callback: @escaping Callback
     ) throws {
-        let anyCallback: AnyCallback = { ctx, anyInput in
+        let callbackHandle = Box<AnyCallback> { ctx, anyInput in
             try callback(ctx, anyInput as! Input)
         }
-        let box = Unmanaged.passRetained(Box<AnyCallback>(anyCallback)).toOpaque()
+        self._callbackHandle = callbackHandle
+        let box = Unmanaged.passRetained(callbackHandle).toOpaque()
         var result: napi_threadsafe_function!
         try ctx.environment.check(napi_create_threadsafe_function(
             ctx.environment.raw, nil,
@@ -67,8 +76,20 @@ public final class NodeThreadsafeFunction<Input> {
         }
     }
 
+    // if isValid is false (i.e. callbackHandle has been released),
+    // the tsfn finalizer has been called and so it's now invalid for
+    // use. This can happen during napi_env teardown, in which case
+    // the tsfn will have been invalidated without our explicitly asking
+    // for it
+    private func ensureValid() throws {
+        guard isValid else {
+            throw NodeAPIError(.closing)
+        }
+    }
+
     // makes any future calls to the threadsafe function return NodeAPIError(.closing)
     public func abort() throws {
+        try ensureValid()
         try Self.check(napi_acquire_threadsafe_function(raw))
         try Self.check(napi_release_threadsafe_function(raw, napi_tsfn_abort))
     }
@@ -77,6 +98,7 @@ public final class NodeThreadsafeFunction<Input> {
     // alive while the receiver is referenced from other threads
     public func setKeepsMainThreadAlive(_ keepAlive: Bool, in ctx: NodeContext) throws {
         guard keepAlive != keepsMainThreadAlive else { return }
+        try ensureValid()
         if keepAlive {
             try ctx.environment.check(
                 napi_ref_threadsafe_function(ctx.environment.raw, raw)
@@ -90,11 +112,14 @@ public final class NodeThreadsafeFunction<Input> {
     }
 
     deinit {
-        napi_release_threadsafe_function(raw, napi_tsfn_release)
+        if isValid {
+            napi_release_threadsafe_function(raw, napi_tsfn_release)
+        }
     }
 
     // thread-safe. Will throw NodeAPIError(.closing) if another thread called abort()
     public func call(_ input: Input, blocking block: Bool = false) throws {
+        try ensureValid()
         let payload = Box<Any>(input)
         let unmanagedPayload = Unmanaged.passRetained(payload)
         let rawPayload = unmanagedPayload.toOpaque()
