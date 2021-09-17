@@ -9,16 +9,29 @@ private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRa
     // which is why we only take the latter as retained. Also we need to
     // free the input regardless of whether the env is nil.
     let callback = Unmanaged<Box<AnyCallback>>.fromOpaque(context).takeUnretainedValue()
-    let input = Unmanaged<Box<Any>>.fromOpaque(data).takeRetainedValue()
+    let input = Unmanaged<AnyObject>.fromOpaque(data).takeRetainedValue()
 
     guard let env = env else { return }
 
     NodeContext.withContext(environment: NodeEnvironment(env)) { ctx in
-        try callback.value(ctx, input.value)
+        try callback.value(ctx, input)
     }
 }
 
-private typealias AnyCallback = (NodeContext, Any) throws -> Void
+private typealias AnyCallback = (NodeContext, AnyObject) throws -> Void
+
+// TODO: Maybe make this more like dispatch_async? We could make it so
+// the tsfn initializer doesn't actually take the callback, and instead
+// the user has to supply a callback while invoking the tsfn: so
+//
+// let tsfn = NodeThreadsafeFunction(asyncResourceName: "test", in: ctx)
+// ... later, on another thread ...
+// tsfn {
+//     ... do stuff ...
+// }
+//
+// This way the tsfn doesn't even have to be generic over Input, input can
+// always be a `(NodeContext) throws -> Void`
 
 // this is the only async API we implement because it's more or less isomorphic
 // to napi_async_init+napi_[open|close]_callback_scope (which are in turn
@@ -120,7 +133,8 @@ public final class NodeThreadsafeFunction<Input> {
     // thread-safe. Will throw NodeAPIError(.closing) if another thread called abort()
     public func call(_ input: Input, blocking block: Bool = false) throws {
         try ensureValid()
-        let payload = Box<Any>(input)
+        // `as AnyObject` should be faster than Box for classes, NS primitives
+        let payload = input as AnyObject
         let unmanagedPayload = Unmanaged.passRetained(payload)
         let rawPayload = unmanagedPayload.toOpaque()
         do {
