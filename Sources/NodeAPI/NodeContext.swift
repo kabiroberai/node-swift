@@ -61,14 +61,15 @@ public final class NodeContext {
                 case let throwable as NodeExceptionConvertible:
                     try? ctx.throw(throwable)
                 // TODO: handle specific error types
-                // and let's maybe not throw a *string* in the general case?
 //                case let error as NodeAPIError:
 //                    break
 //                case let error where type(of: error) is NSError.Type:
 //                    let cocoaError = error as NSError
 //                    break
+                // TODO: maybe create our own Error class which allows round-tripping the
+                // actual error object, instead of merely passing along stringified vals
                 case let error:
-                    try? ctx.throw(NodeException("\(type(of: error)): \(error)".nodeValue(in: ctx)))
+                    try? ctx.throw(NodeError(code: "\(type(of: error))", message: "\(error)", in: ctx))
                     break
                 }
                 // we have to bail before the return statement somehow.

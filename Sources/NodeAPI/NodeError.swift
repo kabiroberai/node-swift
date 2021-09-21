@@ -15,13 +15,13 @@ public final class NodeError: NodeObject, NodeExceptionConvertible {
 
     public var exception: NodeValue { self }
 
-    public init(nodeErrorCode code: String, message: String, in ctx: NodeContext) throws {
+    public init(code: String?, message: String, in ctx: NodeContext) throws {
         let env = ctx.environment
         var result: napi_value!
         try env.check(
             napi_create_error(
                 env.raw,
-                code.rawValue(in: ctx),
+                code?.rawValue(in: ctx),
                 message.rawValue(in: ctx),
                 &result
             )
