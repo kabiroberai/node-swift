@@ -14,11 +14,11 @@ private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRa
     guard let env = env else { return }
 
     NodeContext.withContext(environment: NodeEnvironment(env)) { ctx in
-        try callback.value(ctx, input)
+        try callback.value(input)
     }
 }
 
-private typealias AnyCallback = (NodeContext, AnyObject) throws -> Void
+private typealias AnyCallback = (AnyObject) throws -> Void
 
 // TODO: Maybe make this more like dispatch_async? We could make it so
 // the tsfn initializer doesn't actually take the callback, and instead
@@ -31,7 +31,7 @@ private typealias AnyCallback = (NodeContext, AnyObject) throws -> Void
 // }
 //
 // This way the tsfn doesn't even have to be generic over Input, input can
-// always be a `(NodeContext) throws -> Void`
+// always be a `() throws -> Void`
 
 // this is the only async API we implement because it's more or less isomorphic
 // to napi_async_init+napi_[open|close]_callback_scope (which are in turn
@@ -41,7 +41,7 @@ private typealias AnyCallback = (NodeContext, AnyObject) throws -> Void
 
 // a function that can be called from non-JS threads
 public final class NodeThreadsafeFunction<Input> {
-    public typealias Callback = (NodeContext, Input) throws -> Void
+    public typealias Callback = (Input) throws -> Void
 
     // the callbackHandle is effectively an atomic indicator of
     // whether the tsfn finalizer has been called. The only thing
@@ -52,6 +52,7 @@ public final class NodeThreadsafeFunction<Input> {
     private var isValid: Bool { _callbackHandle != nil }
 
     public private(set) var keepsMainThreadAlive: Bool
+    private let environment: NodeEnvironment
     private let raw: napi_threadsafe_function
     // must be called from the main thread; and the callback will be called on
     // the main thread.
@@ -60,18 +61,18 @@ public final class NodeThreadsafeFunction<Input> {
         asyncResource: NodeObjectConvertible? = nil,
         keepsMainThreadAlive: Bool = true,
         maxQueueSize: Int? = nil,
-        in ctx: NodeContext,
         callback: @escaping Callback
     ) throws {
-        let callbackHandle = Box<AnyCallback> { ctx, anyInput in
-            try callback(ctx, anyInput as! Input)
+        let callbackHandle = Box<AnyCallback> { anyInput in
+            try callback(anyInput as! Input)
         }
         self._callbackHandle = callbackHandle
         let box = Unmanaged.passRetained(callbackHandle).toOpaque()
         var result: napi_threadsafe_function!
-        try ctx.environment.check(napi_create_threadsafe_function(
-            ctx.environment.raw, nil,
-            asyncResource?.rawValue(in: ctx), asyncResourceName.rawValue(in: ctx),
+        environment = .current
+        try environment.check(napi_create_threadsafe_function(
+            environment.raw, nil,
+            asyncResource?.rawValue(), asyncResourceName.rawValue(),
             maxQueueSize ?? 0, 1,
             box, cFinalizer,
             box, cCallback,
@@ -80,7 +81,7 @@ public final class NodeThreadsafeFunction<Input> {
         self.raw = result
         // the initial value set by napi itself is `true`
         self.keepsMainThreadAlive = true
-        try setKeepsMainThreadAlive(keepsMainThreadAlive, in: ctx)
+        try setKeepsMainThreadAlive(keepsMainThreadAlive)
     }
 
     private static func check(_ status: napi_status) throws {
@@ -109,16 +110,16 @@ public final class NodeThreadsafeFunction<Input> {
 
     // Must be called from the main thread. Determines whether the main thread stays
     // alive while the receiver is referenced from other threads
-    public func setKeepsMainThreadAlive(_ keepAlive: Bool, in ctx: NodeContext) throws {
+    public func setKeepsMainThreadAlive(_ keepAlive: Bool) throws {
         guard keepAlive != keepsMainThreadAlive else { return }
         try ensureValid()
         if keepAlive {
-            try ctx.environment.check(
-                napi_ref_threadsafe_function(ctx.environment.raw, raw)
+            try environment.check(
+                napi_ref_threadsafe_function(environment.raw, raw)
             )
         } else {
-            try ctx.environment.check(
-                napi_unref_threadsafe_function(ctx.environment.raw, raw)
+            try environment.check(
+                napi_unref_threadsafe_function(environment.raw, raw)
             )
         }
         keepsMainThreadAlive = keepAlive
@@ -162,18 +163,14 @@ extension NodeThreadsafeFunction where Input == Void {
         asyncResource: NodeObjectConvertible? = nil,
         keepsMainThreadAlive: Bool = true,
         maxQueueSize: Int? = nil,
-        in ctx: NodeContext,
-        callback: @escaping (NodeContext) throws -> Void
+        callback: @escaping () throws -> Void
     ) throws {
         try self.init(
             asyncResourceName: asyncResourceName,
             asyncResource: asyncResource,
             keepsMainThreadAlive: keepsMainThreadAlive,
-            maxQueueSize: maxQueueSize,
-            in: ctx
-        ) { ctx, _ in
-            try callback(ctx)
-        }
+            maxQueueSize: maxQueueSize
+        ) { _ in try callback() }
     }
 
     public func call(blocking block: Bool = false) throws {

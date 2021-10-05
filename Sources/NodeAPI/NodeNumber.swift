@@ -7,14 +7,16 @@ public final class NodeNumber: NodeValue, NodeValueCoercible {
         self.base = base
     }
 
-    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+    public init(coercing value: NodeValueConvertible) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_number(env.raw, value.rawValue(in: ctx), &coerced))
+        try env.check(napi_coerce_to_number(env.raw, value.rawValue(), &coerced))
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(_ double: Double, in ctx: NodeContext) throws {
+    public init(_ double: Double) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_create_double(env.raw, double, &result))
@@ -31,7 +33,7 @@ public final class NodeNumber: NodeValue, NodeValueCoercible {
 }
 
 extension Double: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try NodeNumber(self, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        try NodeNumber(self)
     }
 }

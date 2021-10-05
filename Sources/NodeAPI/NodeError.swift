@@ -15,42 +15,45 @@ public final class NodeError: NodeObject, NodeExceptionConvertible {
 
     public var exception: NodeValue { self }
 
-    public init(code: String?, message: String, in ctx: NodeContext) throws {
+    public init(code: String?, message: String) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(
             napi_create_error(
                 env.raw,
-                code?.rawValue(in: ctx),
-                message.rawValue(in: ctx),
+                code?.rawValue(),
+                message.rawValue(),
                 &result
             )
         )
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 
-    public init(typeErrorCode code: String, message: String, in ctx: NodeContext) throws {
+    public init(typeErrorCode code: String, message: String) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(
             napi_create_type_error(
                 env.raw,
-                code.rawValue(in: ctx),
-                message.rawValue(in: ctx),
+                code.rawValue(),
+                message.rawValue(),
                 &result
             )
         )
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 
-    public init(rangeErrorCode code: String, message: String, in ctx: NodeContext) throws {
+    public init(rangeErrorCode code: String, message: String) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(
             napi_create_range_error(
                 env.raw,
-                code.rawValue(in: ctx),
-                message.rawValue(in: ctx),
+                code.rawValue(),
+                message.rawValue(),
                 &result
             )
         )

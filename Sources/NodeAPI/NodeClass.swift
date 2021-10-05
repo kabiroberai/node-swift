@@ -7,11 +7,11 @@ private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_
         let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<ConstructorWrapper>.fromOpaque(data).takeUnretainedValue()
-        return try callbacks.value(ctx, arguments).rawValue(in: ctx)
+        return try callbacks.value(arguments).rawValue()
     }
 }
 
-extension NodeContext {
+extension NodeEnvironment {
 
     public func defineClass(
         name: String = "",
@@ -21,7 +21,7 @@ extension NodeContext {
         var descriptors: [napi_property_descriptor] = []
         var callbacks: [NodePropertyDescriptor.Callbacks] = []
         for prop in properties {
-            let (desc, cb) = try prop.raw(in: self)
+            let (desc, cb) = try prop.raw()
             descriptors.append(desc)
             if let cb = cb {
                 callbacks.append(cb)
@@ -32,9 +32,9 @@ extension NodeContext {
         let ctorWrapper = ConstructorWrapper(constructor)
         try name.withUTF8 {
             try $0.withMemoryRebound(to: CChar.self) { nameUTF in
-                try environment.check(
+                try check(
                     napi_define_class(
-                        environment.raw,
+                        raw,
                         nameUTF.baseAddress,
                         nameUTF.count,
                         cConstructor,
@@ -46,9 +46,9 @@ extension NodeContext {
                 )
             }
         }
-        let ret = NodeFunction(NodeValueBase(raw: result, in: self))
+        let ret = NodeFunction(NodeValueBase(raw: result, in: .current))
         // retain ctor, callbacks
-        try ret.addFinalizer { _ in
+        try ret.addFinalizer {
             _ = ctorWrapper
             _ = callbacks
         }

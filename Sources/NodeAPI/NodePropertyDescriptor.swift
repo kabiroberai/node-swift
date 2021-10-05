@@ -5,7 +5,7 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: B
         let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<NodePropertyDescriptor.Callbacks>.fromOpaque(data).takeUnretainedValue()
-        return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(ctx, arguments).rawValue(in: ctx)
+        return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(arguments).rawValue()
     }
 }
 
@@ -65,14 +65,14 @@ public struct NodePropertyDescriptor {
 
     // if needed, returns a Callbacks object which must be retained
     // on the object
-    func raw(in ctx: NodeContext) throws -> (napi_property_descriptor, Callbacks?) {
+    func raw() throws -> (napi_property_descriptor, Callbacks?) {
         let callbacks: Callbacks?
         var raw = napi_property_descriptor()
-        raw.name = try name.rawValue(in: ctx)
+        raw.name = try name.rawValue()
         raw.attributes = attributes.raw
         switch value {
         case .data(let data):
-            raw.value = try data.rawValue(in: ctx)
+            raw.value = try data.rawValue()
             callbacks = nil
         case .method(let method):
             raw.method = cGetterOrMethod

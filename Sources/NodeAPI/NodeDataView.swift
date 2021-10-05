@@ -17,29 +17,27 @@ public final class NodeDataView: NodeObject {
 
     public init<E: RangeExpression>(
         for buf: NodeArrayBuffer,
-        range: E,
-        in ctx: NodeContext
+        range: E
     ) throws where E.Bound == Int {
         let range = try buf.withUnsafeMutableBytes { range.relative(to: $0) }
-        let env = ctx.environment
+        let env = buf.base.environment
         var result: napi_value!
         try env.check(napi_create_dataview(env.raw, range.count, buf.base.rawValue(), range.lowerBound, &result))
-        super.init(NodeValueBase(raw: result, in: ctx))
+        super.init(NodeValueBase(raw: result, in: .current))
     }
 
     public convenience init(
         for buf: NodeArrayBuffer,
-        range: UnboundedRange,
-        in ctx: NodeContext
+        range: UnboundedRange
     ) throws {
-        try self.init(for: buf, range: 0..., in: ctx)
+        try self.init(for: buf, range: 0...)
     }
 
-    public func arrayBuffer(in ctx: NodeContext) throws -> NodeArrayBuffer {
+    public func arrayBuffer() throws -> NodeArrayBuffer {
         let env = base.environment
         var buf: napi_value!
         try env.check(napi_get_dataview_info(env.raw, base.rawValue(), nil, nil, &buf, nil))
-        return NodeArrayBuffer(NodeValueBase(raw: buf, in: ctx))
+        return NodeArrayBuffer(NodeValueBase(raw: buf, in: .current))
     }
 
     // range of bytes in backing array buffer

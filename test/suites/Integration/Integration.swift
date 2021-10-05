@@ -12,38 +12,40 @@ private extension NodeValue {
 
     var exports: NodeValueConvertible
 
-    init(context: NodeContext) throws {
-        let captured = try NodeString("hi", in: context)
-        try context.global().setTimeout(in: context, NodeFunction(in: context) { ctx, _ in
+    init() throws {
+        let env = NodeEnvironment.current
+
+        let captured = try NodeString("hi")
+        try env.global().setTimeout(NodeFunction { _ in
             print("Called our timeout! Captured: \(captured)")
-            return try NodeUndefined(in: ctx)
+            return try NodeUndefined()
         }, 1000)
 
-        let res = try context.run(script: "[1, 15]").as(NodeArray.self)!
+        let res = try env.run(script: "[1, 15]").as(NodeArray.self)!
         print("Count: \(try res.count())")
-        let num = try res[1].get(in: context) as! NodeNumber
+        let num = try res[1].get().as(NodeNumber.self)!
         print("Num: \(num)")
 
-        print("Symbol.iterator is a \(try context.global().Symbol.iterator.get(in: context).type())")
+        print("Symbol.iterator is a \(try env.global().Symbol.iterator.get().type())")
 
-        let strObj = try context.run(script: "('hello')")
+        let strObj = try env.run(script: "('hello')")
         print("'\(strObj)' is a \(strObj.type())")
 
-        let doStuff = try NodeFunction(name: "doStuff", in: context) { ctx, info in
+        let doStuff = try NodeFunction(name: "doStuff") { info in
             print("Called! Arg 0 type: \(info.arguments.first?.type() as Any)")
             return 5
         }
         exports = doStuff
-        try doStuff(in: context, "hello", 15)
+        try doStuff("hello", 15)
 
         let key = NodeWrappedDataKey<String>()
-        let obj = try NodeObject(in: context)
+        let obj = try NodeObject()
         try obj.setWrappedValue("hello", forKey: key)
         print("wrapped value: \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
         try obj.setWrappedValue(nil, forKey: key)
         print("wrapped value (shouldn't be found): \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
 
-        try withExtendedLifetime(context.global()) {
+        try withExtendedLifetime(env.global()) {
             print("First copy of global: \($0)")
         }
 
@@ -56,12 +58,12 @@ private extension NodeValue {
                 print("Cleanup!")
             }
         }
-        let global = try context.global()
+        let global = try env.global()
         let cleanupHandler = CleanupHandler(global: global)
 
-        try context.setInstanceData(cleanupHandler, for: .init())
+        try env.setInstanceData(cleanupHandler, for: .init())
 
-        let tsfn = try NodeThreadsafeFunction(asyncResourceName: "DISPATCH_CB", in: context) { ctx in
+        let tsfn = try NodeThreadsafeFunction(asyncResourceName: "DISPATCH_CB") {
             print("dispatch callback")
         }
         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {

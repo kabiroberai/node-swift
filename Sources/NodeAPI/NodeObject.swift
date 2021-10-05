@@ -14,24 +14,26 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
         return type == .object || type == .function
     }
 
-    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+    public init(coercing value: NodeValueConvertible) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_object(env.raw, value.rawValue(in: ctx), &coerced))
+        try env.check(napi_coerce_to_object(env.raw, value.rawValue(), &coerced))
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(in ctx: NodeContext, constructor: NodeFunction, arguments: [NodeValueConvertible] = []) throws {
-        let env = ctx.environment
-        let argv = try arguments.map { arg -> napi_value? in try arg.rawValue(in: ctx) }
+    public init(constructor: NodeFunction, arguments: [NodeValueConvertible] = []) throws {
+        let env = constructor.base.environment
+        let argv = try arguments.map { arg -> napi_value? in try arg.rawValue() }
         var result: napi_value!
         try env.check(
             napi_new_instance(env.raw, constructor.base.rawValue(), arguments.count, argv, &result)
         )
-        self.base = NodeValueBase(raw: result, in: ctx)
+        self.base = NodeValueBase(raw: result, in: .current)
     }
 
-    public init(in ctx: NodeContext) throws {
+    public init() throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var obj: napi_value!
         try env.check(napi_create_object(env.raw, &obj))
@@ -49,8 +51,8 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
 }
 
 extension Dictionary: NodeValueConvertible, NodeObjectConvertible where Key == String, Value: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        let obj = try NodeObject(in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        let obj = try NodeObject()
         try obj.define(properties: map {
             NodePropertyDescriptor(name: $0, attributes: .defaultProperty, value: .data($1))
         })
@@ -69,38 +71,38 @@ extension NodeObject {
         // Defer resolution until it's necessary. This allows users
         // to chain dynamic lookups without needing to pass in a
         // new context for each call
-        let resolveObject: (NodeContext) throws -> NodeObject
+        let resolveObject: () throws -> NodeObject
 
         init(
             environment: NodeEnvironment,
             key: NodeValueConvertible,
-            resolveObject: @escaping (NodeContext) throws -> NodeObject
+            resolveObject: @escaping () throws -> NodeObject
         ) {
             self.environment = environment
             self.key = key
             self.resolveObject = resolveObject
         }
 
-        public func get(in ctx: NodeContext) throws -> NodeValue {
+        public func get() throws -> NodeValue {
             var ret: napi_value!
-            try ctx.environment.check(
+            try environment.check(
                 napi_get_property(
-                    ctx.environment.raw,
-                    resolveObject(ctx).base.rawValue(),
-                    key.rawValue(in: ctx),
+                    environment.raw,
+                    resolveObject().base.rawValue(),
+                    key.rawValue(),
                     &ret
                 )
             )
-            return try NodeValueBase(raw: ret, in: ctx).concrete()
+            return try NodeValueBase(raw: ret, in: .current).concrete()
         }
 
         public func set(to value: NodeValueConvertible) throws {
             try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 _ = try ctx.environment.check(napi_set_property(
                     ctx.environment.raw,
-                    resolveObject(ctx).base.rawValue(),
-                    key.rawValue(in: ctx),
-                    value.rawValue(in: ctx)
+                    resolveObject().base.rawValue(),
+                    key.rawValue(),
+                    value.rawValue()
                 ))
             }
         }
@@ -111,8 +113,8 @@ extension NodeObject {
             try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 try ctx.environment.check(napi_delete_property(
                     ctx.environment.raw,
-                    resolveObject(ctx).base.rawValue(),
-                    key.rawValue(in: ctx),
+                    resolveObject().base.rawValue(),
+                    key.rawValue(),
                     &result
                 ))
             }
@@ -124,8 +126,8 @@ extension NodeObject {
             try NodeContext.withUnmanagedContext(environment: environment) { ctx in
                 try ctx.environment.check(napi_has_property(
                     ctx.environment.raw,
-                    resolveObject(ctx).base.rawValue(),
-                    key.rawValue(in: ctx),
+                    resolveObject().base.rawValue(),
+                    key.rawValue(),
                     &result
                 ))
             }
@@ -133,16 +135,16 @@ extension NodeObject {
         }
 
         @discardableResult
-        public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-            guard let fn = try self.get(in: ctx).as(NodeFunction.self) else {
+        public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
+            guard let fn = try self.get().as(NodeFunction.self) else {
                 throw NodeAPIError(.functionExpected)
             }
-            return try fn.call(in: ctx, receiver: resolveObject(ctx), arguments: args)
+            return try fn.call(receiver: resolveObject(), arguments: args)
         }
 
         public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
             DynamicProperty(environment: environment, key: key) {
-                guard let obj = try self.get(in: $0).as(NodeObject.self) else {
+                guard let obj = try self.get().as(NodeObject.self) else {
                     throw NodeAPIError(.objectExpected)
                 }
                 return obj
@@ -159,7 +161,7 @@ extension NodeObject {
     }
 
     public final func property(forKey key: NodeValueConvertible) -> DynamicProperty {
-        DynamicProperty(environment: base.environment, key: key) { _ in self }
+        DynamicProperty(environment: base.environment, key: key) { self }
     }
 
     public final subscript(key: NodeValueConvertible) -> DynamicProperty {
@@ -176,7 +178,7 @@ extension NodeObject {
             try ctx.environment.check(napi_has_own_property(
                 ctx.environment.raw,
                 base.rawValue(),
-                key.rawValue(in: ctx),
+                key.rawValue(),
                 &result
             ))
         }
@@ -233,13 +235,13 @@ extension NodeObject {
     public final func propertyNames(
         collectionMode: KeyCollectionMode,
         filter: KeyFilter,
-        conversion: KeyConversion,
-        in ctx: NodeContext
+        conversion: KeyConversion
     ) throws -> NodeArray {
+        let env = base.environment
         var result: napi_value!
-        try ctx.environment.check(
+        try env.check(
             napi_get_all_property_names(
-                ctx.environment.raw,
+                env.raw,
                 base.rawValue(),
                 collectionMode.raw,
                 filter.raw,
@@ -247,7 +249,7 @@ extension NodeObject {
                 &result
             )
         )
-        return NodeArray(NodeValueBase(raw: result, in: ctx))
+        return NodeArray(NodeValueBase(raw: result, in: .current))
     }
 
     public final func define(properties: [NodePropertyDescriptor]) throws {
@@ -256,7 +258,7 @@ extension NodeObject {
             var descriptors: [napi_property_descriptor] = []
             var callbacks: [NodePropertyDescriptor.Callbacks] = []
             for prop in properties {
-                let (desc, cb) = try prop.raw(in: ctx)
+                let (desc, cb) = try prop.raw()
                 descriptors.append(desc)
                 if let cb = cb {
                     callbacks.append(cb)
@@ -265,16 +267,16 @@ extension NodeObject {
             try env.check(napi_define_properties(env.raw, base.rawValue(), properties.count, descriptors))
             if !callbacks.isEmpty {
                 // retain new callbacks
-                try addFinalizer { _ in _ = callbacks }
+                try addFinalizer { _ = callbacks }
             }
         }
     }
 
-    public final func prototype(in ctx: NodeContext) throws -> NodeValue {
-        let env = ctx.environment
+    public final func prototype() throws -> NodeValue {
+        let env = base.environment
         var result: napi_value!
         try env.check(napi_get_prototype(env.raw, base.rawValue(), &result))
-        return try NodeValueBase(raw: result, in: ctx).concrete()
+        return try NodeValueBase(raw: result, in: .current).concrete()
     }
 
     #if !NAPI_VERSIONED || NAPI_GE_8
@@ -295,6 +297,12 @@ extension NodeObject {
             )
         )
     }
+    #else
+    @available(*, unavailable, message: "Requires NAPI >= 8")
+    public final func freeze() throws { fatalError() }
+
+    @available(*, unavailable, message: "Requires NAPI >= 8")
+    public final func seal() throws { fatalError() }
     #endif
 
 }
@@ -400,14 +408,14 @@ extension NodeObject {
 
 // MARK: - Finalizers
 
-private typealias FinalizeWrapper = Box<(NodeContext) throws -> Void>
+private typealias FinalizeWrapper = Box<() throws -> Void>
 
 private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         try Unmanaged<FinalizeWrapper>
             .fromOpaque(data)
             .takeRetainedValue() // releases the wrapper post-call
-            .value(ctx)
+            .value()
     }
 }
 
@@ -415,7 +423,7 @@ extension NodeObject {
 
     // Wrap should be sufficient in most cases, but finalizers are handy
     // when you don't want to tag the object
-    public final func addFinalizer(_ finalizer: @escaping (NodeContext) throws -> Void) throws {
+    public final func addFinalizer(_ finalizer: @escaping () throws -> Void) throws {
         let data = Unmanaged.passRetained(FinalizeWrapper(finalizer)).toOpaque()
         try base.environment.check(
             napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)

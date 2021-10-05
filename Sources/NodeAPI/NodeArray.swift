@@ -13,10 +13,12 @@ public final class NodeArray: NodeObject {
         return result
     }
 
-    public init(initialCapacity: Int? = nil, in ctx: NodeContext) throws {
+    // capacity is the initial capacity; the array can still grow
+    public init(capacity: Int? = nil) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
-        if let length = initialCapacity {
+        if let length = capacity {
             try env.check(napi_create_array_with_length(env.raw, length, &result))
         } else {
             try env.check(napi_create_array(env.raw, &result))
@@ -34,8 +36,8 @@ public final class NodeArray: NodeObject {
 }
 
 extension Array: NodeValueConvertible, NodeObjectConvertible where Element: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        let arr = try NodeArray(initialCapacity: count, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        let arr = try NodeArray(capacity: count)
         for (idx, element) in enumerated() {
             try arr[Double(idx)].set(to: element)
         }

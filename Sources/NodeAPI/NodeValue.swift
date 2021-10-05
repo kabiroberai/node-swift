@@ -1,23 +1,23 @@
 import CNodeAPI
 
-private extension NodeContext {
+private extension NodeEnvironment {
     private static let threadsafeFunctionKey =
         NodeInstanceDataKey<NodeThreadsafeFunction<napi_ref>>()
 
     func getReleaseFunction() throws -> NodeThreadsafeFunction<napi_ref> {
-        if let fn = try environment.instanceData(for: Self.threadsafeFunctionKey) {
+        if let fn = try instanceData(for: Self.threadsafeFunctionKey) {
             return fn
         }
         let fn = try NodeThreadsafeFunction<napi_ref>(
             asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
-            keepsMainThreadAlive: false,
-            in: self
-        ) { ctx, ref in
-            try ctx.environment.check(
-                napi_delete_reference(ctx.environment.raw, ref)
+            keepsMainThreadAlive: false
+        ) { ref in
+            let env = NodeEnvironment.current
+            try env.check(
+                napi_delete_reference(env.raw, ref)
             )
         }
-        try environment.setInstanceData(fn, for: Self.threadsafeFunctionKey)
+        try setInstanceData(fn, for: Self.threadsafeFunctionKey)
         return fn
     }
 }
@@ -30,6 +30,8 @@ private extension NodeContext {
 
     let environment: NodeEnvironment
     private var guts: Guts
+    // we take in a ctx here instead of using .current, since a ctx is
+    // probably already available to the caller
     init(raw: napi_value, in ctx: NodeContext) {
         self.guts = .unmanaged(raw)
         self.environment = ctx.environment
@@ -49,10 +51,10 @@ private extension NodeContext {
         self.environment = ctx.environment
         // don't register with ctx here; doing so would include the
         // receiver in the check for whether it escaped
-        try persist(in: ctx)
+        try persist()
     }
 
-    func persist(in ctx: NodeContext) throws {
+    func persist() throws {
         switch guts {
         case .managed:
             break // already persisted
@@ -74,7 +76,7 @@ private extension NodeContext {
             }
             var ref: napi_ref!
             try environment.check(napi_create_reference(environment.raw, boxedRaw, 1, &ref))
-            let release = try ctx.getReleaseFunction()
+            let release = try environment.getReleaseFunction()
             self.guts = .managed(ref, release: release, isBoxed: isBoxed)
         }
     }
@@ -111,12 +113,12 @@ private extension NodeContext {
 // MARK: - Protocols
 
 public protocol NodeValueConvertible {
-    func nodeValue(in ctx: NodeContext) throws -> NodeValue
+    func nodeValue() throws -> NodeValue
 }
 
 extension NodeValueConvertible {
-    func rawValue(in ctx: NodeContext) throws -> napi_value {
-        try nodeValue(in: ctx).base.rawValue()
+    func rawValue() throws -> napi_value {
+        try nodeValue().base.rawValue()
     }
 }
 
@@ -129,15 +131,15 @@ public protocol NodeValue: NodeValueConvertible, CustomStringConvertible {
 }
 
 public protocol NodeValueCoercible: NodeValue {
-    init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws
+    init(coercing value: NodeValueConvertible) throws
 }
 
 extension NodeValue {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue { self }
+    public func nodeValue() throws -> NodeValue { self }
 
     public var description: String {
         let desc = try? NodeContext.withUnmanagedContext(environment: base.environment) { ctx -> String in
-            try NodeString(coercing: self, in: ctx).string()
+            try NodeString(coercing: self).string()
         }
         return desc ?? "<invalid \(Self.self)>"
     }

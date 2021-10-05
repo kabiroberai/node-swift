@@ -7,16 +7,18 @@ public final class NodeString: NodeValue, NodeName, NodeValueCoercible {
         self.base = base
     }
 
-    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+    public init(coercing value: NodeValueConvertible) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
         try env.check(
-            napi_coerce_to_string(env.raw, value.rawValue(in: ctx), &coerced)
+            napi_coerce_to_string(env.raw, value.rawValue(), &coerced)
         )
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(_ string: String, in ctx: NodeContext) throws {
+    public init(_ string: String) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         var string = string
@@ -48,7 +50,7 @@ public final class NodeString: NodeValue, NodeName, NodeValueCoercible {
 }
 
 extension String: NodeValueConvertible, NodeName {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try NodeString(self, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        try NodeString(self)
     }
 }

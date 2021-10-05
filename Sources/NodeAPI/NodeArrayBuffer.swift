@@ -38,7 +38,8 @@ public final class NodeArrayBuffer: NodeObject {
         super.init(base)
     }
 
-    public init(capacity: Int, in ctx: NodeContext) throws {
+    public init(capacity: Int) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var data: UnsafeMutableRawPointer?
         var result: napi_value!
@@ -48,7 +49,8 @@ public final class NodeArrayBuffer: NodeObject {
 
     // bytes must remain valid while the object is alive (i.e. until
     // deallocator is called)
-    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: Deallocator, in ctx: NodeContext) throws {
+    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: Deallocator) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()

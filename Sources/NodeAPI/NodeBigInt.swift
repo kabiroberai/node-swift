@@ -29,20 +29,23 @@ public final class NodeBigInt: NodeValue {
         self.base = base
     }
 
-    public init(signed: Int64, in ctx: NodeContext) throws {
+    public init(signed: Int64) throws {
+        let ctx = NodeContext.current
         var value: napi_value!
         try ctx.environment.check(napi_create_bigint_int64(ctx.environment.raw, signed, &value))
         self.base = NodeValueBase(raw: value, in: ctx)
     }
 
-    public init(unsigned: UInt64, in ctx: NodeContext) throws {
+    public init(unsigned: UInt64) throws {
+        let ctx = NodeContext.current
         var value: napi_value!
         try ctx.environment.check(napi_create_bigint_uint64(ctx.environment.raw, unsigned, &value))
         self.base = NodeValueBase(raw: value, in: ctx)
     }
 
     // words should be from least to most significant (little endian)
-    public init(sign: Sign, words: [UInt64], in ctx: NodeContext) throws {
+    public init(sign: Sign, words: [UInt64]) throws {
+        let ctx = NodeContext.current
         var value: napi_value!
         try ctx.environment.check(napi_create_bigint_words(ctx.environment.raw, sign.bit, words.count, words, &value))
         self.base = NodeValueBase(raw: value, in: ctx)

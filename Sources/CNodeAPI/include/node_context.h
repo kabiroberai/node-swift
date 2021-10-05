@@ -4,9 +4,9 @@
 _Pragma("clang assume_nonnull begin")
 
 // all thread-specific
-const void * _Nullable node_context_peek(void);
-const void * _Nullable node_context_pop(void);
-void node_context_push(const void *value);
+const void * _Nullable node_swift_context_peek(void);
+const void * _Nullable node_swift_context_pop(void);
+void node_swift_context_push(const void *value);
 
 _Pragma("clang assume_nonnull end")
 

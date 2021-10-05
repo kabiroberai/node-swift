@@ -14,7 +14,8 @@ public final class NodeDate: NodeObject {
         return result
     }
 
-    public init(_ date: Date, in ctx: NodeContext) throws {
+    public init(_ date: Date) throws {
+        let ctx = NodeContext.current
         var result: napi_value!
         try ctx.environment.check(napi_create_date(ctx.environment.raw, date.timeIntervalSince1970 * 1000, &result))
         super.init(NodeValueBase(raw: result, in: ctx))
@@ -30,7 +31,7 @@ public final class NodeDate: NodeObject {
 }
 
 extension Date: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try NodeDate(self, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        try NodeDate(self)
     }
 }

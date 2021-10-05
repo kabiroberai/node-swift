@@ -14,7 +14,8 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
         super.init(base)
     }
 
-    public init(capacity: Int, in ctx: NodeContext) throws {
+    public init(capacity: Int) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var data: UnsafeMutableRawPointer?
         var result: napi_value!
@@ -23,15 +24,19 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
     }
 
     // bytes must remain valid while the object is alive (i.e. until deallocator is called)
-    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: NodeArrayBuffer.Deallocator, in ctx: NodeContext) throws {
+    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: NodeArrayBuffer.Deallocator) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()
-        try env.check(napi_create_external_buffer(env.raw, bytes.count, bytes.baseAddress, cBufFinalizer, hint, &result))
+        try env.check(
+            napi_create_external_buffer(env.raw, bytes.count, bytes.baseAddress, cBufFinalizer, hint, &result)
+        )
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 
-    public init(copying data: Data, in ctx: NodeContext) throws {
+    public init(copying data: Data) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var resultData: UnsafeMutableRawPointer?
         var result: napi_value!
@@ -44,8 +49,8 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
 }
 
 extension Data: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try NodeBuffer(copying: self, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        try NodeBuffer(copying: self)
     }
 }
 

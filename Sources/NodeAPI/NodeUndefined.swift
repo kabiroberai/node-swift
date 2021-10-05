@@ -7,7 +7,8 @@ public final class NodeUndefined: NodeValue {
         self.base = base
     }
 
-    public init(in ctx: NodeContext) throws {
+    public init() throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_get_undefined(env.raw, &result))

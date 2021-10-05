@@ -11,7 +11,8 @@ public final class NodePromise: NodeObject {
         public let promise: NodePromise
         var raw: napi_deferred
 
-        public init(in ctx: NodeContext) throws {
+        public init() throws {
+            let ctx = NodeContext.current
             var value: napi_value!
             var deferred: napi_deferred!
             try ctx.environment.check(napi_create_promise(ctx.environment.raw, &deferred, &value))
@@ -22,21 +23,21 @@ public final class NodePromise: NodeObject {
         // calling reject/resolve multiple times is considered UB
         // by Node
 
-        public func resolve(with resolution: NodeValueConvertible, in ctx: NodeContext) throws {
+        public func resolve(with resolution: NodeValueConvertible) throws {
             guard !hasFinished else {
                 throw Error.promiseFinishedTwice
             }
             let env = promise.base.environment
-            try env.check(napi_resolve_deferred(env.raw, raw, resolution.rawValue(in: ctx)))
+            try env.check(napi_resolve_deferred(env.raw, raw, resolution.rawValue()))
             hasFinished = true
         }
 
-        public func reject(with rejection: NodeValueConvertible, in ctx: NodeContext) throws {
+        public func reject(with rejection: NodeValueConvertible) throws {
             guard !hasFinished else {
                 throw Error.promiseFinishedTwice
             }
             let env = promise.base.environment
-            try env.check(napi_reject_deferred(env.raw, raw, rejection.rawValue(in: ctx)))
+            try env.check(napi_reject_deferred(env.raw, raw, rejection.rawValue()))
             hasFinished = true
         }
     }

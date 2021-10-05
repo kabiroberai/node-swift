@@ -7,7 +7,7 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
         let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
         let data = arguments.data
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
-        return try callback.value(ctx, arguments).rawValue(in: ctx)
+        return try callback.value(arguments).rawValue()
     }
 }
 
@@ -42,7 +42,7 @@ public final class NodeFunction: NodeObject {
         }
     }
 
-    public typealias Callback = (_ ctx: NodeContext, _ info: CallbackInfo) throws -> NodeValueConvertible
+    public typealias Callback = (_ info: CallbackInfo) throws -> NodeValueConvertible
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -58,7 +58,8 @@ public final class NodeFunction: NodeObject {
         try value.type() == .function
     }
 
-    public init(name: String = "", in ctx: NodeContext, callback: @escaping Callback) throws {
+    public init(name: String = "", callback: @escaping (_ info: CallbackInfo) throws -> NodeValueConvertible) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
         let data = Unmanaged.passUnretained(wrapper)
@@ -81,34 +82,33 @@ public final class NodeFunction: NodeObject {
         // we retain CallbackWrapper using the finalizer functionality instead of
         // using Unmanaged.passRetained for data, since napi_create_function doesn't
         // accept a finalizer
-        try addFinalizer { _ in _ = wrapper }
+        try addFinalizer { _ = wrapper }
     }
 
     public func call(
-        in ctx: NodeContext,
         receiver: NodeValueConvertible,
         arguments: [NodeValueConvertible]
     ) throws -> NodeValue {
-        let env = ctx.environment
+        let env = base.environment
         var ret: napi_value!
         let rawArgs = try arguments.map { arg -> napi_value? in
-            try arg.rawValue(in: ctx)
+            try arg.rawValue()
         }
         try env.check(
             napi_call_function(
                 env.raw,
-                receiver.rawValue(in: ctx),
+                receiver.rawValue(),
                 base.rawValue(),
                 rawArgs.count, rawArgs,
                 &ret
             )
         )
-        return try NodeValueBase(raw: ret, in: ctx).concrete()
+        return try NodeValueBase(raw: ret, in: .current).concrete()
     }
 
     @discardableResult
-    public func callAsFunction(in ctx: NodeContext, _ args: NodeValueConvertible...) throws -> NodeValue {
-        try call(in: ctx, receiver: NodeUndefined(in: ctx), arguments: args)
+    public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
+        try call(receiver: NodeUndefined(), arguments: args)
     }
 
 }

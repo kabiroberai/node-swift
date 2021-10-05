@@ -11,7 +11,8 @@ public final class NodeExternal: NodeValue {
         self.base = base
     }
 
-    public init(value: Any, in ctx: NodeContext) throws {
+    public init(value: Any) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         let unmanaged = Unmanaged.passRetained(Box<Any>(value))
         let opaque = unmanaged.toOpaque()

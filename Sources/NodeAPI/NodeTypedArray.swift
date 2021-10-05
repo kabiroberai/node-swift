@@ -141,7 +141,8 @@ public class NodeAnyTypedArray: NodeObject {
         super.init(base)
     }
 
-    public init(for buf: NodeArrayBuffer, kind: NodeTypedArrayKind, offset: Int = 0, count: Int, in ctx: NodeContext) throws {
+    public init(for buf: NodeArrayBuffer, kind: NodeTypedArrayKind, offset: Int = 0, count: Int) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_create_typedarray(env.raw, kind.raw, count, buf.base.rawValue(), offset, &result))
@@ -184,8 +185,8 @@ public class NodeTypedArray<Element: NodeTypedArrayElement>: NodeAnyTypedArray {
         super.init(base)
     }
 
-    public init(for buf: NodeArrayBuffer, offset: Int = 0, count: Int, in ctx: NodeContext) throws {
-        try super.init(for: buf, kind: Element.kind, offset: offset, count: count, in: ctx)
+    public init(for buf: NodeArrayBuffer, offset: Int = 0, count: Int) throws {
+        try super.init(for: buf, kind: Element.kind, offset: offset, count: count)
     }
 
     public func withUnsafeMutableBytes<T>(_ body: (UnsafeMutableBufferPointer<Element>) throws -> T) throws -> T {
@@ -204,8 +205,8 @@ public final class NodeUInt8ClampedArray: NodeAnyTypedArray {
         super.init(base)
     }
 
-    public init(for buf: NodeArrayBuffer, offset: Int = 0, count: Int, in ctx: NodeContext) throws {
-        try super.init(for: buf, kind: .uint8Clamped, offset: offset, count: count, in: ctx)
+    public init(for buf: NodeArrayBuffer, offset: Int = 0, count: Int) throws {
+        try super.init(for: buf, kind: .uint8Clamped, offset: offset, count: count)
     }
 
     public func withUnsafeMutableBytes<T>(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> T) throws -> T {

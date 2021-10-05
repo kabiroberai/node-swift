@@ -7,11 +7,18 @@ public final class NodeNull: NodeValue {
         self.base = base
     }
 
-    public init(in ctx: NodeContext) throws {
+    public init() throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         try env.check(napi_get_null(env.raw, &result))
         self.base = NodeValueBase(raw: result, in: ctx)
     }
 
+}
+
+extension Optional: NodeValueConvertible where Wrapped: NodeValueConvertible {
+    public func nodeValue() throws -> NodeValue {
+        try self?.nodeValue() ?? NodeNull()
+    }
 }

@@ -7,12 +7,11 @@ public final class NodeSymbol: NodeValue, NodeName {
         self.base = base
     }
 
-    public init(description: String? = nil, in ctx: NodeContext) throws {
+    public init(description: String? = nil) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
-        let descRaw = try description.map {
-            try NodeString($0, in: ctx).base.rawValue()
-        }
+        let descRaw = try description.map { try $0.rawValue() }
         try env.check(napi_create_symbol(env.raw, descRaw, &result))
         self.base = NodeValueBase(raw: result, in: ctx)
     }

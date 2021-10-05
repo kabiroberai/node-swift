@@ -7,14 +7,16 @@ public final class NodeBool: NodeValue, NodeValueCoercible {
         self.base = base
     }
 
-    public init(coercing value: NodeValueConvertible, in ctx: NodeContext) throws {
+    public init(coercing value: NodeValueConvertible) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_bool(env.raw, value.rawValue(in: ctx), &coerced))
+        try env.check(napi_coerce_to_bool(env.raw, value.rawValue(), &coerced))
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(_ bool: Bool, in ctx: NodeContext) throws {
+    public init(_ bool: Bool) throws {
+        let ctx = NodeContext.current
         let env = ctx.environment
         var val: napi_value!
         try env.check(napi_get_boolean(env.raw, bool, &val))
@@ -31,7 +33,7 @@ public final class NodeBool: NodeValue, NodeValueCoercible {
 }
 
 extension Bool: NodeValueConvertible {
-    public func nodeValue(in ctx: NodeContext) throws -> NodeValue {
-        try NodeBool(self, in: ctx)
+    public func nodeValue() throws -> NodeValue {
+        try NodeBool(self)
     }
 }

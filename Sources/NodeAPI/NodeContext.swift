@@ -1,10 +1,10 @@
 import Foundation
 import CNodeAPI
 
-// A call context that manages allocations in native code.
+// An object context that manages allocations in native code.
 // You **must not** allow NodeContext instances to escape
 // the scope in which they were called.
-public final class NodeContext {
+final class NodeContext {
     let environment: NodeEnvironment
     let isManaged: Bool
 
@@ -40,18 +40,36 @@ public final class NodeContext {
         #endif
         do {
             let ctx = NodeContext(environment: env, isManaged: isTopLevel)
-            node_context_push(Unmanaged.passUnretained(ctx).toOpaque())
-            defer { node_context_pop() }
+            node_swift_context_push(Unmanaged.passUnretained(ctx).toOpaque())
+            defer { node_swift_context_pop() }
             do {
                 ret = try action(ctx)
                 if isTopLevel {
                     for val in ctx.values {
-                        try val.value?.persist(in: ctx)
+                        try val.value?.persist()
                     }
                     ctx.values.removeAll()
                 } else {
                     #if DEBUG
-                    if let escaped = ctx.values.lazy.compactMap({ $0.value }).first {
+                    let escapedBase: NodeValueBase?
+                    #endif
+                    // this allows for the escaping of a single NodeValue
+                    // from a non-toplevel context
+                    if let escapedRet = ret as? NodeValue {
+                        let base = escapedRet.base
+                        try base.persist()
+                        #if DEBUG
+                        escapedBase = base
+                        #endif
+                    } else {
+                        #if DEBUG
+                        escapedBase = nil
+                        #endif
+                    }
+                    #if DEBUG
+                    // if anything besides the return value of `action` escaped, it's
+                    // an error on the user's end
+                    if let escaped = ctx.values.lazy.compactMap({ $0.value }).filter({ $0 !== escapedBase }).first {
                         nodeFatalError("\(escaped) escaped unmanaged NodeContext")
                     }
                     #endif
@@ -59,7 +77,7 @@ public final class NodeContext {
             } catch let error where isTopLevel {
                 switch error {
                 case let throwable as NodeExceptionConvertible:
-                    try? ctx.throw(throwable)
+                    try? ctx.environment.throw(throwable)
                 // TODO: handle specific error types
 //                case let error as NodeAPIError:
 //                    break
@@ -69,7 +87,7 @@ public final class NodeContext {
                 // TODO: maybe create our own Error class which allows round-tripping the
                 // actual error object, instead of merely passing along stringified vals
                 case let error:
-                    try? ctx.throw(NodeError(code: "\(type(of: error))", message: "\(error)", in: ctx))
+                    try? ctx.environment.throw(NodeError(code: "\(type(of: error))", message: "\(error)"))
                     break
                 }
                 // we have to bail before the return statement somehow.
@@ -93,189 +111,19 @@ public final class NodeContext {
         try? withContext(environment: environment, isTopLevel: true, do: action)
     }
 
-    // same as below but sometimes we want an unmanaged context (for internal use)
-    // without using an existing managed context so calling this directly suffices
+    // Calls `action` with a NodeContext which does not manage NodeValueConvertible
+    // instances created using it. That is, the new context will assume that all
+    // NodeValueConvertible instances created with it (except for possibly the return value)
+    // do not escape its own lifetime, which in turn is exactly the lifetime of the closure.
+    // This trades away safety for performance.
     static func withUnmanagedContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
         try withContext(environment: environment, isTopLevel: false, do: action)
     }
 
-    // Calls `action` with a NodeContext which does not manage NodeValueConvertible
-    // instances created using it. That is, the new context will assume that
-    // NodeValueConvertible instances created with it do not escape its own lifetime,
-    // which in turn is exactly the lifetime of the closure. This trades away safety for
-    // performance.
-    public func withUnmanaged<T>(do action: (NodeContext) throws -> T) throws -> T {
-        try Self.withUnmanagedContext(environment: environment, do: action)
-    }
-
-    // TODO: Add the ability to escape a single NodeValue from withUnmanaged
-
-    // this is for internal use. In user code, errors that bubble up to the top
-    // will automatically be thrown to JS.
-    private func `throw`(_ throwable: NodeExceptionConvertible) throws {
-        try environment.check(napi_throw(environment.raw, throwable.exception.rawValue(in: self)))
-    }
-
-    public func throwUncaught(_ throwable: NodeExceptionConvertible) throws {
-        try environment.check(
-            napi_fatal_exception(environment.raw, throwable.exception.rawValue(in: self))
-        )
-    }
-
-    public static var current: NodeContext {
-        guard let last = node_context_peek() else {
+    static var current: NodeContext {
+        guard let last = node_swift_context_peek() else {
             nodeFatalError("There is no current NodeContext")
         }
         return Unmanaged.fromOpaque(last).takeUnretainedValue()
     }
-}
-
-// MARK: - Scopes
-
-extension NodeContext {
-
-    public func withScope(perform action: @escaping () throws -> Void) throws {
-        var scope: napi_handle_scope!
-        try environment.check(napi_open_handle_scope(environment.raw, &scope))
-        defer { napi_close_handle_scope(environment.raw, scope) }
-        try action()
-    }
-
-    public func withScope<V: NodeValue>(perform action: @escaping () throws -> V) throws -> V {
-        var scope: napi_handle_scope!
-        try environment.check(napi_open_escapable_handle_scope(environment.raw, &scope))
-        defer { napi_close_escapable_handle_scope(environment.raw, scope) }
-        let val = try action()
-        var escaped: napi_value!
-        try environment.check(napi_escape_handle(environment.raw, scope, val.base.rawValue(), &escaped))
-        return try NodeValueBase(raw: escaped, in: self).as(V.self)!
-    }
-
-    private struct NilValueError: Error {}
-
-    public func withScope<V: NodeValue>(perform action: @escaping () throws -> V?) throws -> V? {
-        do {
-            return try withScope { () throws -> V in
-                if let val = try action() {
-                    return val
-                } else {
-                    throw NilValueError()
-                }
-            }
-        } catch is NilValueError {
-            return nil
-        }
-    }
-
-}
-
-// MARK: - Cleanup Hooks
-
-#if !NAPI_VERSIONED || NAPI_GE_8
-
-public final class AsyncCleanupHook {
-    let callback: (@escaping () -> Void) -> Void
-    var handle: napi_async_cleanup_hook_handle!
-    fileprivate init(callback: @escaping (@escaping () -> Void) -> Void) {
-        self.callback = callback
-    }
-}
-
-private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload: UnsafeMutableRawPointer!) {
-    guard let payload = payload else { return }
-    let hook = Unmanaged<AsyncCleanupHook>.fromOpaque(payload).takeRetainedValue()
-    hook.callback { napi_remove_async_cleanup_hook(handle) }
-}
-
-extension NodeContext {
-
-    // we choose not to implement sync cleanup hooks because those can be replicated by
-    // using instanceData + a deinitializer
-
-    // action must call the passed in completion handler once it is done with
-    // its cleanup
-    @discardableResult
-    public func addAsyncCleanupHook(
-        action: @escaping (@escaping () -> Void) -> Void
-    ) throws -> AsyncCleanupHook {
-        let token = AsyncCleanupHook(callback: action)
-        try environment.check(napi_add_async_cleanup_hook(
-            environment.raw,
-            cAsyncCleanupHook,
-            Unmanaged.passRetained(token).toOpaque(),
-            &token.handle
-        ))
-        return token
-    }
-
-    public func removeCleanupHook(_ hook: AsyncCleanupHook) throws {
-        let arg = Unmanaged.passUnretained(hook)
-        defer { arg.release() }
-        try environment.check(
-            napi_remove_async_cleanup_hook(hook.handle)
-        )
-    }
-
-}
-
-#endif
-
-// MARK: - Misc
-
-public struct NodeVersion {
-    public let major: UInt32
-    public let minor: UInt32
-    public let patch: UInt32
-    public let release: String
-
-    init(raw: napi_node_version) {
-        self.major = raw.major
-        self.minor = raw.minor
-        self.patch = raw.patch
-        self.release = String(cString: raw.release)
-    }
-}
-
-extension NodeContext {
-
-    public func global() throws -> NodeObject {
-        var val: napi_value!
-        try environment.check(napi_get_global(environment.raw, &val))
-        return try NodeValueBase(raw: val, in: self).as(NodeObject.self)!
-    }
-
-    public func nodeVersion() throws -> NodeVersion {
-        // "The returned buffer is statically allocated and does not need to be freed"
-        var version: UnsafePointer<napi_node_version>!
-        try environment.check(napi_get_node_version(environment.raw, &version))
-        return NodeVersion(raw: version.pointee)
-    }
-
-    public func apiVersion() throws -> Int {
-        var version: UInt32 = 0
-        try environment.check(napi_get_version(environment.raw, &version))
-        return Int(version)
-    }
-
-    // returns the adjusted value
-    @discardableResult
-    public func adjustExternalMemory(byBytes change: Int64) throws -> Int64 {
-        var adjusted: Int64 = 0
-        try environment.check(napi_adjust_external_memory(environment.raw, change, &adjusted))
-        return adjusted
-    }
-
-    @discardableResult
-    public func run(script: String) throws -> NodeValue {
-        var val: napi_value!
-        try environment.check(
-            napi_run_script(
-                environment.raw,
-                script.rawValue(in: self),
-                &val
-            )
-        )
-        return try NodeValueBase(raw: val, in: self).concrete()
-    }
-
 }
