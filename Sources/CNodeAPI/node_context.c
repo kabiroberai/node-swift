@@ -25,7 +25,7 @@ const void *node_context_pop(void) {
 }
 
 void node_context_push(const void *value) {
-    struct node_context *ctx = malloc(sizeof(ctx));
+    struct node_context *ctx = malloc(sizeof(*ctx));
     ctx->value = value;
     ctx->next = node_context_head;
     node_context_head = ctx;
