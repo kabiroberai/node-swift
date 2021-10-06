@@ -13,7 +13,7 @@ public final class NodeError: NodeObject, NodeExceptionConvertible {
         return result
     }
 
-    public var exception: NodeValue { self }
+    public func exceptionValue() throws -> NodeValue { self }
 
     public init(code: String?, message: String) throws {
         let ctx = NodeContext.current

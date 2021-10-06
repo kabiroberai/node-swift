@@ -2,14 +2,13 @@ import CNodeAPI
 
 // similar to Combine.Future
 public final class NodePromise: NodeObject {
+    public enum Error: Swift.Error {
+        case completedTwice
+    }
 
     // similar to Combine.Promise
     public final class Deferred {
-        public enum Error: Swift.Error {
-            case promiseFinishedTwice
-        }
-
-        public private(set) var hasFinished = false
+        public private(set) var hasCompleted = false
         public let promise: NodePromise
         var raw: napi_deferred
 
@@ -22,25 +21,30 @@ public final class NodePromise: NodeObject {
             self.raw = deferred
         }
 
-        // calling reject/resolve multiple times is considered UB
-        // by Node
-
-        public func resolve(with resolution: NodeValueConvertible) throws {
-            guard !hasFinished else {
-                throw Error.promiseFinishedTwice
+        public func callAsFunction(_ result: Result<NodeValueConvertible, Swift.Error>) throws {
+            // calling reject/resolve multiple times is considered UB
+            // by Node
+            guard !hasCompleted else {
+                throw Error.completedTwice
             }
             let env = promise.base.environment
-            try env.check(napi_resolve_deferred(env.raw, raw, resolution.rawValue()))
-            hasFinished = true
+            switch result {
+            case .success(let value):
+                try env.check(napi_resolve_deferred(env.raw, raw, value.rawValue()))
+            case .failure(let error):
+                try env.check(napi_reject_deferred(env.raw, raw, NodeException(error: error).value.rawValue()))
+            }
+            hasCompleted = true
         }
 
-        public func reject(with rejection: NodeValueConvertible) throws {
-            guard !hasFinished else {
-                throw Error.promiseFinishedTwice
+        @_disfavoredOverload
+        public func callAsFunction(_ result: Result<Void, Swift.Error>) throws {
+            switch result {
+            case .success:
+                try self(.success(NodeUndefined()))
+            case .failure(let error):
+                try self(.failure(error))
             }
-            let env = promise.base.environment
-            try env.check(napi_reject_deferred(env.raw, raw, rejection.rawValue()))
-            hasFinished = true
         }
     }
 
@@ -48,15 +52,9 @@ public final class NodePromise: NodeObject {
         super.init(base)
     }
 
-    // TODO: Align with Combine.Future.init: pass an escaping Result-taking closure
-    // (and make Deferred private)
-    public init(executor: (_ deferred: Deferred) throws -> Void) throws {
+    public init(executor: (_ deferred: Deferred) -> Void) throws {
         let deferred = try Deferred()
-        do {
-            try executor(deferred)
-        } catch {
-            try deferred.reject(with: NodeError(code: "\(Swift.type(of: error))", message: "\(error)"))
-        }
+        executor(deferred)
         super.init(deferred.promise.base)
     }
 

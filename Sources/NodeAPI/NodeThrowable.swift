@@ -1,13 +1,34 @@
 import CNodeAPI
 
 public protocol NodeExceptionConvertible: Error {
-    var exception: NodeValue { get }
+    func exceptionValue() throws -> NodeValue
 }
 
 public struct NodeException: NodeExceptionConvertible {
-    public let exception: NodeValue
-    public init(_ exception: NodeValue) {
-        self.exception = exception
+    public func exceptionValue() throws -> NodeValue { value }
+
+    public let value: NodeValue
+    public init(value: NodeValue) {
+        self.value = value
+    }
+
+    public init(error: Error) throws {
+        switch error {
+        case let error as NodeExceptionConvertible:
+            // if it's already NodeExceptionConvertible, use that
+            // exception value
+            self.value = try error.exceptionValue()
+        // TODO: handle specific error types
+//        case let error as NodeAPIError:
+//            break
+//        case let error where type(of: error) is NSError.Type:
+//            let cocoaError = error as NSError
+//            break
+        // TODO: maybe create our own Error class which allows round-tripping the
+        // actual error object, instead of merely passing along stringified vals
+        case let error:
+            self.value = try NodeError(code: "\(type(of: error))", message: "\(error)")
+        }
     }
 }
 
