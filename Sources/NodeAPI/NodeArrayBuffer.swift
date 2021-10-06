@@ -1,31 +1,30 @@
 import Foundation
 import CNodeAPI
 
-typealias Hint = Box<(NodeArrayBuffer.Deallocator, UnsafeMutableRawBufferPointer)>
+public struct NodeDataDeallocator {
+    let action: (UnsafeMutableRawBufferPointer) -> Void
+
+    public init(action: @escaping (UnsafeMutableRawBufferPointer) -> Void) {
+        self.action = action
+    }
+
+    public static let deallocate = Self { $0.deallocate() }
+
+    // retains the object until the deallocator is called, after which
+    // it's released
+    static func capture(_ object: AnyObject) -> Self {
+        .init { _ in _ = object }
+    }
+}
+
+typealias Hint = Box<(NodeDataDeallocator, UnsafeMutableRawBufferPointer)>
 
 func cBufFinalizer(_: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    let (hint, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
-    hint.apply(with: bytes)
+    let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
+    deallocator.action(bytes)
 }
 
 public final class NodeArrayBuffer: NodeObject {
-
-    public enum Deallocator {
-        case free
-        case deallocate
-        case custom((UnsafeMutableRawBufferPointer) -> Void)
-
-        func apply(with bytes: UnsafeMutableRawBufferPointer) {
-            switch self {
-            case .free:
-                bytes.baseAddress.map { Foundation.free($0) }
-            case .deallocate:
-                bytes.deallocate()
-            case .custom(let fn):
-                fn(bytes)
-            }
-        }
-    }
 
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
         let env = value.environment
@@ -49,13 +48,20 @@ public final class NodeArrayBuffer: NodeObject {
 
     // bytes must remain valid while the object is alive (i.e. until
     // deallocator is called)
-    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: Deallocator) throws {
+    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: NodeDataDeallocator) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()
         try env.check(napi_create_external_arraybuffer(env.raw, bytes.baseAddress, bytes.count, cBufFinalizer, hint, &result))
         super.init(NodeValueBase(raw: result, in: ctx))
+    }
+
+    public convenience init(data: NSMutableData) throws {
+        try self.init(
+            bytes: UnsafeMutableRawBufferPointer(start: data.mutableBytes, count: data.length),
+            deallocator: .capture(data)
+        )
     }
 
     public func withUnsafeMutableBytes<T>(_ body: (UnsafeMutableRawBufferPointer) throws -> T) throws -> T {

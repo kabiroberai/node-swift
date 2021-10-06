@@ -24,7 +24,7 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
     }
 
     // bytes must remain valid while the object is alive (i.e. until deallocator is called)
-    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: NodeArrayBuffer.Deallocator) throws {
+    public init(bytes: UnsafeMutableRawBufferPointer, deallocator: NodeDataDeallocator) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         var result: napi_value!
@@ -33,6 +33,13 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
             napi_create_external_buffer(env.raw, bytes.count, bytes.baseAddress, cBufFinalizer, hint, &result)
         )
         super.init(NodeValueBase(raw: result, in: ctx))
+    }
+
+    public convenience init(data: NSMutableData) throws {
+        try self.init(
+            bytes: UnsafeMutableRawBufferPointer(start: data.mutableBytes, count: data.length),
+            deallocator: .capture(data)
+        )
     }
 
     public init(copying data: Data) throws {
