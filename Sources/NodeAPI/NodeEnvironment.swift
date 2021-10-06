@@ -1,4 +1,3 @@
-import Foundation
 import CNodeAPI
 
 public final class NodeEnvironment {

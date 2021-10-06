@@ -1,4 +1,3 @@
-import Foundation
 import CNodeAPI
 
 // An object context that manages allocations in native code.
