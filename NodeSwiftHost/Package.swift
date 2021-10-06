@@ -29,6 +29,9 @@ let package = Package(
                 .product(name: targetName, package: targetPackage)
             ],
             path: ".",
+            exclude: [
+                "vendored/node-gyp/LICENSE"
+            ],
             cSettings: [
                 .define("HOST_BINARY", to: "\"\(hostBinary)\"")
             ]

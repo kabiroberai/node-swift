@@ -1,14 +1,12 @@
 #include <node_context.h>
 #include <stdlib.h>
 
-#define thread_local __thread
-
 struct context_list {
     const void *value;
     struct context_list *next;
 };
 
-static thread_local struct context_list *list_head = NULL;
+static __thread struct context_list *list_head = NULL;
 
 const void *node_swift_context_peek(void) {
     if (!list_head) return NULL;

@@ -1,4 +1,5 @@
 import CNodeAPI
+import Foundation
 
 public protocol NodeModule {
     static var name: String { get }
@@ -6,18 +7,28 @@ public protocol NodeModule {
     var exports: NodeValueConvertible { get }
 }
 
-// since this library is statically linked, there should be
-// exactly one module that we load and therefore we can use
-// a global variable for its type, since otherwise we'd have
-// to somehow pass a context to the registerModule function.
-// We can't use a block because nm_register_func needs to be
-// compatible with @convention(c)
-private var globalModule: NodeModule.Type?
+// see comments in CNodeAPI/node_init.c, NodeSwiftHost/ctor.c
 
-private func registerModule(rawEnv: napi_env!, exports _: napi_value!) -> napi_value? {
+private var moduleMapping: [UnsafeRawPointer: NodeModule.Type] = [:]
+private let moduleLock = NSLock()
+
+@_cdecl("node_swift_addon_register_func") func registerModule(
+    rawEnv: napi_env!,
+    exports _: napi_value!,
+    reg: napi_addon_register_func!
+) -> napi_value? {
+    let moduleType: NodeModule.Type
+    do {
+        moduleLock.lock()
+        defer { moduleLock.unlock() }
+        guard let _moduleType = moduleMapping[unsafeBitCast(reg, to: UnsafeRawPointer.self)] else {
+            return nil
+        }
+        moduleType = _moduleType
+    }
     // the passed in `exports` is merely a convenience, ignore it
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
-        try globalModule!.init().exports.rawValue()
+    return NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
+        try moduleType.init().exports.rawValue()
     }
 }
 
@@ -32,8 +43,9 @@ extension NodeModule {
     }
 
     public static func main() {
-        // just in case main is called multiple times
-        guard globalModule == nil else { return }
+        guard let reg = node_swift_get_thread_register_fn() else {
+            return
+        }
 
         let modname = UnsafePointer(name.copiedCString())
 
@@ -41,20 +53,18 @@ extension NodeModule {
         rawMod.nm_version = NAPI_MODULE_VERSION
         rawMod.nm_filename = modname
         rawMod.nm_modname = modname
-
-        // TODO: If we add dynamic linking support, we should make this a libffi-like closure
-        // which captures the current module type.
-        // Note that while TLS seems like a good option at first, it won't work because
-        // if the library is loaded again (eg by a worker thread) since main isn't called the
-        // second time, instead Node uses a cached copy of the napi_module from the global handle map:
-        // https://github.com/nodejs/node/blob/a9dd03b1ec89a75186f05967fc76ec0704050c36/src/node_binding.cc#L489
-        rawMod.nm_register_func = registerModule
+        rawMod.nm_register_func = reg
 
         let mod = UnsafeMutablePointer<napi_module>.allocate(capacity: 1)
         mod.initialize(to: rawMod)
 
-        globalModule = Self.self
-
         napi_module_register(mod)
+
+        let regRaw = unsafeBitCast(reg, to: UnsafeRawPointer.self)
+        do {
+            moduleLock.lock()
+            defer { moduleLock.unlock() }
+            moduleMapping[regRaw] = self
+        }
     }
 }
