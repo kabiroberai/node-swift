@@ -12,7 +12,7 @@ public protocol NodeModule {
 private var moduleMapping: [UnsafeRawPointer: NodeModule.Type] = [:]
 private let moduleLock = NSLock()
 
-@_cdecl("node_swift_addon_register_func") func registerModule(
+@_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
     rawEnv: napi_env!,
     exports _: napi_value!,
     reg: napi_addon_register_func!
@@ -21,7 +21,8 @@ private let moduleLock = NSLock()
     do {
         moduleLock.lock()
         defer { moduleLock.unlock() }
-        guard let _moduleType = moduleMapping[unsafeBitCast(reg, to: UnsafeRawPointer.self)] else {
+        let regRaw = unsafeBitCast(reg, to: UnsafeRawPointer.self)
+        guard let _moduleType = moduleMapping[regRaw] else {
             return nil
         }
         moduleType = _moduleType
