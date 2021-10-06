@@ -63,11 +63,11 @@ private extension NodeValue {
 
         try env.setInstanceData(cleanupHandler, for: .init())
 
-        let tsfn = try NodeThreadsafeFunction(asyncResourceName: "DISPATCH_CB") {
-            print("dispatch callback")
-        }
+        let q = try NodeAsyncQueue(label: "DISPATCH_CB")
         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-            try? tsfn()
+            try? q.async {
+                print("dispatch callback")
+            }
         }
     }
 

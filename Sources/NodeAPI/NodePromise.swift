@@ -1,7 +1,9 @@
 import CNodeAPI
 
+// similar to Combine.Future
 public final class NodePromise: NodeObject {
 
+    // similar to Combine.Promise
     public final class Deferred {
         public enum Error: Swift.Error {
             case promiseFinishedTwice
@@ -44,6 +46,18 @@ public final class NodePromise: NodeObject {
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
+    }
+
+    // TODO: Align with Combine.Future.init: pass an escaping Result-taking closure
+    // (and make Deferred private)
+    public init(executor: (_ deferred: Deferred) throws -> Void) throws {
+        let deferred = try Deferred()
+        do {
+            try executor(deferred)
+        } catch {
+            try deferred.reject(with: NodeError(code: "\(Swift.type(of: error))", message: "\(error)"))
+        }
+        super.init(deferred.promise.base)
     }
 
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {

@@ -1,31 +1,26 @@
 import CNodeAPI
 
 private extension NodeEnvironment {
-    private static let threadsafeFunctionKey =
-        NodeInstanceDataKey<NodeThreadsafeFunction<napi_ref>>()
+    private static let releaseQueueKey =
+        NodeInstanceDataKey<NodeAsyncQueue>()
 
-    func getReleaseFunction() throws -> NodeThreadsafeFunction<napi_ref> {
-        if let fn = try instanceData(for: Self.threadsafeFunctionKey) {
-            return fn
+    func getReleaseQueue() throws -> NodeAsyncQueue {
+        if let q = try instanceData(for: Self.releaseQueueKey) {
+            return q
         }
-        let fn = try NodeThreadsafeFunction<napi_ref>(
-            asyncResourceName: "NAPI_SWIFT_RELEASE_REF",
-            keepsMainThreadAlive: false
-        ) { ref in
-            let env = NodeEnvironment.current
-            try env.check(
-                napi_delete_reference(env.raw, ref)
-            )
-        }
-        try setInstanceData(fn, for: Self.threadsafeFunctionKey)
-        return fn
+        let q = try NodeAsyncQueue(
+            label: "NAPI_SWIFT_RELEASE_REF",
+            keepsNodeThreadAlive: false
+        )
+        try setInstanceData(q, for: Self.releaseQueueKey)
+        return q
     }
 }
 
 @_spi(NodeAPI) public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
-        case managed(napi_ref, release: NodeThreadsafeFunction<napi_ref>, isBoxed: Bool)
+        case managed(napi_ref, releaseQueue: NodeAsyncQueue, isBoxed: Bool)
     }
 
     let environment: NodeEnvironment
@@ -76,8 +71,8 @@ private extension NodeEnvironment {
             }
             var ref: napi_ref!
             try environment.check(napi_create_reference(environment.raw, boxedRaw, 1, &ref))
-            let release = try environment.getReleaseFunction()
-            self.guts = .managed(ref, release: release, isBoxed: isBoxed)
+            let releaseQueue = try environment.getReleaseQueue()
+            self.guts = .managed(ref, releaseQueue: releaseQueue, isBoxed: isBoxed)
         }
     }
 
@@ -104,8 +99,13 @@ private extension NodeEnvironment {
         switch guts {
         case .unmanaged:
             break
-        case let .managed(ref, release, _):
-            try? release(ref)
+        case let .managed(ref, releaseQueue, _):
+            try? releaseQueue.async {
+                let env = NodeEnvironment.current
+                try env.check(
+                    napi_delete_reference(env.raw, ref)
+                )
+            }
         }
     }
 }
