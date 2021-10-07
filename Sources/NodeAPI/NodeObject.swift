@@ -51,9 +51,28 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
 
 }
 
-extension Dictionary: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible where Key == String, Value == NodePropertyConvertible {
+extension Dictionary: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible
+    where Key == String, Value == NodePropertyConvertible {
     public func nodeValue() throws -> NodeValue {
         try NodeObject(.init(Array(self)))
+    }
+}
+
+extension Dictionary: NodeValueCreatable where Key == String, Value == NodeValue {
+    public init(_ value: NodeObject) throws {
+        guard let keys = try value.propertyNames(
+            collectionMode: .includePrototypes,
+            filter: [.enumerable, .skipSymbols],
+            conversion: .numbersToStrings
+        ).as([NodeValue].self) else {
+            throw NodeAPIError(.invalidArg)
+        }
+        try self.init(uniqueKeysWithValues: keys.map { k in
+            guard let k = try k.as(String.self) else {
+                throw NodeAPIError(.invalidArg)
+            }
+            return try (k, value[k].get())
+        })
     }
 }
 

@@ -32,8 +32,12 @@ public final class NodeBool: NodePrimitive, NodeValueCoercible {
 
 }
 
-extension Bool: NodePrimitiveConvertible {
+extension Bool: NodePrimitiveConvertible, NodeValueCreatable {
     public func nodeValue() throws -> NodeValue {
         try NodeBool(self)
+    }
+
+    public init(_ value: NodeBool) throws {
+        self = try value.bool()
     }
 }

@@ -31,8 +31,8 @@ private extension NodeValue {
         let strObj = try env.run(script: "('hello')")
         print("'\(strObj)' is a \(strObj.type())")
 
-        let doStuff = try NodeFunction(name: "doStuff") { info in
-            print("Called! Arg 0 type: \(info.arguments.first?.type() as Any)")
+        let doStuff = try NodeFunction(name: "doStuff") { args in
+            print("Called! Arg 0 type: \(args.first?.type() as Any)")
             return 5
         }
         exports = doStuff

@@ -9,23 +9,13 @@ import NodeAPI
         exports = [
             "File": try NodeFunction(
                 className: "File",
-                constructor: { info in
-                    guard let path = try info.arguments[0].as(NodeString.self) else {
-                        throw try NodeError(
-                            typeErrorCode: "ERR_INVALID_ARG_TYPE",
-                            message: "Expected string"
-                        )
-                    }
-                    let url = URL(fileURLWithPath: try path.string())
-                    try info.this!.setWrappedValue(url, forKey: fileKey)
-                    return try NodeUndefined()
-                }, properties: [
-                    "contents": NodeComputedProperty { info in
-                        let url = try info.this!.wrappedValue(forKey: fileKey)!
+                properties: [
+                    "contents": NodeComputedProperty { args in
+                        let url = try args.this!.wrappedValue(forKey: fileKey)!
                         return try Data(contentsOf: url)
-                    } set: { info in
-                        let url = try info.this!.wrappedValue(forKey: fileKey)!
-                        guard let newFile = try info.arguments[0].as(
+                    } set: { args in
+                        let url = try args.this!.wrappedValue(forKey: fileKey)!
+                        guard let newFile = try args[0].as(
                             NodeTypedArray<UInt8>.self
                         ) else {
                             throw try NodeError(
@@ -43,7 +33,17 @@ import NodeAPI
                         return try NodeUndefined()
                     }
                 ]
-            )
+            ) { args in
+                guard let path = try args[0].as(NodeString.self) else {
+                    throw try NodeError(
+                        typeErrorCode: "ERR_INVALID_ARG_TYPE",
+                        message: "Expected string"
+                    )
+                }
+                let url = URL(fileURLWithPath: try path.string())
+                try args.this!.setWrappedValue(url, forKey: fileKey)
+                return try NodeUndefined()
+            }
         ]
     }
 }

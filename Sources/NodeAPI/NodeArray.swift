@@ -35,12 +35,19 @@ public final class NodeArray: NodeObject {
 
 }
 
-extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible where Element == NodeValueConvertible {
+extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible
+    where Element == NodeValueConvertible {
     public func nodeValue() throws -> NodeValue {
         let arr = try NodeArray(capacity: count)
         for (idx, element) in enumerated() {
             try arr[Double(idx)].set(to: element)
         }
         return arr
+    }
+}
+
+extension Array: NodeValueCreatable where Element == NodeValue {
+    public init(_ value: NodeArray) throws {
+        self = try (0..<value.count()).map { try value[Double($0)].get() }
     }
 }

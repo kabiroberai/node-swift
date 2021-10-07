@@ -4,7 +4,7 @@ private typealias ConstructorWrapper = Box<NodeFunction.Callback>
 
 private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
-        let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
+        let arguments = try NodeFunction.Arguments(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<ConstructorWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callbacks.value(arguments).rawValue()
@@ -14,9 +14,9 @@ private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_
 extension NodeFunction {
 
     public convenience init(
-        className: String = "",
-        constructor: @escaping NodeFunction.Callback,
-        properties: NodeClassPropertyList
+        className: String?,
+        properties: NodeClassPropertyList,
+        constructor: @escaping NodeFunction.Callback
     ) throws {
         var descriptors: [napi_property_descriptor] = []
         var callbacks: [NodeProperty.Callbacks] = []
@@ -30,7 +30,7 @@ extension NodeFunction {
         }
         let ctx = NodeContext.current
         let env = ctx.environment
-        var name = className
+        var name = className ?? ""
         var result: napi_value!
         let ctorWrapper = ConstructorWrapper(constructor)
         try name.withUTF8 {

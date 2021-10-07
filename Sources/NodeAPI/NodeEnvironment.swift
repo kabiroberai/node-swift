@@ -131,8 +131,6 @@ extension NodeEnvironment {
         return try NodeValueBase(raw: escaped, in: .current).as(V.self)!
     }
 
-    private struct NilValueError: Error {}
-
     public func withScope<V: NodeValue>(perform action: () throws -> V?) throws -> V? {
         do {
             return try withScope { () throws -> V in

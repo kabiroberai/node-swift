@@ -116,6 +116,11 @@ public protocol NodeValueConvertible: NodePropertyConvertible {
     func nodeValue() throws -> NodeValue
 }
 
+public protocol NodeValueCreatable {
+    associatedtype NodeValueType: NodeValue
+    init(_ value: NodeValueType) throws
+}
+
 extension NodeValueConvertible {
     public var nodeProperty: NodeProperty {
         NodeProperty(attributes: .defaultProperty, value: .data(self))
@@ -290,7 +295,43 @@ extension NodeValue {
     // a value. The create method would check the type() and return an
     // instance of the appropriate class.
     public func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
+        // TODO: Maybe throw TypeError if casting fails instead of returning nil?
         try base.as(T.self)
+    }
+
+    public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T? {
+        try self.as(T.NodeValueType.self).map(T.init(_:))
+    }
+
+    // Array itself conforms to NodeValueCreatable iff Element == NodeValue, i.e.
+    // for [NodeValue]. This means that specializations, like [String], don't
+    // themselves have this conformance. Consequently, this function special-cases
+    // those situations to allow for stuff like foo.as([String].self). Unfortunately
+    // this doesn't nest, i.e. you can't do as([[String]].self), since T: [String]
+    // itself doesn't conform to NodeValueCreatable
+    //
+    // (we could also switch the conformances around, but then [[String]] would work
+    // whereas [[NodeValue]] wouldn't)
+    public func `as`<T: NodeValueCreatable>(_ type: [T].Type) throws -> [T]? {
+        do {
+            return try self.as([NodeValue].self)?.map {
+                guard let t = try $0.as(T.self) else { throw NilValueError() }
+                return t
+            }
+        } catch is NilValueError {
+            return nil
+        }
+    }
+
+    public func `as`<T: NodeValueCreatable>(_ type: [String: T].Type) throws -> [String: T]? {
+        do {
+            return try self.as([String: NodeValue].self)?.mapValues {
+                guard let t = try $0.as(T.self) else { throw NilValueError() }
+                return t
+            }
+        } catch is NilValueError {
+            return nil
+        }
     }
 
 }

@@ -30,8 +30,12 @@ public final class NodeDate: NodeObject {
 
 }
 
-extension Date: NodeValueConvertible {
+extension Date: NodeValueConvertible, NodeValueCreatable {
     public func nodeValue() throws -> NodeValue {
         try NodeDate(self)
+    }
+
+    public init(_ value: NodeDate) throws {
+        self = try value.date()
     }
 }

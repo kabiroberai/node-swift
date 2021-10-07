@@ -55,9 +55,13 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
 
 }
 
-extension Data: NodeValueConvertible {
+extension Data: NodeValueConvertible, NodeValueCreatable {
     public func nodeValue() throws -> NodeValue {
         try NodeBuffer(copying: self)
+    }
+
+    public init(_ value: NodeBuffer) throws {
+        self = try value.data()
     }
 }
 

@@ -49,8 +49,12 @@ public final class NodeString: NodePrimitive, NodeName, NodeValueCoercible {
 
 }
 
-extension String: NodePrimitiveConvertible, NodeName {
+extension String: NodePrimitiveConvertible, NodeName, NodeValueCreatable {
     public func nodeValue() throws -> NodeValue {
         try NodeString(self)
+    }
+
+    public init(_ value: NodeString) throws {
+        self = try value.string()
     }
 }

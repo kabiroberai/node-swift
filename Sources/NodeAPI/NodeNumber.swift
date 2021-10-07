@@ -32,8 +32,12 @@ public final class NodeNumber: NodePrimitive, NodeValueCoercible {
 
 }
 
-extension Double: NodePrimitiveConvertible {
+extension Double: NodePrimitiveConvertible, NodeValueCreatable {
     public func nodeValue() throws -> NodeValue {
         try NodeNumber(self)
+    }
+
+    public init(_ value: NodeNumber) throws {
+        self = try value.double()
     }
 }

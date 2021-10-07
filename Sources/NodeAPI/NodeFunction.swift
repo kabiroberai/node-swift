@@ -4,7 +4,7 @@ private typealias CallbackWrapper = Box<NodeFunction.Callback>
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
-        let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
+        let arguments = try NodeFunction.Arguments(raw: info, in: ctx)
         let data = arguments.data
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callback.value(arguments).rawValue()
@@ -13,10 +13,13 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
 
 public final class NodeFunction: NodeObject {
 
-    public struct CallbackInfo {
+    public struct Arguments: MutableCollection, RandomAccessCollection {
+        public typealias Index = Int
+        public typealias Element = NodeValue
+
+        private var value: [NodeValue]
         public let this: NodeObject?
-        public let target: NodeFunction? // new.target
-        public let arguments: [NodeValue]
+        public let newTarget: NodeFunction? // new.target
         let data: UnsafeMutableRawPointer
 
         init(raw: napi_callback_info, in ctx: NodeContext) throws {
@@ -36,13 +39,23 @@ public final class NodeFunction: NodeObject {
             try env.check(napi_get_new_target(env.raw, raw, &newTarget))
 
             self.this = try NodeValueBase(raw: this, in: ctx).as(NodeObject.self)
-            self.target = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
+            self.newTarget = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
             self.data = data
-            self.arguments = args
+            self.value = args
+        }
+
+        public var startIndex: Int { value.startIndex }
+        public var endIndex: Int { value.endIndex }
+        public func index(after i: Int) -> Int {
+            value.index(after: i)
+        }
+        public subscript(position: Int) -> NodeValue {
+            get { value[position] }
+            set { value[position] = newValue }
         }
     }
 
-    public typealias Callback = (_ info: CallbackInfo) throws -> NodeValueConvertible
+    public typealias Callback = (_ arguments: Arguments) throws -> NodeValueConvertible
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -62,7 +75,7 @@ public final class NodeFunction: NodeObject {
     // adding such an overload currently confuses the compiler during overload resolution
     // so we need to figure out how to make it select the right one (@_disfavoredOverload
     // doesn't seem to help)
-    public init(name: String = "", callback: @escaping (_ info: CallbackInfo) throws -> NodeValueConvertible) throws {
+    public init(name: String = "", callback: @escaping (_ info: Arguments) throws -> NodeValueConvertible) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
