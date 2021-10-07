@@ -5,8 +5,8 @@
 
 _Pragma("clang assume_nonnull begin")
 
-napi_addon_register_func _Nullable node_swift_get_thread_register_fn(void);
-void node_swift_main(int (*main)(void), napi_addon_register_func local_reg);
+napi_module * _Nullable node_swift_get_thread_module(void);
+void node_swift_main(int (*main)(void), napi_module *local_module);
 
 _Pragma("clang assume_nonnull end")
 

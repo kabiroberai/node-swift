@@ -14,9 +14,6 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_val
 public final class NodeFunction: NodeObject {
 
     public struct Arguments: MutableCollection, RandomAccessCollection {
-        public typealias Index = Int
-        public typealias Element = NodeValue
-
         private var value: [NodeValue]
         public let this: NodeObject?
         public let newTarget: NodeFunction? // new.target

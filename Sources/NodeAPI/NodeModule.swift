@@ -7,26 +7,26 @@ public protocol NodeModule {
     var exports: NodeValueConvertible { get }
 }
 
+private class ModulePriv {
+    let name: UnsafeMutablePointer<CChar>
+    let kind: NodeModule.Type
+    init(name: UnsafeMutablePointer<CChar>, kind: NodeModule.Type) {
+        self.name = name
+        self.kind = kind
+    }
+    deinit { name.deallocate() }
+}
+
 // see comments in CNodeAPI/node_init.c, NodeSwiftHost/ctor.c
-
-private var moduleMapping: [UnsafeRawPointer: NodeModule.Type] = [:]
-private let moduleLock = NSLock()
-
 @_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
     rawEnv: napi_env!,
     exports _: napi_value!,
-    reg: napi_addon_register_func!
+    module: UnsafePointer<napi_module>!
 ) -> napi_value? {
-    let moduleType: NodeModule.Type
-    do {
-        moduleLock.lock()
-        defer { moduleLock.unlock() }
-        let regRaw = unsafeBitCast(reg, to: UnsafeRawPointer.self)
-        guard let _moduleType = moduleMapping[regRaw] else {
-            return nil
-        }
-        moduleType = _moduleType
-    }
+    let moduleType = Unmanaged<ModulePriv>
+        .fromOpaque(module.pointee.nm_priv)
+        .takeUnretainedValue()
+        .kind
     // the passed in `exports` is merely a convenience, ignore it
     return NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
         try moduleType.init().exports.rawValue()
@@ -44,28 +44,19 @@ extension NodeModule {
     }
 
     public static func main() {
-        guard let reg = node_swift_get_thread_register_fn() else {
-            return
+        guard let mod = node_swift_get_thread_module() else {
+            nodeFatalError("NodeSwift module \(self) did not register itself correctly")
         }
 
-        let modname = UnsafePointer(name.copiedCString())
+        // strongly retains modname
+        let priv = ModulePriv(name: name.copiedCString(), kind: Self.self)
+        let modname = UnsafePointer(priv.name)
 
-        var rawMod = napi_module()
-        rawMod.nm_version = NAPI_MODULE_VERSION
-        rawMod.nm_filename = modname
-        rawMod.nm_modname = modname
-        rawMod.nm_register_func = reg
-
-        let mod = UnsafeMutablePointer<napi_module>.allocate(capacity: 1)
-        mod.initialize(to: rawMod)
+        mod.pointee.nm_version = NAPI_MODULE_VERSION
+        mod.pointee.nm_filename = modname
+        mod.pointee.nm_modname = modname
+        mod.pointee.nm_priv = Unmanaged.passRetained(priv).toOpaque()
 
         napi_module_register(mod)
-
-        let regRaw = unsafeBitCast(reg, to: UnsafeRawPointer.self)
-        do {
-            moduleLock.lock()
-            defer { moduleLock.unlock() }
-            moduleMapping[regRaw] = self
-        }
     }
 }
