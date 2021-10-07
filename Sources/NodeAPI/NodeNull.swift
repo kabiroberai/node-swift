@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeNull: NodeValue {
+public final class NodeNull: NodePrimitive {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {
@@ -17,8 +17,10 @@ public final class NodeNull: NodeValue {
 
 }
 
-extension Optional: NodeValueConvertible where Wrapped: NodeValueConvertible {
+extension Optional: NodeValueConvertible, NodePropertyConvertible where Wrapped: NodeValueConvertible {
     public func nodeValue() throws -> NodeValue {
         try self?.nodeValue() ?? NodeNull()
     }
 }
+
+extension Optional: NodeClassPropertyConvertible where Wrapped: NodePrimitiveConvertible {}

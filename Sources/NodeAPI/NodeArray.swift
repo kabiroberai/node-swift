@@ -35,7 +35,7 @@ public final class NodeArray: NodeObject {
 
 }
 
-extension Array: NodeValueConvertible, NodeObjectConvertible where Element: NodeValueConvertible {
+extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible where Element == NodeValueConvertible {
     public func nodeValue() throws -> NodeValue {
         let arr = try NodeArray(capacity: count)
         for (idx, element) in enumerated() {

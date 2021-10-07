@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeBigInt: NodeValue {
+public final class NodeBigInt: NodePrimitive {
 
     @frozen public enum Sign {
         case positive

@@ -4,7 +4,7 @@ private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: B
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         let arguments = try NodeFunction.CallbackInfo(raw: info, in: ctx)
         let data = arguments.data
-        let callbacks = Unmanaged<NodePropertyDescriptor.Callbacks>.fromOpaque(data).takeUnretainedValue()
+        let callbacks = Unmanaged<NodeProperty.Callbacks>.fromOpaque(data).takeUnretainedValue()
         return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(arguments).rawValue()
     }
 }
@@ -17,7 +17,57 @@ private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value
     cCallback(rawEnv: rawEnv, info: info, isGetter: false)
 }
 
-public struct NodePropertyDescriptor {
+public protocol NodePropertyConvertible {
+    var nodeProperty: NodeProperty { get }
+}
+
+// marker protocol: some values can be represented as properties
+// on objects but not on classes (eg non-primitive NodeValues as
+// .data)
+public protocol NodeClassPropertyConvertible: NodePropertyConvertible {}
+
+public typealias NodePrimitive = NodeValue & NodeClassPropertyConvertible
+public typealias NodePrimitiveConvertible = NodeValueConvertible & NodeClassPropertyConvertible
+
+public struct NodePropertyList<Property>: ExpressibleByDictionaryLiteral {
+    let elements: [(NodeName, Property)]
+    public init(_ elements: [(NodeName, Property)]) {
+        self.elements = elements
+    }
+    public init(dictionaryLiteral elements: (NodeName, Property)...) {
+        self.elements = elements
+    }
+}
+public typealias NodeObjectPropertyList = NodePropertyList<NodePropertyConvertible>
+public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConvertible>
+
+public struct NodeMethod: NodeClassPropertyConvertible {
+    public let nodeProperty: NodeProperty
+    public init(attributes: NodeProperty.Attributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
+        nodeProperty = .init(attributes: attributes, value: .method(callback))
+    }
+}
+
+public struct NodeComputedProperty: NodeClassPropertyConvertible {
+    public let nodeProperty: NodeProperty
+    public init(
+        attributes: NodeProperty.Attributes = .defaultProperty,
+        get: @escaping NodeFunction.Callback,
+        set: NodeFunction.Callback? = nil
+    ) {
+        var attributes = attributes
+        if set == nil {
+            // TODO: Is this necessary?
+            attributes.remove(.writable)
+        }
+        nodeProperty = .init(
+            attributes: attributes,
+            value: set.map { .computed(get: get, set: $0) } ?? .computedGet(get)
+        )
+    }
+}
+
+public struct NodeProperty: NodePropertyConvertible {
     typealias Callbacks = Box<(getterOrMethod: NodeFunction.Callback?, setter: NodeFunction.Callback?)>
 
     public struct Attributes: RawRepresentable, OptionSet {
@@ -34,7 +84,7 @@ public struct NodePropertyDescriptor {
         public static let writable = Attributes(napi_writable)
         public static let enumerable = Attributes(napi_enumerable)
         public static let configurable = Attributes(napi_configurable)
-        // ignored by define(properties:)
+        // ignored by NodeObject.define
         public static let `static` = Attributes(napi_static)
 
         public static let `default`: Attributes = []
@@ -43,29 +93,33 @@ public struct NodePropertyDescriptor {
     }
 
     public enum Value {
-        // not valid for use with defineClass unless static, for some reason
         case data(NodeValueConvertible)
-        // we need this because, as mentioned above, `data` isn't valid for
-        // defineClass
+        // we need this because you can't use .data for functions
+        // while declaring a class prototype
         case method(NodeFunction.Callback)
         case computed(get: NodeFunction.Callback, set: NodeFunction.Callback)
         case computedGet(NodeFunction.Callback)
         case computedSet(NodeFunction.Callback)
     }
 
-    public let name: NodeName
+    public var nodeProperty: NodeProperty { self }
+
     public let attributes: Attributes
     public let value: Value
 
-    public init(name: NodeName, attributes: Attributes, value: Value) {
-        self.name = name
+    init(attributes: Attributes, value: Value) {
         self.attributes = attributes
         self.value = value
     }
 
-    // if needed, returns a Callbacks object which must be retained
+    public init(attributes: Attributes = .defaultProperty, _ data: NodeValueConvertible) {
+        self.attributes = attributes
+        self.value = .data(data)
+    }
+
+    // when needed, returns a Callbacks object which must be retained
     // on the object
-    func raw() throws -> (napi_property_descriptor, Callbacks?) {
+    func raw(name: NodeName) throws -> (napi_property_descriptor, Callbacks?) {
         let callbacks: Callbacks?
         var raw = napi_property_descriptor()
         raw.name = try name.rawValue()

@@ -26,7 +26,6 @@ public final class NodeEnvironment {
         var exception: napi_value!
         if isExceptionPending {
             if napi_get_and_clear_last_exception(raw, &exception) == napi_ok {
-                // exceptions shouldn't be frequent so using .current is okay
                 throw NodeException(value: try NodeValueBase(raw: exception, in: .current).concrete())
             } else {
                 // there's a pending exception but we couldn't fetch it wtf

@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeUndefined: NodeValue {
+public final class NodeUndefined: NodePrimitive {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {

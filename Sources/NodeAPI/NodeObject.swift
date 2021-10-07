@@ -32,12 +32,13 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
         self.base = NodeValueBase(raw: result, in: .current)
     }
 
-    public init() throws {
+    public init(_ properties: NodeObjectPropertyList = [:]) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         var obj: napi_value!
         try env.check(napi_create_object(env.raw, &obj))
         base = NodeValueBase(raw: obj, in: ctx)
+        try define(properties)
     }
 
     public final func isInstance(of constructor: NodeFunction) throws -> Bool {
@@ -50,13 +51,9 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
 
 }
 
-extension Dictionary: NodeValueConvertible, NodeObjectConvertible where Key == String, Value: NodeValueConvertible {
+extension Dictionary: NodeValueConvertible, NodeObjectConvertible, NodePropertyConvertible where Key == String, Value == NodePropertyConvertible {
     public func nodeValue() throws -> NodeValue {
-        let obj = try NodeObject()
-        try obj.define(properties: map {
-            NodePropertyDescriptor(name: $0, attributes: .defaultProperty, value: .data($1))
-        })
-        return obj
+        try NodeObject(.init(Array(self)))
     }
 }
 
@@ -252,19 +249,19 @@ extension NodeObject {
         return NodeArray(NodeValueBase(raw: result, in: .current))
     }
 
-    public final func define(properties: [NodePropertyDescriptor]) throws {
+    public final func define(_ properties: NodeObjectPropertyList) throws {
         try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
             let env = ctx.environment
             var descriptors: [napi_property_descriptor] = []
-            var callbacks: [NodePropertyDescriptor.Callbacks] = []
-            for prop in properties {
-                let (desc, cb) = try prop.raw()
+            var callbacks: [NodeProperty.Callbacks] = []
+            for (name, prop) in properties.elements {
+                let (desc, cb) = try prop.nodeProperty.raw(name: name)
                 descriptors.append(desc)
                 if let cb = cb {
                     callbacks.append(cb)
                 }
             }
-            try env.check(napi_define_properties(env.raw, base.rawValue(), properties.count, descriptors))
+            try env.check(napi_define_properties(env.raw, base.rawValue(), properties.elements.count, descriptors))
             if !callbacks.isEmpty {
                 // retain new callbacks
                 try addFinalizer { _ = callbacks }

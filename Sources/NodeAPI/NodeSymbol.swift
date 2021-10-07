@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeSymbol: NodeValue, NodeName {
+public final class NodeSymbol: NodePrimitive, NodeName {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {

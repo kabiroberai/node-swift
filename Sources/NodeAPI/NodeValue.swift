@@ -112,11 +112,15 @@ private extension NodeEnvironment {
 
 // MARK: - Protocols
 
-public protocol NodeValueConvertible {
+public protocol NodeValueConvertible: NodePropertyConvertible {
     func nodeValue() throws -> NodeValue
 }
 
 extension NodeValueConvertible {
+    public var nodeProperty: NodeProperty {
+        NodeProperty(attributes: .defaultProperty, value: .data(self))
+    }
+
     func rawValue() throws -> napi_value {
         try nodeValue().base.rawValue()
     }

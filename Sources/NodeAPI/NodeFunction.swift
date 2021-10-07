@@ -58,6 +58,10 @@ public final class NodeFunction: NodeObject {
         try value.type() == .function
     }
 
+    // TODO: Add a convenience overload for returning Void (convert to NodeUndefined)
+    // adding such an overload currently confuses the compiler during overload resolution
+    // so we need to figure out how to make it select the right one (@_disfavoredOverload
+    // doesn't seem to help)
     public init(name: String = "", callback: @escaping (_ info: CallbackInfo) throws -> NodeValueConvertible) throws {
         let ctx = NodeContext.current
         let env = ctx.environment

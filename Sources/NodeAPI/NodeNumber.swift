@@ -1,6 +1,6 @@
 import CNodeAPI
 
-public final class NodeNumber: NodeValue, NodeValueCoercible {
+public final class NodeNumber: NodePrimitive, NodeValueCoercible {
 
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {
@@ -32,7 +32,7 @@ public final class NodeNumber: NodeValue, NodeValueCoercible {
 
 }
 
-extension Double: NodeValueConvertible {
+extension Double: NodePrimitiveConvertible {
     public func nodeValue() throws -> NodeValue {
         try NodeNumber(self)
     }
