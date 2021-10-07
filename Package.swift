@@ -3,15 +3,14 @@
 import PackageDescription
 import Foundation
 
-// true when we're invoked via node-swift
-let isRealBuild = ProcessInfo.processInfo.environment["NODE_SWIFT_TARGET_PACKAGE"] != nil
+let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC"] == "1"
 
 let package = Package(
     name: "node-swift",
     products: [
         .library(
             name: "NodeAPI",
-            type: isRealBuild ? .dynamic : nil,
+            type: buildDynamic ? .dynamic : nil,
             targets: ["NodeAPI"]
         )
     ],

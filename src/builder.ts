@@ -21,6 +21,7 @@ export interface Config {
     macVersion?: string
     napi?: number | "experimental"
 
+    static?: boolean
     spmFlags?: ConfigFlags
     cFlags?: ConfigFlags
     swiftFlags?: ConfigFlags
@@ -65,6 +66,15 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     let swiftFlags = getFlags(config, "swiftFlags");
     let cxxFlags = getFlags(config, "cxxFlags");
     let linkerFlags = getFlags(config, "linkerFlags");
+
+    let isDynamic: boolean;
+    if (typeof config.static === "boolean") {
+        isDynamic = !config.static;
+    } else if (typeof config.static === "undefined") {
+        isDynamic = true;
+    } else {
+        throw new Error("Invalid value for static option");
+    }
 
     let packagePath;
     if (typeof config.packagePath === "string") {
@@ -200,6 +210,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "NODE_SWIFT_TARGET_NAME": product,
                 "NODE_SWIFT_HOST_BINARY": winHost,
                 "NODE_SWIFT_TARGET_MAC_VERSION": macVersion,
+                "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
                 ...process.env,
             },
         }
