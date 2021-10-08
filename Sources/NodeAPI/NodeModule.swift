@@ -17,6 +17,24 @@ private class ModulePriv {
     deinit { name.deallocate() }
 }
 
+private let threadModuleKey = "NODE_SWIFT_MODULE"
+private var threadModule: UnsafeMutablePointer<napi_module>? {
+    get { Thread.current.threadDictionary[threadModuleKey] as? UnsafeMutablePointer<napi_module> }
+    set { Thread.current.threadDictionary[threadModuleKey] = newValue }
+}
+
+// we can't pass params to main, so use TLS to store the current module.
+// This is then retrieved in NodeModule.main, and the NodeModule.Type
+// is assigned to module.priv
+@_cdecl("node_swift_main") @_spi(NodeAPI) public func _nodeSwiftInit(
+    main: @convention(c) () -> Int,
+    module: UnsafeMutablePointer<napi_module>!
+) {
+    threadModule = module
+    defer { threadModule = nil }
+    _ = main()
+}
+
 // see comments in CNodeAPI/node_init.c, NodeSwiftHost/ctor.c
 @_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
     rawEnv: napi_env!,
@@ -44,7 +62,7 @@ extension NodeModule {
     }
 
     public static func main() {
-        guard let mod = node_swift_get_thread_module() else {
+        guard let mod = threadModule else {
             nodeFatalError("NodeSwift module \(self) did not register itself correctly")
         }
 

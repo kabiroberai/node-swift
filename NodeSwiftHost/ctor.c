@@ -8,11 +8,11 @@ typedef void *(*napi_addon_register_func)(void *env, void *exports);
 typedef struct {
     int nm_version;
     unsigned int nm_flags;
-    const char* nm_filename;
+    const char *nm_filename;
     napi_addon_register_func nm_register_func;
-    const char* nm_modname;
-    void* nm_priv;
-    void* reserved[4];
+    const char *nm_modname;
+    void *nm_priv;
+    void *reserved[4];
 } napi_module;
 
 static void *local_reg(void *env, void *exports);
