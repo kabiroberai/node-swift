@@ -42,7 +42,6 @@ import NodeAPI
                 }
                 let url = URL(fileURLWithPath: try path.string())
                 try args.this!.setWrappedValue(url, forKey: fileKey)
-                return try NodeUndefined()
             }
         ]
     }

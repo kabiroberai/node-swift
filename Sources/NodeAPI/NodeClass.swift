@@ -16,7 +16,7 @@ extension NodeFunction {
     public convenience init(
         className: String?,
         properties: NodeClassPropertyList,
-        constructor: @escaping NodeFunction.Callback
+        constructor: @escaping (_ arguments: Arguments) throws -> Void
     ) throws {
         var descriptors: [napi_property_descriptor] = []
         var callbacks: [NodeProperty.Callbacks] = []
@@ -32,7 +32,10 @@ extension NodeFunction {
         let env = ctx.environment
         var name = className ?? ""
         var result: napi_value!
-        let ctorWrapper = ConstructorWrapper(constructor)
+        let ctorWrapper = ConstructorWrapper { args in
+            try constructor(args)
+            return try NodeUndefined()
+        }
         try name.withUTF8 {
             try $0.withMemoryRebound(to: CChar.self) { nameUTF in
                 try env.check(
