@@ -3,7 +3,7 @@ import { spawnSync } from "child_process";
 import { forceSymlink } from "./utils";
 import path from "path";
 
-const buildDir = "build";
+const defaultBuildPath = "build";
 
 // the name of the binary that the DLL loader *expects* to find
 // (probably doesn't need to be changed)
@@ -14,6 +14,7 @@ export type BuildMode = "release" | "debug";
 export type ConfigFlags = string | string[];
 
 export interface Config {
+    buildPath?: string
     packagePath?: string
     product?: string
 
@@ -29,8 +30,11 @@ export interface Config {
     linkerFlags?: ConfigFlags
 }
 
-export async function clean() {
-    await rm(buildDir, { recursive: true, force: true });
+export async function clean(config: Config = {}) {
+    await rm(
+        config.buildPath || defaultBuildPath, 
+        { recursive: true, force: true }
+    );
 }
 
 async function getWinLib(): Promise<string> {
@@ -84,6 +88,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     } else {
         throw new Error("Invalid value for packagePath option.");
     }
+
+    const buildDir = config.buildPath || defaultBuildPath;
 
     let macVersion;
     if (typeof config.macVersion === "string") {
