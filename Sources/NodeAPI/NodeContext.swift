@@ -1,3 +1,4 @@
+import Foundation
 import CNodeAPI
 
 // An object context that manages allocations in native code.
@@ -107,7 +108,10 @@ final class NodeContext {
 
     static var current: NodeContext {
         guard let last = node_swift_context_peek() else {
-            nodeFatalError("There is no current NodeContext")
+            // Node doesn't give us a backtrace (because we're not on a JS thread?) so
+            // print one ourselves
+            print(Thread.callStackSymbols.joined(separator: "\n"))
+            nodeFatalError("Attempted to call a NodeAPI function on a non-JS thread")
         }
         return Unmanaged.fromOpaque(last).takeUnretainedValue()
     }

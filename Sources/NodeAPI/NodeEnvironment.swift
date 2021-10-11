@@ -222,6 +222,8 @@ public struct NodeVersion {
 
 extension NodeEnvironment {
 
+    // we could put this in NodeObject but that would allow calling
+    // global() on subclass types as well, which is confusing
     public func global() throws -> NodeObject {
         var val: napi_value!
         try check(napi_get_global(raw, &val))

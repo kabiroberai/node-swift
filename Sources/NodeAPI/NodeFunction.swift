@@ -53,6 +53,7 @@ public final class NodeFunction: NodeObject {
     }
 
     public typealias Callback = (_ arguments: Arguments) throws -> NodeValueConvertible
+    public typealias VoidCallback = (_ arguments: Arguments) throws -> Void
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -123,6 +124,20 @@ public final class NodeFunction: NodeObject {
     @discardableResult
     public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
         try call(receiver: NodeUndefined(), arguments: args)
+    }
+
+    public func new(arguments: [NodeValueConvertible]) throws -> NodeObject {
+        let env = base.environment
+        let argv: [napi_value?] = try arguments.map { try $0.rawValue() }
+        var result: napi_value!
+        try env.check(
+            napi_new_instance(env.raw, base.rawValue(), arguments.count, argv, &result)
+        )
+        return try NodeValueBase(raw: result, in: .current).as(NodeObject.self)!
+    }
+
+    public func new(_ arguments: NodeValueConvertible...) throws -> NodeObject {
+        try new(arguments: arguments)
     }
 
 }

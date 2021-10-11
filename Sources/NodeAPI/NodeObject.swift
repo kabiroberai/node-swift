@@ -22,16 +22,6 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
-    public init(constructor: NodeFunction, arguments: [NodeValueConvertible] = []) throws {
-        let env = constructor.base.environment
-        let argv = try arguments.map { arg -> napi_value? in try arg.rawValue() }
-        var result: napi_value!
-        try env.check(
-            napi_new_instance(env.raw, constructor.base.rawValue(), arguments.count, argv, &result)
-        )
-        self.base = NodeValueBase(raw: result, in: .current)
-    }
-
     public init(_ properties: NodeObjectPropertyList = [:]) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
@@ -379,16 +369,15 @@ extension NodeObject {
 
     private static let ourTypeTag = UUID()
 
-    public final func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
+    final func setWrappedValue(_ wrap: Any?, forID id: ObjectIdentifier) throws {
         let env = base.environment
-        let id = ObjectIdentifier(key)
         let raw = try base.rawValue()
         if try hasTypeTag(Self.ourTypeTag) {
             var objRaw: UnsafeMutableRawPointer!
             try env.check(napi_unwrap(env.raw, raw, &objRaw))
             let objUnmanaged = Unmanaged<WrappedData>.fromOpaque(objRaw)
             let obj = objUnmanaged.takeUnretainedValue()
-            obj.value[id] = key
+            obj.value[id] = wrap
             // remove the wrapper if the dict is now empty
             if obj.value.isEmpty {
                 try env.check(napi_remove_wrap(env.raw, raw, nil))
@@ -409,13 +398,21 @@ extension NodeObject {
         }
     }
 
-    public final func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
+    final func wrappedValue(forID id: ObjectIdentifier) throws -> Any? {
         guard try hasTypeTag(Self.ourTypeTag) else { return nil }
         let env = base.environment
         var objRaw: UnsafeMutableRawPointer!
         try env.check(napi_unwrap(env.raw, base.rawValue(), &objRaw))
         let obj = Unmanaged<WrappedData>.fromOpaque(objRaw).takeUnretainedValue()
-        return obj.value[ObjectIdentifier(key)] as? T
+        return obj.value[id]
+    }
+
+    public final func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
+        try setWrappedValue(wrap, forID: ObjectIdentifier(key))
+    }
+
+    public final func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
+        try wrappedValue(forID: ObjectIdentifier(key)) as? T
     }
 
 }

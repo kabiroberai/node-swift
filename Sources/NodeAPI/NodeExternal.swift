@@ -14,7 +14,7 @@ public final class NodeExternal: NodeValue {
     public init(value: Any) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
-        let unmanaged = Unmanaged.passRetained(Box<Any>(value))
+        let unmanaged = Unmanaged.passRetained(value as AnyObject)
         let opaque = unmanaged.toOpaque()
         var result: napi_value!
         try env.check(napi_create_external(env.raw, opaque, cFinalizer, nil, &result))
@@ -25,7 +25,7 @@ public final class NodeExternal: NodeValue {
         let env = base.environment
         var opaque: UnsafeMutableRawPointer!
         try env.check(napi_get_value_external(env.raw, base.rawValue(), &opaque))
-        return Unmanaged<Box<Any>>.fromOpaque(opaque).takeUnretainedValue()
+        return Unmanaged<AnyObject>.fromOpaque(opaque).takeUnretainedValue()
     }
 
 }

@@ -53,7 +53,7 @@ public struct NodeComputedProperty: NodeClassPropertyConvertible {
     public init(
         attributes: NodeProperty.Attributes = .defaultProperty,
         get: @escaping NodeFunction.Callback,
-        set: NodeFunction.Callback? = nil
+        set: NodeFunction.VoidCallback? = nil
     ) {
         var attributes = attributes
         if set == nil {
@@ -62,7 +62,12 @@ public struct NodeComputedProperty: NodeClassPropertyConvertible {
         }
         nodeProperty = .init(
             attributes: attributes,
-            value: set.map { .computed(get: get, set: $0) } ?? .computedGet(get)
+            value: set.map { set in
+                .computed(get: get) {
+                    try set($0)
+                    return try NodeUndefined()
+                }
+            } ?? .computedGet(get)
         )
     }
 }
