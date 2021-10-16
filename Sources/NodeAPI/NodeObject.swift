@@ -378,11 +378,8 @@ extension NodeObject {
             let objUnmanaged = Unmanaged<WrappedData>.fromOpaque(objRaw)
             let obj = objUnmanaged.takeUnretainedValue()
             obj.value[id] = wrap
-            // remove the wrapper if the dict is now empty
-            if obj.value.isEmpty {
-                try env.check(napi_remove_wrap(env.raw, raw, nil))
-                objUnmanaged.release()
-            }
+            // we can't remove the wrap here because we'd also have to remove the
+            // type tag, which isn't possible with current APIs
         } else if let wrap = wrap {
             let obj = WrappedData([:])
             obj.value[id] = wrap
