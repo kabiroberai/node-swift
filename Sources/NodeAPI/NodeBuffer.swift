@@ -60,7 +60,7 @@ extension Data: NodeValueConvertible, NodeValueCreatable {
         try NodeBuffer(copying: self)
     }
 
-    public init(_ value: NodeBuffer) throws {
+    public init(_ value: NodeTypedArray<UInt8>) throws {
         self = try value.data()
     }
 }
