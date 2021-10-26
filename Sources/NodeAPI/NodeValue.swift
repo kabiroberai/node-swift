@@ -171,16 +171,15 @@ extension NodeValue {
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
         var isEqual = false
-        try? NodeContext.withUnmanagedContext(environment: lhs.base.environment) { ctx in
-            try ctx.environment.check(
-                napi_strict_equals(
-                    ctx.environment.raw,
-                    lhs.base.rawValue(),
-                    rhs.base.rawValue(),
-                    &isEqual
-                )
+        let env = lhs.base.environment
+        try? env.check(
+            napi_strict_equals(
+                env.raw,
+                lhs.base.rawValue(),
+                rhs.base.rawValue(),
+                &isEqual
             )
-        }
+        )
         return isEqual
     }
 }

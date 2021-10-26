@@ -55,11 +55,11 @@ extension Dictionary: NodeValueCreatable where Key == String, Value == NodeValue
             filter: [.enumerable, .skipSymbols],
             conversion: .numbersToStrings
         ).as([NodeValue].self) else {
-            throw NodeAPIError(.invalidArg)
+            throw NodeAPIError(.invalidArg, message: "Could not convert JS object to [NodeValue]")
         }
-        try self.init(uniqueKeysWithValues: keys.map { k in
-            guard let k = try k.as(String.self) else {
-                throw NodeAPIError(.invalidArg)
+        try self.init(uniqueKeysWithValues: keys.map {
+            guard let k = try $0.as(String.self) else {
+                throw NodeAPIError(.invalidArg, message: "Expected string key in JS object, got \($0)")
             }
             return try (k, value[k].get())
         })
@@ -103,40 +103,34 @@ extension NodeObject {
         }
 
         public func set(to value: NodeValueConvertible) throws {
-            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
-                _ = try ctx.environment.check(napi_set_property(
-                    ctx.environment.raw,
-                    resolveObject().base.rawValue(),
-                    key.rawValue(),
-                    value.rawValue()
-                ))
-            }
+            try environment.check(napi_set_property(
+                environment.raw,
+                resolveObject().base.rawValue(),
+                key.rawValue(),
+                value.rawValue()
+            ))
         }
 
         @discardableResult
         public func delete() throws -> Bool {
             var result = false
-            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
-                try ctx.environment.check(napi_delete_property(
-                    ctx.environment.raw,
-                    resolveObject().base.rawValue(),
-                    key.rawValue(),
-                    &result
-                ))
-            }
+            try environment.check(napi_delete_property(
+                environment.raw,
+                resolveObject().base.rawValue(),
+                key.rawValue(),
+                &result
+            ))
             return result
         }
 
         public func exists() throws -> Bool {
             var result = false
-            try NodeContext.withUnmanagedContext(environment: environment) { ctx in
-                try ctx.environment.check(napi_has_property(
-                    ctx.environment.raw,
-                    resolveObject().base.rawValue(),
-                    key.rawValue(),
-                    &result
-                ))
-            }
+            try environment.check(napi_has_property(
+                environment.raw,
+                resolveObject().base.rawValue(),
+                key.rawValue(),
+                &result
+            ))
             return result
         }
 
@@ -180,14 +174,13 @@ extension NodeObject {
 
     public final func hasOwnProperty(_ key: NodeName) throws -> Bool {
         var result = false
-        try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
-            try ctx.environment.check(napi_has_own_property(
-                ctx.environment.raw,
-                base.rawValue(),
-                key.rawValue(),
-                &result
-            ))
-        }
+        let env = base.environment
+        try env.check(napi_has_own_property(
+            env.raw,
+            base.rawValue(),
+            key.rawValue(),
+            &result
+        ))
         return result
     }
 
@@ -259,22 +252,20 @@ extension NodeObject {
     }
 
     public final func define(_ properties: NodeObjectPropertyList) throws {
-        try NodeContext.withUnmanagedContext(environment: base.environment) { ctx in
-            let env = ctx.environment
-            var descriptors: [napi_property_descriptor] = []
-            var callbacks: [NodeProperty.Callbacks] = []
-            for (name, prop) in properties.elements {
-                let (desc, cb) = try prop.nodeProperty.raw(name: name)
-                descriptors.append(desc)
-                if let cb = cb {
-                    callbacks.append(cb)
-                }
+        let env = base.environment
+        var descriptors: [napi_property_descriptor] = []
+        var callbacks: [NodeProperty.Callbacks] = []
+        for (name, prop) in properties.elements {
+            let (desc, cb) = try prop.nodeProperty.raw(name: name)
+            descriptors.append(desc)
+            if let cb = cb {
+                callbacks.append(cb)
             }
-            try env.check(napi_define_properties(env.raw, base.rawValue(), properties.elements.count, descriptors))
-            if !callbacks.isEmpty {
-                // retain new callbacks
-                try addFinalizer { _ = callbacks }
-            }
+        }
+        try env.check(napi_define_properties(env.raw, base.rawValue(), properties.elements.count, descriptors))
+        if !callbacks.isEmpty {
+            // retain new callbacks
+            try addFinalizer { _ = callbacks }
         }
     }
 
@@ -315,19 +306,9 @@ extension NodeObject {
 
 // MARK: - Object Wrap
 
-#if !NAPI_VERSIONED || NAPI_GE_8
-
-public final class NodeWrappedDataKey<T> {
-    public init() {}
-}
-
-private typealias WrappedData = Box<[ObjectIdentifier: Any]>
-
-private func cWrapFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    Unmanaged<WrappedData>.fromOpaque(data).release()
-}
-
 extension NodeObject {
+
+    #if !NAPI_VERSIONED || NAPI_GE_8
 
     // we could make this public but its functionality can pretty much be
     // replicated by the wrapped value stuff
@@ -363,11 +344,32 @@ extension NodeObject {
         return result
     }
 
+    #else
+
+    fileprivate func setTypeTag(_ tag: UUID) throws {}
+    fileprivate func hasTypeTag(_ tag: UUID) throws -> Bool { false }
+
+    #endif
+
+}
+
+public final class NodeWrappedDataKey<T> {
+    public init() {}
+}
+
+private typealias WrappedData = Box<[ObjectIdentifier: Any]>
+
+private func cWrapFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+    Unmanaged<WrappedData>.fromOpaque(data).release()
 }
 
 extension NodeObject {
 
     private static let ourTypeTag = UUID()
+
+    // TODO: Figure out an alternative solution for wrap tag checking in NAPI < 8
+    // (atm we're just blindly trusting that the user is calling the API correctly,
+    // which is unsafe and semantically incorrect)
 
     final func setWrappedValue(_ wrap: Any?, forID id: ObjectIdentifier) throws {
         let env = base.environment
@@ -413,8 +415,6 @@ extension NodeObject {
     }
 
 }
-
-#endif
 
 // MARK: - Finalizers
 

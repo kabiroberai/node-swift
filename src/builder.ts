@@ -123,12 +123,12 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         throw new Error("Invalid value for napi option.");
     }
 
-    const allFlags = spmFlags.concat(
-        cFlags.flatMap(f => ["-Xcc", f]),
-        swiftFlags.flatMap(f => ["-Xswiftc", f]),
-        cxxFlags.flatMap(f => ["-Xcxx", f]),
-        linkerFlags.flatMap(f => ["-Xlinker", f])
-    );
+    const nonSPMFlags = [
+        ...cFlags.flatMap(f => ["-Xcc", f]),
+        ...swiftFlags.flatMap(f => ["-Xswiftc", f]),
+        ...cxxFlags.flatMap(f => ["-Xcxx", f]),
+        ...linkerFlags.flatMap(f => ["-Xlinker", f]),
+    ];
 
     const dump = spawnSync(
         "swift",
@@ -136,7 +136,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             "package",
             "dump-package",
             "--package-path", packagePath,
-            ...allFlags,
+            ...spmFlags.filter(f => f !== "-v"),
+            ...nonSPMFlags,
         ],
         { stdio: ["inherit", "pipe", "inherit"] }
     );
@@ -206,7 +207,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             "--build-path", buildDir,
             "--package-path", path.join(__dirname, "..", "NodeSwiftHost"),
             ...ldflags,
-            ...allFlags,
+            ...spmFlags,
+            ...nonSPMFlags,
         ],
         {
             stdio: "inherit",
@@ -236,6 +238,14 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         path.join(mode, `${product}.node`),
         path.join(buildDir, `${product}.node`)
     );
+
+    if (process.platform === "darwin") {
+        spawnSync(
+            "codesign",
+            ["-fs", "-", binaryPath],
+            { stdio: "inherit" }
+        );
+    }
 
     return binaryPath;
 }

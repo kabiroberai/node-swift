@@ -80,6 +80,11 @@ public struct NodeAPIError: Error {
         public let message: String?
         public let engineErrorCode: UInt32
 
+        init(message: String?, engineErrorCode: UInt32) {
+            self.message = message
+            self.engineErrorCode = engineErrorCode
+        }
+
         init(raw: napi_extended_error_info) {
             self.message = raw.error_message.map(String.init(cString:))
             self.engineErrorCode = raw.engine_error_code
@@ -92,5 +97,10 @@ public struct NodeAPIError: Error {
     init(_ code: Code, details: Details? = nil) {
         self.code = code
         self.details = details
+    }
+
+    init(_ code: Code, message: String) {
+        self.code = code
+        self.details = .init(message: message, engineErrorCode: 0)
     }
 }

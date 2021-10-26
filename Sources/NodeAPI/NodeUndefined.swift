@@ -15,4 +15,6 @@ public final class NodeUndefined: NodePrimitive {
         self.base = NodeValueBase(raw: result, in: ctx)
     }
 
+    public static let deferred = NodeDeferredValue { try NodeUndefined() }
+
 }

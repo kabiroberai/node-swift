@@ -83,12 +83,20 @@ extension NodeEnvironment {
         return obj
     }
 
+    func instanceData(for id: ObjectIdentifier) throws -> Any? {
+        try instanceDataDict().value[id]
+    }
+
+    func setInstanceData(_ value: Any?, for id: ObjectIdentifier) throws {
+        try instanceDataDict().value[id] = value
+    }
+
     public func instanceData<T>(for key: NodeInstanceDataKey<T>) throws -> T? {
-        try instanceDataDict().value[ObjectIdentifier(key)] as? T
+        try instanceData(for: ObjectIdentifier(key)) as? T
     }
 
     public func setInstanceData<T>(_ value: T?, for key: NodeInstanceDataKey<T>) throws {
-        try instanceDataDict().value[ObjectIdentifier(key)] = value
+        try setInstanceData(value, for: ObjectIdentifier(key))
     }
 }
 

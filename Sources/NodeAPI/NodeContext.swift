@@ -102,6 +102,11 @@ final class NodeContext {
     // NodeValueConvertible instances created with it (except for possibly the return value)
     // do not escape its own lifetime, which in turn is exactly the lifetime of the closure.
     // This trades away safety for performance.
+    //
+    // Note that this is a dangerous API to use. The cause of UB could be as innocuous as
+    // calling NodeClass.constructor(), which memoizes (and thereby escapes) the returned
+    // NodeFunction. Even something as trivial as calling NodeValueConvertible.rawValue()
+    // could thus yield UB, eg if the receiver is `NodeDeferredValue { MyClass.constructor() }`
     static func withUnmanagedContext<T>(environment: NodeEnvironment, do action: (NodeContext) throws -> T) throws -> T {
         try withContext(environment: environment, isTopLevel: false, do: action)
     }

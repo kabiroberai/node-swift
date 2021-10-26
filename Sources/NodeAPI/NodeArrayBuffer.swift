@@ -12,7 +12,7 @@ public struct NodeDataDeallocator {
 
     // retains the object until the deallocator is called, after which
     // it's released
-    static func capture(_ object: AnyObject) -> Self {
+    public static func capture(_ object: AnyObject) -> Self {
         .init { _ in _ = object }
     }
 }
