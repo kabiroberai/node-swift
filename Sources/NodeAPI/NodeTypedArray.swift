@@ -78,6 +78,12 @@ public protocol NodeTypedArrayElement {
     @_spi(NodeAPI) static var kind: NodeTypedArrayKind { get }
 }
 
+extension NodeTypedArrayElement {
+    @_spi(NodeAPI) public static var kind: NodeTypedArrayKind {
+        fatalError("Custom implementations of NodeTypedArrayKind are unsupported")
+    }
+}
+
 extension Int8: NodeTypedArrayElement {
     @_spi(NodeAPI) public static var kind: NodeTypedArrayKind { .int8 }
 }

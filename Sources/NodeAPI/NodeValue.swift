@@ -155,6 +155,16 @@ public protocol NodeValue: NodeValueConvertible, CustomStringConvertible {
     @_spi(NodeAPI) init(_ base: NodeValueBase)
 }
 
+extension NodeValue {
+    @_spi(NodeAPI) public var base: NodeValueBase { 
+        fatalError("Custom implementations of NodeValue are unsupported")
+    }
+
+    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
+        fatalError("Custom implementations of NodeValue are unsupported")
+    }
+}
+
 public protocol NodeValueCoercible: NodeValue {
     init(coercing value: NodeValueConvertible) throws
 }

@@ -4,6 +4,7 @@ import PackageDescription
 import Foundation
 
 let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC"] == "1"
+let enableEvolution = ProcessInfo.processInfo.environment["NODE_SWIFT_ENABLE_EVOLUTION"] == "1"
 
 let package = Package(
     name: "node-swift",
@@ -19,7 +20,10 @@ let package = Package(
         .target(name: "CNodeAPI"),
         .target(
             name: "NodeAPI",
-            dependencies: ["CNodeAPI"]
+            dependencies: ["CNodeAPI"],
+            swiftSettings: enableEvolution ? [
+                .unsafeFlags(["-enable-library-evolution"])
+            ] : []
         )
     ]
 )

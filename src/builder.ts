@@ -23,6 +23,8 @@ export interface Config {
     napi?: number | "experimental"
 
     static?: boolean
+    enableEvolution?: boolean
+
     spmFlags?: ConfigFlags
     cFlags?: ConfigFlags
     swiftFlags?: ConfigFlags
@@ -123,6 +125,11 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         throw new Error("Invalid value for napi option.");
     }
 
+    const enableEvolution = !!config.enableEvolution;
+    if (enableEvolution) {
+        spmFlags.push("--enable-parseable-module-interfaces");
+    }
+
     const nonSPMFlags = [
         ...cFlags.flatMap(f => ["-Xcc", f]),
         ...swiftFlags.flatMap(f => ["-Xswiftc", f]),
@@ -219,6 +226,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "NODE_SWIFT_HOST_BINARY": winHost,
                 "NODE_SWIFT_TARGET_MAC_VERSION": macVersion,
                 "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
+                "NODE_SWIFT_ENABLE_EVOLUTION": enableEvolution ? "1" : "0",
                 ...process.env,
             },
         }
