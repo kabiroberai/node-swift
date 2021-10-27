@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 import Foundation
 
 @dynamicMemberLookup

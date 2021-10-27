@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 import Foundation
 
 public protocol NodeModule {
@@ -28,21 +28,21 @@ private var threadModule: UnsafeMutablePointer<napi_module>? {
 // is assigned to module.priv
 @_cdecl("node_swift_main") @_spi(NodeAPI) public func _nodeSwiftInit(
     main: @convention(c) () -> Int,
-    module: UnsafeMutablePointer<napi_module>!
+    module: UnsafeMutableRawPointer!
 ) {
-    threadModule = module
+    threadModule = module.assumingMemoryBound(to: napi_module.self)
     defer { threadModule = nil }
     _ = main()
 }
 
-// see comments in CNodeAPI/node_init.c, NodeSwiftHost/ctor.c
+// see comment in NodeSwiftHost/ctor.c
 @_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
-    rawEnv: napi_env!,
-    exports _: napi_value!,
-    module: UnsafePointer<napi_module>!
-) -> napi_value? {
+    rawEnv: OpaquePointer!,
+    exports _: OpaquePointer!,
+    module: UnsafeRawPointer!
+) -> OpaquePointer? {
     let moduleType = Unmanaged<ModulePriv>
-        .fromOpaque(module.pointee.nm_priv)
+        .fromOpaque(module.assumingMemoryBound(to: napi_module.self).pointee.nm_priv)
         .takeUnretainedValue()
         .kind
     // the passed in `exports` is merely a convenience, ignore it

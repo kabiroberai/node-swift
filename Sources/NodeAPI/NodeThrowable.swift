@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 public protocol NodeExceptionConvertible: Error {
     func exceptionValue() throws -> NodeValue

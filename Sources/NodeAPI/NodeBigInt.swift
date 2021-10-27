@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 public final class NodeBigInt: NodePrimitive {
 

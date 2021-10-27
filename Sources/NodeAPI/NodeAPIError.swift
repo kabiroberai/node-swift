@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 public struct NodeAPIError: Error {
     public enum Code {

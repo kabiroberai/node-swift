@@ -1,5 +1,5 @@
 import Foundation
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 public final class NodeBuffer: NodeTypedArray<UInt8> {
 

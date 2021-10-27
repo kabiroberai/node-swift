@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 private typealias CallbackWrapper = Box<NodeFunction.Callback>
 

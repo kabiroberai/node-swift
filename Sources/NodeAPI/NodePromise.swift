@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 // similar to Combine.Future
 public final class NodePromise: NodeObject {

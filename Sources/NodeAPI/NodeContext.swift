@@ -1,5 +1,5 @@
 import Foundation
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 // An object context that manages allocations in native code.
 // You **must not** allow NodeContext instances to escape

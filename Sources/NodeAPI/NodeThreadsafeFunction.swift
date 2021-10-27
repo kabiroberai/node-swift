@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 private class Token {}
 private typealias CallbackBox = Box<() throws -> Void>

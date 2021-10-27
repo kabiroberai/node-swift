@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 private extension NodeEnvironment {
     private static let releaseQueueKey =

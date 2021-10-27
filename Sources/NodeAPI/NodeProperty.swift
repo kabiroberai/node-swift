@@ -1,4 +1,4 @@
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in

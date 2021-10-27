@@ -1,5 +1,5 @@
 import Foundation
-import CNodeAPI
+@_implementationOnly import CNodeAPI
 
 public struct NodeDataDeallocator {
     let action: (UnsafeMutableRawBufferPointer) -> Void
