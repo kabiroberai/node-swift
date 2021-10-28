@@ -60,8 +60,8 @@ extension Data: NodeValueConvertible, NodeValueCreatable {
         try NodeBuffer(copying: self)
     }
 
-    public init(_ value: NodeTypedArray<UInt8>) throws {
-        self = try value.data()
+    public static func from(_ value: NodeTypedArray<UInt8>) throws -> Data {
+        try value.data()
     }
 }
 

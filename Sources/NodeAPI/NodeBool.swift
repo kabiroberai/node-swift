@@ -37,7 +37,7 @@ extension Bool: NodePrimitiveConvertible, NodeValueCreatable {
         try NodeBool(self)
     }
 
-    public init(_ value: NodeBool) throws {
-        self = try value.bool()
+    public static func from(_ value: NodeBool) throws -> Bool {
+        try value.bool()
     }
 }

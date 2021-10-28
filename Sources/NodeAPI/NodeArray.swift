@@ -46,8 +46,8 @@ extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConver
     }
 }
 
-extension Array: NodeValueCreatable where Element == NodeValue {
-    public init(_ value: NodeArray) throws {
-        self = try (0..<value.count()).map { try value[Double($0)].get() }
+extension Array: NodeValueCreatable, AnyNodeValueCreatable where Element == NodeValue {
+    public static func from(_ value: NodeArray) throws -> [Element] {
+        try (0..<value.count()).map { try value[Double($0)].get() }
     }
 }

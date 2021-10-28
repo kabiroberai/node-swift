@@ -62,15 +62,15 @@ extension NodeFunction {
 
 }
 
-public protocol NodeClass: AnyObject, NodeValueConvertible {
+public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
     // mapping from Swift -> JS props
     static var properties: NodeClassPropertyList { get }
-
-    // constructor (default implementation throws)
-    init(_ arguments: NodeFunction.Arguments) throws
     
     // default implementations provided:
     static var name: String { get }
+
+    // constructor (default implementation throws)
+    init(_ arguments: NodeFunction.Arguments) throws
 }
 
 extension NodeClass {
@@ -100,12 +100,16 @@ extension NodeClass {
         .init(self)
     }
 
-    static func from(_ args: NodeFunction.Arguments) throws -> Self {
-        guard let this = args.this else { throw NodeAPIError(.objectExpected) }
-        guard let obj = try this.wrappedValue(forID: classID) as? Self else {
+    public static func from(_ object: NodeObject) throws -> Self {
+        guard let value = try object.wrappedValue(forID: classID) as? Self else {
             throw NodeAPIError(.objectExpected)
         }
-        return obj
+        return value
+    }
+
+    static func from(args: NodeFunction.Arguments) throws -> Self {
+        guard let this = args.this else { throw NodeAPIError(.objectExpected) }
+        return try this.as(self)
     }
 
     private static func _constructor() throws -> (NodeFunction, NodeSymbol) {
@@ -172,10 +176,10 @@ private extension NodeFunction.Arguments {
         guard idx < count else {
             throw try NodeError(code: nil, message: "Function requires at least \(idx + 1) arguments")
         }
-        guard let converted = try self[idx].as(T.NodeValueType.self) else {
-            throw try NodeError(code: nil, message: "Parameter \(idx) should be of type \(T.NodeValueType.self)")
+        guard let converted = try self[idx].as(T.self) else {
+            throw try NodeError(code: nil, message: "Parameter \(idx) should convertible to type \(T.self)")
         }
-        return try T(converted)
+        return converted
     }
 }
 
@@ -184,7 +188,7 @@ extension NodeMethod {
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (NodeFunction.Arguments) throws -> NodeValueConvertible
     ) {
-        self.init(attributes: attributes) { try callback(T.from($0))($0) }
+        self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
 
     private init<T: NodeClass>(
@@ -256,7 +260,7 @@ extension NodeComputedProperty {
         attributes: NodeProperty.Attributes = .defaultProperty,
         _ keyPath: KeyPath<T, U>
     ) {
-        self.init(attributes: attributes) { try T.from($0)[keyPath: keyPath] }
+        self.init(attributes: attributes) { try T.from(args: $0)[keyPath: keyPath] }
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & NodeValueCreatable>(
@@ -264,7 +268,7 @@ extension NodeComputedProperty {
         _ keyPath: ReferenceWritableKeyPath<T, U>
     ) {
         self.init(attributes: attributes) {
-            try T.from($0)[keyPath: keyPath]
+            try T.from(args: $0)[keyPath: keyPath]
         } set: { args in
             guard args.count == 1 else {
                 throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
@@ -272,7 +276,7 @@ extension NodeComputedProperty {
             guard let converted = try args[0].as(U.self) else {
                 throw NodeAPIError(.invalidArg, message: "Coud not convert \(args[0]) to type \(U.self)")
             }
-            try T.from(args)[keyPath: keyPath] = converted
+            try T.from(args: args)[keyPath: keyPath] = converted
         }
     }
 
@@ -283,13 +287,13 @@ extension NodeComputedProperty {
     ) {
         self.init(
             attributes: attributes, 
-            get: { try get(T.from($0))() },
+            get: { try get(T.from(args: $0))() },
             set: set.map { setter in
                 { args in
                     guard args.count == 1 else {
                         throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
                     }
-                    try setter(T.from(args))(args[0])
+                    try setter(T.from(args: args))(args[0])
                 }
             }
         )
@@ -302,7 +306,7 @@ extension NodeComputedProperty {
     ) {
         self.init(
             attributes: attributes, 
-            get: { try get(T.from($0))().nodeValue() },
+            get: { try get(T.from(args: $0))().nodeValue() },
             set: set.map { setter in
                 { args in
                     guard args.count == 1 else {
@@ -311,7 +315,7 @@ extension NodeComputedProperty {
                     guard let arg = try args[0].as(U.self) else {
                         throw NodeAPIError(.invalidArg, message: "Could not convert \(args[0]) to type \(U.self)")
                     }
-                    try setter(T.from(args))(arg)
+                    try setter(T.from(args: args))(arg)
                 }
             }
         )

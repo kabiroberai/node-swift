@@ -35,7 +35,7 @@ extension Date: NodeValueConvertible, NodeValueCreatable {
         try NodeDate(self)
     }
 
-    public init(_ value: NodeDate) throws {
-        self = try value.date()
+    public static func from(_ value: NodeDate) throws -> Date {
+        try value.date()
     }
 }

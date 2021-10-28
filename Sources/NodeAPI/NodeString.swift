@@ -54,7 +54,7 @@ extension String: NodePrimitiveConvertible, NodeName, NodeValueCreatable {
         try NodeString(self)
     }
 
-    public init(_ value: NodeString) throws {
-        self = try value.string()
+    public static func from(_ value: NodeString) throws -> String {
+        try value.string()
     }
 }

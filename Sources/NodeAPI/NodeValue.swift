@@ -132,9 +132,23 @@ public struct NodeDeferredValue: NodeValueConvertible {
     }
 }
 
-public protocol NodeValueCreatable {
-    associatedtype NodeValueType: NodeValue
-    init(_ value: NodeValueType) throws
+public protocol AnyNodeValueCreatable {
+    static func from(_ value: NodeValue) throws -> Self?
+}
+
+// for when ValueType is losslessly convertible to Self
+// (modulo errors)
+public protocol NodeValueCreatable: AnyNodeValueCreatable {
+    associatedtype ValueType: NodeValue
+    static func from(_ value: ValueType) throws -> Self
+}
+
+extension NodeValueCreatable {
+    public static func from(_ value: NodeValue) throws -> Self? {
+        // calls the strongly typed from(_:) after converting
+        // to ValueType
+        try value.as(ValueType.self).map(from(_:))
+    }
 }
 
 extension NodeValueConvertible {
@@ -324,8 +338,12 @@ extension NodeValue {
         try base.as(T.self)
     }
 
-    public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T? {
-        try self.as(T.NodeValueType.self).map(T.init(_:))
+    public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
+        try T.from(self)
+    }
+
+    public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T where T.ValueType == Self {
+        try T.from(self)
     }
 
     // Array itself conforms to NodeValueCreatable iff Element == NodeValue, i.e.

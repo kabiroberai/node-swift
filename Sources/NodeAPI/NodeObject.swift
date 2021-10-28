@@ -48,8 +48,8 @@ extension Dictionary: NodeValueConvertible, NodeObjectConvertible, NodePropertyC
     }
 }
 
-extension Dictionary: NodeValueCreatable where Key == String, Value == NodeValue {
-    public init(_ value: NodeObject) throws {
+extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == String, Value == NodeValue {
+    public static func from(_ value: NodeObject) throws -> [Key: Value] {
         guard let keys = try value.propertyNames(
             collectionMode: .includePrototypes,
             filter: [.enumerable, .skipSymbols],
@@ -57,7 +57,7 @@ extension Dictionary: NodeValueCreatable where Key == String, Value == NodeValue
         ).as([NodeValue].self) else {
             throw NodeAPIError(.invalidArg, message: "Could not convert JS object to [NodeValue]")
         }
-        try self.init(uniqueKeysWithValues: keys.map {
+        return try Dictionary(uniqueKeysWithValues: keys.map {
             guard let k = try $0.as(String.self) else {
                 throw NodeAPIError(.invalidArg, message: "Expected string key in JS object, got \($0)")
             }

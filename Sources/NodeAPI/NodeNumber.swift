@@ -37,7 +37,7 @@ extension Double: NodePrimitiveConvertible, NodeValueCreatable {
         try NodeNumber(self)
     }
 
-    public init(_ value: NodeNumber) throws {
-        self = try value.double()
+    public static func from(_ value: NodeNumber) throws -> Double {
+        try value.double()
     }
 }

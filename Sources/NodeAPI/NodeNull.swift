@@ -21,9 +21,18 @@ extension Optional: NodeValueConvertible, NodePropertyConvertible where Wrapped:
     public func nodeValue() throws -> NodeValue {
         try self?.nodeValue() ?? NodeNull()
     }
+}
 
-    // we don't conform to NodeValueCreatable because the associatedtype
-    // would have to be NodeNull i.e. we'd never get a .some optional
+extension Optional: AnyNodeValueCreatable where Wrapped: AnyNodeValueCreatable {
+    public static func from(_ value: NodeValue) throws -> Optional<Optional<Wrapped>> {
+        if let val = try Wrapped.from(value) {
+            return .some(val)
+        } else if try value.as(NodeNull.self) != nil {
+            return .some(.none)
+        } else {
+            return .none
+        }
+    }
 }
 
 extension Optional: NodeClassPropertyConvertible where Wrapped: NodePrimitiveConvertible {}
