@@ -1,7 +1,11 @@
 const assert = require("assert");
 
 const { File } = require("../../build/Test.node");
+
+assert.strictEqual(File.default().filename, "default.txt")
+
 const file = new File("test.txt");
+assert.strictEqual(file.filename, "test.txt")
 
 let err = "";
 try {
@@ -9,7 +13,7 @@ try {
 } catch (e) {
     err = `${e}`;
 }
-assert(err.includes('NSPOSIXErrorDomain'))
+assert(err.includes("NSPOSIXErrorDomain"))
 
 const toAdd = "hello, world!\n"
 file.contents = Buffer.from(toAdd);

@@ -4,10 +4,17 @@ import NodeAPI
 final class File: NodeClass {
     static let properties: NodeClassPropertyList = [
         "contents": NodeComputedProperty(get: contents, set: setContents),
-        "unlink": NodeMethod(unlink)
+        "unlink": NodeMethod(unlink),
+        "default": NodeMethod(attributes: .static, `default`),
+        "filename": NodeComputedProperty(get: filename)
     ]
 
     let url: URL
+
+    init(url: URL) {
+        self.url = url
+    }
+
     init(_ args: NodeFunction.Arguments) throws {
         guard let path = try args[0].as(String.self) else {
             throw try NodeError(
@@ -16,6 +23,14 @@ final class File: NodeClass {
             )
         }
         url = URL(fileURLWithPath: path)
+    }
+
+    static func `default`(_ args: NodeFunction.Arguments) throws -> NodeValueConvertible {
+        return try File(url: URL(fileURLWithPath: "default.txt")).wrapped()
+    }
+
+    func filename() throws -> String {
+        url.lastPathComponent
     }
 
     func contents() throws -> Data {

@@ -62,14 +62,35 @@ extension NodeFunction {
 
 }
 
-public protocol NodeClass: AnyObject {
+public protocol NodeClass: AnyObject, NodeValueConvertible {
     // mapping from Swift -> JS props
     static var properties: NodeClassPropertyList { get }
-    // constructor
-    init(_ arguments: NodeFunction.Arguments) throws
 
+    // constructor (default implementation throws)
+    init(_ arguments: NodeFunction.Arguments) throws
+    
     // default implementations provided:
     static var name: String { get }
+}
+
+extension NodeClass {
+    public init(_ arguments: NodeFunction.Arguments) throws {
+        throw NodeAPIError(
+            .genericFailure, 
+            message: "Class \(Self.name) is not constructible from JavaScript"
+        )
+    }
+}
+
+enum NodeClassSpecialConstructor<T: NodeClass> {
+    case wrap(T)
+
+    func callAsFunction(_ args: NodeFunction.Arguments) throws -> T {
+        switch self {
+        case .wrap(let value):
+            return value
+        }
+    }
 }
 
 extension NodeClass {
@@ -87,25 +108,62 @@ extension NodeClass {
         return obj
     }
 
-    public static func constructor() throws -> NodeFunction {
+    private static func _constructor() throws -> (NodeFunction, NodeSymbol) {
         let id = classID
         let env = NodeEnvironment.current
         // we memoize this because we don't want to call napi_define_class multiple
         // times
-        if let ctor = try env.instanceData(for: id) as? NodeFunction {
-            return ctor
+        if let pair = try env.instanceData(for: id) as? (NodeFunction, NodeSymbol) {
+            return pair
         }
+        // this symbol is a special indicator: if we call the constructor with this symbol
+        // as the first argument, it indicates a special constructor call. Such a call can
+        // only be made by someone who possesses the symbol, and therefore can't be forged
+        // from JS
+        let sym = try NodeSymbol(description: "Special constructor for NodeSwift class '\(name)'")
         let newCtor = try NodeFunction(className: name, properties: properties) { args in
             guard let this = args.this else { throw NodeAPIError(.objectExpected) }
-            let value = try self.init(args)
+            let value: Self
+            if args.count == 2, 
+                let argSym = try? args[0].as(NodeSymbol.self),
+                sym == argSym {
+                    guard let ext = try args[1].as(NodeExternal.self),
+                        let special = try ext.value() as? NodeClassSpecialConstructor<Self> else {
+                            throw NodeAPIError(
+                                .invalidArg, 
+                                message: "Invalid call to special constructor of \(name)"
+                            )
+                        }
+                    value = try special(args)
+                } else {
+                    value = try self.init(args)
+                }
             try this.setWrappedValue(value, forID: id)
         }
-        try env.setInstanceData(newCtor, for: id)
-        return newCtor
+        let pair = (newCtor, sym)
+        try env.setInstanceData(pair, for: id)
+        return pair
+    }
+
+    static func invokeSpecialConstructor(_ specialConstructor: NodeClassSpecialConstructor<Self>) throws -> NodeObject {
+        let (ctor, sym) = try Self._constructor()
+        return try ctor.new(sym, NodeExternal(value: specialConstructor))
+    }
+
+    public static func constructor() throws -> NodeFunction {
+        try _constructor().0
     }
 
     public static var deferredConstructor: NodeValueConvertible {
         NodeDeferredValue { try constructor() }
+    }
+
+    public func wrapped() throws -> NodeObject {
+        try Self.invokeSpecialConstructor(.wrap(self))
+    }
+
+    public func nodeValue() throws -> NodeValue {
+        try wrapped()
     }
 }
 
@@ -221,33 +279,41 @@ extension NodeComputedProperty {
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultProperty,
         get: @escaping (T) -> () throws -> NodeValueConvertible,
-        set: @escaping (T) -> (NodeValue) throws -> Void
+        set: ((T) -> (NodeValue) throws -> Void)? = nil
     ) {
-        self.init(attributes: attributes) {
-            try get(T.from($0))()
-        } set: { args in
-            guard args.count == 1 else {
-                throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
+        self.init(
+            attributes: attributes, 
+            get: { try get(T.from($0))() },
+            set: set.map { setter in
+                { args in
+                    guard args.count == 1 else {
+                        throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
+                    }
+                    try setter(T.from(args))(args[0])
+                }
             }
-            try set(T.from(args))(args[0])
-        }
+        )
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & NodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultProperty,
         get: @escaping (T) -> () throws -> U,
-        set: @escaping (T) -> (U) throws -> Void
+        set: ((T) -> (U) throws -> Void)? = nil
     ) {
-        self.init(attributes: attributes) {
-            try get(T.from($0))().nodeValue()
-        } set: { args in
-            guard args.count == 1 else {
-                throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
+        self.init(
+            attributes: attributes, 
+            get: { try get(T.from($0))().nodeValue() },
+            set: set.map { setter in
+                { args in
+                    guard args.count == 1 else {
+                        throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
+                    }
+                    guard let arg = try args[0].as(U.self) else {
+                        throw NodeAPIError(.invalidArg, message: "Could not convert \(args[0]) to type \(U.self)")
+                    }
+                    try setter(T.from(args))(arg)
+                }
             }
-            guard let arg = try args[0].as(U.self) else {
-                throw NodeAPIError(.invalidArg, message: "Could not convert \(args[0]) to type \(U.self)")
-            }
-            try set(T.from(args))(arg)
-        }
+        )
     }
 }
