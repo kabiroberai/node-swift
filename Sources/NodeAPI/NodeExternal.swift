@@ -1,7 +1,7 @@
 @_implementationOnly import CNodeAPI
 
 private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    Unmanaged<Box<Any>>.fromOpaque(data).release()
+    Unmanaged<AnyObject>.fromOpaque(data).release()
 }
 
 public final class NodeExternal: NodeValue {
