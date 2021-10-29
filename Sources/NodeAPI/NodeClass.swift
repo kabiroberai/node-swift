@@ -101,14 +101,20 @@ extension NodeClass {
     }
 
     public static func from(_ object: NodeObject) throws -> Self {
-        guard let value = try object.wrappedValue(forID: classID) as? Self else {
-            throw NodeAPIError(.objectExpected)
+        let wrappedValue = try object.wrappedValue(forID: classID)
+        guard let value = wrappedValue as? Self else {
+            throw NodeAPIError(
+                .objectExpected,
+                message: "Object of type \(name) is not correctly wrapped"
+            )
         }
         return value
     }
 
     static func from(args: NodeFunction.Arguments) throws -> Self {
-        guard let this = args.this else { throw NodeAPIError(.objectExpected) }
+        guard let this = args.this else { 
+            throw NodeAPIError(.objectExpected, message: "Function on \(name) called without binding `this`")
+        }
         return try this.as(self)
     }
 
@@ -126,7 +132,12 @@ extension NodeClass {
         // from JS
         let sym = try NodeSymbol(description: "Special constructor for NodeSwift class '\(name)'")
         let newCtor = try NodeFunction(className: name, properties: properties) { args in
-            guard let this = args.this else { throw NodeAPIError(.objectExpected) }
+            guard let this = args.this else { 
+                throw NodeAPIError(
+                    .objectExpected, 
+                    message: "Constructor on \(name) called without binding `this`"
+                )
+            }
             let value: Self
             if args.count == 2, 
                 let argSym = try? args[0].as(NodeSymbol.self),
