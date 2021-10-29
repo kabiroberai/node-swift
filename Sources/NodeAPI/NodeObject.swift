@@ -308,6 +308,12 @@ extension NodeObject {
 
 extension NodeObject {
 
+    fileprivate enum TypeTagStatus {
+        case present
+        case absent
+        case unknown
+    }
+
     #if !NAPI_VERSIONED || NAPI_GE_8
 
     // we could make this public but its functionality can pretty much be
@@ -331,7 +337,7 @@ extension NodeObject {
         }
     }
 
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> Bool {
+    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus {
         let env = base.environment
         var result = false
         try withTypeTag(tag) {
@@ -341,13 +347,13 @@ extension NodeObject {
                 )
             )
         }
-        return result
+        return result ? .present : .absent
     }
 
     #else
 
     fileprivate func setTypeTag(_ tag: UUID) throws {}
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> Bool { false }
+    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus { .unknown }
 
     #endif
 
@@ -374,7 +380,7 @@ extension NodeObject {
     final func setWrappedValue(_ wrap: Any?, forID id: ObjectIdentifier) throws {
         let env = base.environment
         let raw = try base.rawValue()
-        if try hasTypeTag(Self.ourTypeTag) {
+        if try hasTypeTag(Self.ourTypeTag) == .present {
             var objRaw: UnsafeMutableRawPointer!
             try env.check(napi_unwrap(env.raw, raw, &objRaw))
             let objUnmanaged = Unmanaged<WrappedData>.fromOpaque(objRaw)
@@ -398,7 +404,7 @@ extension NodeObject {
     }
 
     final func wrappedValue(forID id: ObjectIdentifier) throws -> Any? {
-        guard try hasTypeTag(Self.ourTypeTag) else { return nil }
+        guard try hasTypeTag(Self.ourTypeTag) != .absent else { return nil }
         let env = base.environment
         var objRaw: UnsafeMutableRawPointer!
         try env.check(napi_unwrap(env.raw, base.rawValue(), &objRaw))
@@ -406,10 +412,14 @@ extension NodeObject {
         return obj.value[id]
     }
 
+    /// - Warning: when using NAPI < 8, it is currently UB to call this on an object
+    /// that already has a wrapped value.
     public final func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
         try setWrappedValue(wrap, forID: ObjectIdentifier(key))
     }
 
+    /// - Warning: when using NAPI < 8, it is currently UB to call this on an object
+    /// that does not have the expected wrapped value.
     public final func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
         try wrappedValue(forID: ObjectIdentifier(key)) as? T
     }
