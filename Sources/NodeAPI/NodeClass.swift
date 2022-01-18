@@ -264,6 +264,33 @@ extension NodeMethod {
             $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4)
         ) }
     }
+
+    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { try callback($0)(
+            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5)
+        ) }
+    }
+
+    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable, A6: NodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { try callback($0)(
+            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5), $1.arg(6)
+        ) }
+    }
+
+    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable, A6: NodeValueCreatable, A7: NodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { try callback($0)(
+            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5), $1.arg(6), $1.arg(7)
+        ) }
+    }
 }
 
 extension NodeComputedProperty {
