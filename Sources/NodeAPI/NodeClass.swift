@@ -183,12 +183,12 @@ extension NodeClass {
 }
 
 private extension NodeFunction.Arguments {
-    func arg<T: NodeValueCreatable>(_ idx: Int) throws -> T {
+    func arg<T: AnyNodeValueCreatable>(_ idx: Int) throws -> T {
         guard idx < count else {
             throw try NodeError(code: nil, message: "Function requires at least \(idx + 1) arguments")
         }
         guard let converted = try self[idx].as(T.self) else {
-            throw try NodeError(code: nil, message: "Parameter \(idx) should convertible to type \(T.self)")
+            throw try NodeError(code: nil, message: "Could not convert parameter \(idx) to type \(T.self)")
         }
         return converted
     }
@@ -220,7 +220,7 @@ extension NodeMethod {
         self.init(attributes: attributes) { target, _ in try callback(target)() }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0) throws -> NodeValueConvertible
     ) {
@@ -229,7 +229,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1) throws -> NodeValueConvertible
     ) {
@@ -238,7 +238,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2) throws -> NodeValueConvertible
     ) {
@@ -247,7 +247,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2, A3) throws -> NodeValueConvertible
     ) {
@@ -256,7 +256,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4) throws -> NodeValueConvertible
     ) {
@@ -265,7 +265,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible
     ) {
@@ -274,7 +274,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable, A6: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible
     ) {
@@ -283,7 +283,7 @@ extension NodeMethod {
         ) }
     }
 
-    public init<T: NodeClass, A0: NodeValueCreatable, A1: NodeValueCreatable, A2: NodeValueCreatable, A3: NodeValueCreatable, A4: NodeValueCreatable, A5: NodeValueCreatable, A6: NodeValueCreatable, A7: NodeValueCreatable>(
+    public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible
     ) {
@@ -294,30 +294,6 @@ extension NodeMethod {
 }
 
 extension NodeComputedProperty {
-    public init<T: NodeClass, U: NodeValueConvertible & NodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
-        _ keyPath: KeyPath<T, U>
-    ) {
-        self.init(attributes: attributes) { try T.from(args: $0)[keyPath: keyPath] }
-    }
-
-    public init<T: NodeClass, U: NodeValueConvertible & NodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
-        _ keyPath: ReferenceWritableKeyPath<T, U>
-    ) {
-        self.init(attributes: attributes) {
-            try T.from(args: $0)[keyPath: keyPath]
-        } set: { args in
-            guard args.count == 1 else {
-                throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
-            }
-            guard let converted = try args[0].as(U.self) else {
-                throw NodeAPIError(.invalidArg, message: "Coud not convert \(args[0]) to type \(U.self)")
-            }
-            try T.from(args: args)[keyPath: keyPath] = converted
-        }
-    }
-
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultProperty,
         get: @escaping (T) -> () throws -> NodeValueConvertible,
@@ -337,25 +313,48 @@ extension NodeComputedProperty {
         )
     }
 
-    public init<T: NodeClass, U: NodeValueConvertible & NodeValueCreatable>(
+    public init<T: NodeClass, U: NodeValueConvertible>(
+        attributes: NodeProperty.Attributes = .defaultProperty,
+        get: @escaping (T) -> () throws -> U
+    ) {
+        self.init(
+            attributes: attributes,
+            get: { (obj: T) in { try get(obj)().nodeValue() } }
+        )
+    }
+
+    public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultProperty,
         get: @escaping (T) -> () throws -> U,
-        set: ((T) -> (U) throws -> Void)? = nil
+        set: @escaping (T) -> (U) throws -> Void
     ) {
         self.init(
             attributes: attributes, 
-            get: { try get(T.from(args: $0))().nodeValue() },
-            set: set.map { setter in
-                { args in
-                    guard args.count == 1 else {
-                        throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")
-                    }
-                    guard let arg = try args[0].as(U.self) else {
-                        throw NodeAPIError(.invalidArg, message: "Could not convert \(args[0]) to type \(U.self)")
-                    }
-                    try setter(T.from(args: args))(arg)
+            get: { (obj: T) in { try get(obj)().nodeValue() } },
+            set: { (obj: T) in { arg in
+                guard let arg = try arg.as(U.self) else {
+                    throw NodeAPIError(.invalidArg, message: "Could not convert \(arg) to type \(U.self)")
                 }
-            }
+                try set(obj)(arg)
+            } }
         )
+    }
+
+    public init<T: NodeClass, U: NodeValueConvertible>(
+        attributes: NodeProperty.Attributes = .defaultProperty,
+        _ keyPath: KeyPath<T, U>
+    ) {
+        self.init(attributes: attributes) { (obj: T) in { obj[keyPath: keyPath] } }
+    }
+
+    public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultProperty,
+        _ keyPath: ReferenceWritableKeyPath<T, U>
+    ) {
+        self.init(attributes: attributes) {
+            (cls: T) in { cls[keyPath: keyPath] }
+        } set: { (obj: T) in { newValue in
+            obj[keyPath: keyPath] = newValue
+        } }
     }
 }

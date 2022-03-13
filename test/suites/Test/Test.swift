@@ -6,7 +6,8 @@ final class File: NodeClass {
         "contents": NodeComputedProperty(get: contents, set: setContents),
         "unlink": NodeMethod(unlink),
         "default": NodeMethod(attributes: .static, `default`),
-        "filename": NodeComputedProperty(get: filename)
+        "filename": NodeComputedProperty(get: filename),
+        "reply": NodeMethod(reply)
     ]
 
     let url: URL
@@ -39,6 +40,11 @@ final class File: NodeClass {
 
     func setContents(_ newValue: Data) throws {
         try newValue.write(to: url, options: .atomic)
+    }
+
+    // unrelated to files but an important test nonetheless
+    func reply(_ parameter: String?) -> String {
+        "You said \(parameter ?? "nothing")"
     }
 
     func unlink() throws -> NodeValueConvertible {

@@ -94,8 +94,8 @@ private extension NodeEnvironment {
     }
 
     deinit {
-        // this can be called on any thread, so we can't just use `environment`
-        // directly here. Instead, we utilize a threadsafe release function
+        // this can be called on any thread, so we rely on a NodeAsyncQueue
+        // when we need to access the current env.
         switch guts {
         case .unmanaged:
             break
