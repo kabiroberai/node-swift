@@ -2,12 +2,12 @@ import Foundation
 
 struct NilValueError: Error {}
 
-class WeakBox<T: AnyObject> {
+final class WeakBox<T: AnyObject> {
     weak var value: T?
     init(_ value: T) { self.value = value }
 }
 
-class Box<T> {
+final class Box<T> {
     var value: T
     init(_ value: T) { self.value = value }
 }
