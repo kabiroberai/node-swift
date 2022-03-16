@@ -20,5 +20,6 @@ file.contents = Buffer.from(toAdd);
 assert(file.contents.toString().endsWith(toAdd));
 file.unlink();
 
-assert(file.reply("hi") == "You said hi");
-assert(file.reply(null) == "You said nothing");
+assert.strictEqual(file.reply("hi"), "You said hi");
+assert.strictEqual(file.reply(null), "You said nothing");
+assert.strictEqual(file.reply(undefined), "You said nothing");

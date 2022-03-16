@@ -24,13 +24,18 @@ extension Optional: NodeValueConvertible, NodePropertyConvertible where Wrapped:
 }
 
 extension Optional: AnyNodeValueCreatable where Wrapped: AnyNodeValueCreatable {
-    public static func from(_ value: NodeValue) throws -> Optional<Optional<Wrapped>> {
-        if let val = try Wrapped.from(value) {
-            return .some(val)
-        } else if try value.as(NodeNull.self) != nil {
-            return .some(.none)
-        } else {
-            return .none
+    public static func from(_ value: NodeValue) throws -> Wrapped?? {
+        switch try value.type() {
+        case .null, .undefined:
+            // conversion succeeded, and we got nil
+            return Wrapped??.some(.none)
+        default:
+            if let val = try Wrapped.from(value) {
+                return val
+            } else {
+                // conversion failed
+                return Wrapped??.none
+            }
         }
     }
 }
