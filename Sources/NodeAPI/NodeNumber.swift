@@ -41,3 +41,13 @@ extension Double: NodePrimitiveConvertible, NodeValueCreatable {
         try value.double()
     }
 }
+
+extension Int: NodePrimitiveConvertible, AnyNodeValueCreatable {
+    public func nodeValue() throws -> NodeValue {
+        try Double(self).nodeValue()
+    }
+
+    public static func from(_ value: NodeValue) throws -> Int? {
+        try value.as(Double.self).flatMap(Int.init(exactly:))
+    }
+}

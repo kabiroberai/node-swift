@@ -40,7 +40,7 @@ extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConver
     public func nodeValue() throws -> NodeValue {
         let arr = try NodeArray(capacity: count)
         for (idx, element) in enumerated() {
-            try arr[Double(idx)].set(to: element)
+            try arr[idx].set(to: element)
         }
         return arr
     }
@@ -48,6 +48,6 @@ extension Array: NodeValueConvertible, NodeObjectConvertible, NodePropertyConver
 
 extension Array: NodeValueCreatable, AnyNodeValueCreatable where Element == NodeValue {
     public static func from(_ value: NodeArray) throws -> [Element] {
-        try (0..<value.count()).map { try value[Double($0)].get() }
+        try (0..<value.count()).map { try value[$0].nodeValue() }
     }
 }

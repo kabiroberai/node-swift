@@ -25,7 +25,7 @@ extension Optional: NodeValueConvertible, NodePropertyConvertible where Wrapped:
 
 extension Optional: AnyNodeValueCreatable where Wrapped: AnyNodeValueCreatable {
     public static func from(_ value: NodeValue) throws -> Wrapped?? {
-        switch try value.type() {
+        switch try value.nodeType() {
         case .null, .undefined:
             // conversion succeeded, and we got nil
             return Wrapped??.some(.none)

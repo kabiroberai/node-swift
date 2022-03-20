@@ -219,7 +219,7 @@ protocol ConcreteNodeValue: NodeValue, Equatable {}
 
 // MARK: - Value Types
 
-enum NodeValueType {
+public enum NodeValueType {
     struct UnknownTypeError: Error {
         let type: napi_valuetype
     }
@@ -290,18 +290,14 @@ enum NodeValueType {
 
 extension NodeValueBase {
 
-    func type() throws -> NodeValueType {
+    func nodeType() throws -> NodeValueType {
         var type = napi_undefined
         try environment.check(napi_typeof(environment.raw, rawValue(), &type))
         return try NodeValueType(raw: type)
     }
 
-    func concrete() throws -> NodeValue {
-        try type().concreteType.init(self)
-    }
-
     func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
-        if try self.type().concreteType == type {
+        if try self.nodeType().concreteType == type {
             return T(self)
         } else if let objectType = type as? NodeObject.Type {
             guard try objectType.isObjectType(for: self) else {
@@ -315,10 +311,10 @@ extension NodeValueBase {
 
 }
 
-extension NodeValue {
+extension NodeValueConvertible {
 
-    func type() throws -> NodeValueType {
-        try base.type()
+    public func nodeType() throws -> NodeValueType {
+        try nodeValue().base.nodeType()
     }
 
     // TODO: Ideally, NodeObject would be a class cluster such that
@@ -332,14 +328,15 @@ extension NodeValue {
     // all code would have to go through a static method such as
     // `NodeValueBase.create(raw:in:) -> NodeValue` in order to create
     // a value. The create method would check the type() and return an
-    // instance of the appropriate class.
+    // instance of the appropriate class. Accordingly, we'd replace all
+    // occurrences of AnyNodeValue.init with this API.
     public func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
         // TODO: Maybe throw TypeError if casting fails instead of returning nil?
-        try base.as(T.self)
+        try nodeValue().base.as(T.self)
     }
 
     public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
-        try T.from(self)
+        try T.from(nodeValue())
     }
 
     public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T where T.ValueType == Self {
@@ -377,4 +374,14 @@ extension NodeValue {
         }
     }
 
+}
+
+// when we have an untyped napi_value and we want an opaque NodeValue
+// (the user can inspect the type with nodeType() and/or cast accordingly
+// using .as())
+struct AnyNodeValue: NodeValue {
+    let base: NodeValueBase
+    init(raw: napi_value, in ctx: NodeContext = .current) {
+        self.base = NodeValueBase(raw: raw, in: ctx)
+    }
 }

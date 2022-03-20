@@ -30,7 +30,7 @@ public final class NodeFunction: NodeObject {
                 len = 0
                 try env.check(napi_get_cb_info(env.raw, raw, &argc, buf.baseAddress, &this, &data))
                 len = argc
-            }.map { try NodeValueBase(raw: $0!, in: ctx).concrete() }
+            }.map { AnyNodeValue(raw: $0!, in: ctx) }
 
             var newTarget: napi_value?
             try env.check(napi_get_new_target(env.raw, raw, &newTarget))
@@ -60,13 +60,10 @@ public final class NodeFunction: NodeObject {
     }
 
     // this may seem useless since .function is handled in NodeValueType, but
-    // consider the following example:
-    // try NodeObject(
-    //   in: ctx,
-    //   constructor: ctx.global().Function.get(in: ctx)
-    // ).as(NodeFunction.self)
+    // consider the following example ("new Function()")
+    // try env.global().Function.as(NodeFunction.self)!.new().as(NodeFunction.self)
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
-        try value.type() == .function
+        try value.nodeType() == .function
     }
 
     // TODO: Add a convenience overload for returning Void (convert to NodeUndefined)
@@ -118,7 +115,7 @@ public final class NodeFunction: NodeObject {
                 &ret
             )
         )
-        return try NodeValueBase(raw: ret, in: .current).concrete()
+        return AnyNodeValue(raw: ret)
     }
 
     @discardableResult

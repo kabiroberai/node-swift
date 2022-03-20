@@ -1,13 +1,6 @@
 import NodeAPI
 import Foundation
 
-// to unwrap the existential
-private extension NodeValue {
-    func type() -> NodeValue.Type {
-        Self.self
-    }
-}
-
 @main struct NativeStuff: NodeModule {
 
     var exports: NodeValueConvertible
@@ -23,16 +16,15 @@ private extension NodeValue {
 
         let res = try env.run(script: "[1, 15]").as(NodeArray.self)!
         print("Count: \(try res.count())")
-        let num = try res[1].get().as(NodeNumber.self)!
-        print("Num: \(num)")
+        print("Num: \(try res[1].nodeValue())")
 
-        print("Symbol.iterator is a \(try env.global().Symbol.iterator.get().type())")
+        print("Symbol.iterator is a \(try env.global().Symbol.iterator.nodeType())")
 
         let strObj = try env.run(script: "('hello')")
-        print("'\(strObj)' is a \(strObj.type())")
+        print("'\(strObj)' is a \(try strObj.nodeType())")
 
         let doStuff = try NodeFunction(name: "doStuff") { args in
-            print("Called! Arg 0 type: \(args.first?.type() as Any)")
+            print("Called! Arg 0 type: \(try args.first?.nodeType() as Any)")
             return 5
         }
         exports = doStuff

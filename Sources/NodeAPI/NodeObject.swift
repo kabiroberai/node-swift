@@ -10,7 +10,7 @@ public class NodeObject: NodeValue, NodeObjectConvertible {
     }
 
     class func isObjectType(for value: NodeValueBase) throws -> Bool {
-        let type = try value.type()
+        let type = try value.nodeType()
         return type == .object || type == .function
     }
 
@@ -61,7 +61,7 @@ extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == Str
             guard let k = try $0.as(String.self) else {
                 throw NodeAPIError(.invalidArg, message: "Expected string key in JS object, got \($0)")
             }
-            return try (k, value[k].get())
+            return try (k, value[k].nodeValue())
         })
     }
 }
@@ -71,41 +71,34 @@ extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == Str
 extension NodeObject {
 
     @dynamicMemberLookup
-    public final class DynamicProperty {
-        let environment: NodeEnvironment
+    public final class DynamicProperty: NodeValueConvertible {
+        let obj: NodeObject
         let key: NodeValueConvertible
-        // Defer resolution until it's necessary. This allows users
-        // to chain dynamic lookups without needing to pass in a
-        // new context for each call
-        let resolveObject: () throws -> NodeObject
 
-        init(
-            environment: NodeEnvironment,
-            key: NodeValueConvertible,
-            resolveObject: @escaping () throws -> NodeObject
-        ) {
-            self.environment = environment
+        init(obj: NodeObject, key: NodeValueConvertible) {
+            self.obj = obj
             self.key = key
-            self.resolveObject = resolveObject
         }
 
-        public func get() throws -> NodeValue {
+        public func nodeValue() throws -> NodeValue {
+            let env = obj.base.environment
             var ret: napi_value!
-            try environment.check(
+            try env.check(
                 napi_get_property(
-                    environment.raw,
-                    resolveObject().base.rawValue(),
+                    env.raw,
+                    obj.base.rawValue(),
                     key.rawValue(),
                     &ret
                 )
             )
-            return try NodeValueBase(raw: ret, in: .current).concrete()
+            return AnyNodeValue(raw: ret)
         }
 
         public func set(to value: NodeValueConvertible) throws {
-            try environment.check(napi_set_property(
-                environment.raw,
-                resolveObject().base.rawValue(),
+            let env = obj.base.environment
+            try env.check(napi_set_property(
+                env.raw,
+                obj.base.rawValue(),
                 key.rawValue(),
                 value.rawValue()
             ))
@@ -113,10 +106,11 @@ extension NodeObject {
 
         @discardableResult
         public func delete() throws -> Bool {
+            let env = obj.base.environment
             var result = false
-            try environment.check(napi_delete_property(
-                environment.raw,
-                resolveObject().base.rawValue(),
+            try env.check(napi_delete_property(
+                env.raw,
+                obj.base.rawValue(),
                 key.rawValue(),
                 &result
             ))
@@ -124,10 +118,11 @@ extension NodeObject {
         }
 
         public func exists() throws -> Bool {
+            let env = obj.base.environment
             var result = false
-            try environment.check(napi_has_property(
-                environment.raw,
-                resolveObject().base.rawValue(),
+            try env.check(napi_has_property(
+                env.raw,
+                obj.base.rawValue(),
                 key.rawValue(),
                 &result
             ))
@@ -136,32 +131,35 @@ extension NodeObject {
 
         @discardableResult
         public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
-            guard let fn = try self.get().as(NodeFunction.self) else {
+            guard let fn = try self.as(NodeFunction.self) else {
                 throw NodeAPIError(.functionExpected)
             }
-            return try fn.call(receiver: resolveObject(), arguments: args)
+            return try fn.call(receiver: obj, arguments: args)
         }
 
-        public func property(forKey key: NodeValueConvertible) -> DynamicProperty {
-            DynamicProperty(environment: environment, key: key) {
-                guard let obj = try self.get().as(NodeObject.self) else {
-                    throw NodeAPIError(.objectExpected)
-                }
-                return obj
+        public func property(forKey key: NodeValueConvertible) throws -> DynamicProperty {
+            // forwards to nodeValue()
+            guard let obj = try self.as(NodeObject.self) else {
+                throw NodeAPIError(.objectExpected, message: "Cannot access property on non-object")
             }
+            return DynamicProperty(obj: obj, key: key)
         }
 
         public subscript(key: NodeValueConvertible) -> DynamicProperty {
-            property(forKey: key)
+            get throws {
+                try property(forKey: key)
+            }
         }
 
         public subscript(dynamicMember key: String) -> DynamicProperty {
-            property(forKey: key)
+            get throws {
+                try property(forKey: key)
+            }
         }
     }
 
     public final func property(forKey key: NodeValueConvertible) -> DynamicProperty {
-        DynamicProperty(environment: base.environment, key: key) { self }
+        DynamicProperty(obj: self, key: key)
     }
 
     public final subscript(key: NodeValueConvertible) -> DynamicProperty {
@@ -273,7 +271,7 @@ extension NodeObject {
         let env = base.environment
         var result: napi_value!
         try env.check(napi_get_prototype(env.raw, base.rawValue(), &result))
-        return try NodeValueBase(raw: result, in: .current).concrete()
+        return AnyNodeValue(raw: result)
     }
 
     #if !NAPI_VERSIONED || NAPI_GE_8

@@ -26,7 +26,7 @@ public final class NodeEnvironment {
         var exception: napi_value!
         if isExceptionPending {
             if napi_get_and_clear_last_exception(raw, &exception) == napi_ok {
-                throw NodeException(value: try NodeValueBase(raw: exception, in: .current).concrete())
+                throw NodeException(value: AnyNodeValue(raw: exception))
             } else {
                 // there's a pending exception but we couldn't fetch it wtf
                 throw NodeAPIError(.genericFailure)
@@ -269,7 +269,7 @@ extension NodeEnvironment {
                 &val
             )
         )
-        return try NodeValueBase(raw: val, in: .current).concrete()
+        return AnyNodeValue(raw: val)
     }
 
 }
