@@ -28,26 +28,25 @@ The Swift package is exposed to JavaScript as a native Node.js module, which can
 
 **MyModule.swift**
 ```swift
-import Foundation
 import NodeAPI
 
 @main struct MyExample: NodeModule {
-    let exports: NodeValueConvertible
-    init() throws {
-        exports = [
-            "getTime": try NodeFunction { _ in
-                Date().timeIntervalSince1970.rounded(.down)
-            }
-        ]
-    }
+    let exports: NodeValueConvertible = [
+        "nums": [Double.pi.rounded(.down), Double.pi.rounded(.up)],
+        "str": String(repeating: "NodeSwift! ", count: 3),
+        "add": try! NodeFunction { (a: Double, b: Double) in
+            "\(a) + \(b) = \(a + b)"
+        },
+    ]
 }
 ```
 
 **index.js**
 ```js
-const { getTime } = require("./build/MyExample.node");
-console.log(`Seconds since 1970: ${getTime()}`);
-// Seconds since 1970: 1647672663
+const { nums, str, add } = require("./build/MyModule.node");
+console.log(nums); // [ 3, 4 ]
+console.log(str); // NodeSwift! NodeSwift! NodeSwift!
+console.log(add(5, 10)); // 5.0 + 10.0 = 15.0
 ```
 
 ## Get started
