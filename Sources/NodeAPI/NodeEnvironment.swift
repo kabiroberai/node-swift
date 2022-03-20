@@ -1,5 +1,6 @@
 @_implementationOnly import CNodeAPI
 
+@dynamicMemberLookup
 public final class NodeEnvironment {
     let raw: napi_env
 
@@ -273,3 +274,22 @@ extension NodeEnvironment {
     }
 
 }
+
+// MARK: - Convenience
+
+extension NodeEnvironment {
+
+    public var undefined: NodeValueConvertible { NodeDeferredValue { try NodeUndefined() } }
+    public var null: NodeValueConvertible { NodeDeferredValue { try NodeNull() } }
+
+    // equivalent to global().<key>
+    public subscript(dynamicMember key: String) -> NodeObject.DynamicProperty {
+        get throws {
+            try global().property(forKey: key)
+        }
+    }
+
+}
+
+// equivalent to NodeEnvironment.current
+public var Node: NodeEnvironment { .current }

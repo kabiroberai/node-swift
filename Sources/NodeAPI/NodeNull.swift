@@ -25,17 +25,20 @@ extension Optional: NodeValueConvertible, NodePropertyConvertible where Wrapped:
 
 extension Optional: AnyNodeValueCreatable where Wrapped: AnyNodeValueCreatable {
     public static func from(_ value: NodeValue) throws -> Wrapped?? {
+        // first try to create Wrapped; this means that if we try to create
+        // a Optional<NodeUndefined> we'll get .some(.some(undefined)) instead
+        // of .some(.none) (which is admittedly nonsensical anyway but i'd say
+        // it makes more sense than the alternative, semantically)
+        if let val = try Wrapped.from(value) {
+            return val
+        }
         switch try value.nodeType() {
         case .null, .undefined:
             // conversion succeeded, and we got nil
             return Wrapped??.some(.none)
         default:
-            if let val = try Wrapped.from(value) {
-                return val
-            } else {
-                // conversion failed
-                return Wrapped??.none
-            }
+            // conversion failed
+            return Wrapped??.none
         }
     }
 }

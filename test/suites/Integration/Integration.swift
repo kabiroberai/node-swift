@@ -6,21 +6,20 @@ import Foundation
     var exports: NodeValueConvertible
 
     init() throws {
-        let env = NodeEnvironment.current
-
         let captured = try NodeString("hi")
-        try env.global().setTimeout(NodeFunction {
+
+        try Node.setTimeout(NodeFunction {
             print("Called our timeout! Captured: \(captured)")
-            return undefined
+            return Node.undefined
         }, 1000)
 
-        let res = try env.run(script: "[1, 15]").as(NodeArray.self)!
+        let res = try Node.run(script: "[1, 15]").as(NodeArray.self)!
         print("Count: \(try res.count())")
         print("Num: \(try res[1].nodeValue())")
 
-        print("Symbol.iterator is a \(try env.global().Symbol.iterator.nodeType())")
+        print("Symbol.iterator is a \(try Node.Symbol.iterator.nodeType())")
 
-        let strObj = try env.run(script: "('hello')")
+        let strObj = try Node.run(script: "('hello')")
         print("'\(strObj)' is a \(try strObj.nodeType())")
 
         let doStuff = try NodeFunction(name: "doStuff") { args in
@@ -37,7 +36,7 @@ import Foundation
         try obj.setWrappedValue(nil, forKey: key)
         print("wrapped value (shouldn't be found): \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
 
-        try withExtendedLifetime(env.global()) {
+        try withExtendedLifetime(Node.global()) {
             print("First copy of global: \($0)")
         }
 
@@ -50,10 +49,10 @@ import Foundation
                 print("Cleanup!")
             }
         }
-        let global = try env.global()
+        let global = try Node.global()
         let cleanupHandler = CleanupHandler(global: global)
 
-        try env.setInstanceData(cleanupHandler, for: .init())
+        try Node.setInstanceData(cleanupHandler, for: .init())
 
         let q = try NodeAsyncQueue(label: "DISPATCH_CB")
         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {

@@ -182,18 +182,6 @@ extension NodeClass {
     }
 }
 
-extension NodeArguments {
-    func arg<T: AnyNodeValueCreatable>(_ idx: Int) throws -> T {
-        guard idx < count else {
-            throw try NodeError(code: nil, message: "Function requires at least \(idx + 1) arguments")
-        }
-        guard let converted = try self[idx].as(T.self) else {
-            throw try NodeError(code: nil, message: "Could not convert parameter \(idx) to type \(T.self)")
-        }
-        return converted
-    }
-}
-
 extension NodeMethod {
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultMethod,
@@ -225,7 +213,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0)
+            $1[0]
         ) }
     }
 
@@ -234,7 +222,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1)
+            $1[0], $1[1]
         ) }
     }
 
@@ -243,7 +231,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2)
+            $1[0], $1[1], $1[2]
         ) }
     }
 
@@ -252,7 +240,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2, A3) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3)
+            $1[0], $1[1], $1[2], $1[3]
         ) }
     }
 
@@ -261,7 +249,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4)
+            $1[0], $1[1], $1[2], $1[3], $1[4]
         ) }
     }
 
@@ -270,7 +258,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5)
+            $1[0], $1[1], $1[2], $1[3], $1[4], $1[5]
         ) }
     }
 
@@ -279,7 +267,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5), $1.arg(6)
+            $1[0], $1[1], $1[2], $1[3], $1[4], $1[5], $1[6]
         ) }
     }
 
@@ -288,7 +276,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
-            $1.arg(0), $1.arg(1), $1.arg(2), $1.arg(3), $1.arg(4), $1.arg(5), $1.arg(6), $1.arg(7)
+            $1[0], $1[1], $1[2], $1[3], $1[4], $1[5], $1[6], $1[7]
         ) }
     }
 }

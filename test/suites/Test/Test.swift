@@ -49,7 +49,7 @@ final class File: NodeClass {
 
     func unlink() throws -> NodeValueConvertible {
         try FileManager.default.removeItem(at: url)
-        return undefined
+        return Node.undefined
     }
 }
 

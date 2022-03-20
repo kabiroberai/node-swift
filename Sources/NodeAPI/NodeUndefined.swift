@@ -15,9 +15,7 @@ public final class NodeUndefined: NodePrimitive {
         self.base = NodeValueBase(raw: result, in: ctx)
     }
 
-    @available(*, deprecated, message: "Use the `undefined` global instead")
-    public static let deferred = undefined
+    @available(*, deprecated, message: "Renamed to Node.undefined")
+    public static let deferred = Node.undefined
 
 }
-
-public let undefined: NodeValueConvertible = NodeDeferredValue { try NodeUndefined() }

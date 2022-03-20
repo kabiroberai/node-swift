@@ -164,7 +164,7 @@ extension NodeValueConvertible {
 public protocol NodeName: NodeValueConvertible {}
 public protocol NodeObjectConvertible: NodeValueConvertible {}
 
-public protocol NodeValue: NodeValueConvertible, CustomStringConvertible {
+public protocol NodeValue: NodeValueConvertible, AnyNodeValueCreatable, CustomStringConvertible {
     @_spi(NodeAPI) var base: NodeValueBase { get }
     @_spi(NodeAPI) init(_ base: NodeValueBase)
 }
@@ -297,7 +297,7 @@ extension NodeValueBase {
     }
 
     func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
-        if try self.nodeType().concreteType == type {
+        if try type == AnyNodeValue.self || type == nodeType().concreteType {
             return T(self)
         } else if let objectType = type as? NodeObject.Type {
             guard try objectType.isObjectType(for: self) else {
@@ -311,11 +311,7 @@ extension NodeValueBase {
 
 }
 
-extension NodeValueConvertible {
-
-    public func nodeType() throws -> NodeValueType {
-        try nodeValue().base.nodeType()
-    }
+extension NodeValue {
 
     // TODO: Ideally, NodeObject would be a class cluster such that
     // (for example) initializing a NodeObject with a Date type would
@@ -330,9 +326,17 @@ extension NodeValueConvertible {
     // a value. The create method would check the type() and return an
     // instance of the appropriate class. Accordingly, we'd replace all
     // occurrences of AnyNodeValue.init with this API.
-    public func `as`<T: NodeValue>(_ type: T.Type) throws -> T? {
+    public static func from(_ value: NodeValue) throws -> Self? {
         // TODO: Maybe throw TypeError if casting fails instead of returning nil?
-        try nodeValue().base.as(T.self)
+        try value.base.as(Self.self)
+    }
+
+}
+
+extension NodeValueConvertible {
+
+    public func nodeType() throws -> NodeValueType {
+        try nodeValue().base.nodeType()
     }
 
     public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
@@ -379,8 +383,16 @@ extension NodeValueConvertible {
 // when we have an untyped napi_value and we want an opaque NodeValue
 // (the user can inspect the type with nodeType() and/or cast accordingly
 // using .as())
-struct AnyNodeValue: NodeValue {
-    let base: NodeValueBase
+public struct AnyNodeValue: NodeValue {
+    @_spi(NodeAPI) public let base: NodeValueBase
+    @_spi(NodeAPI) public init(_ base: NodeValueBase) {
+        self.base = base
+    }
+
+    public init(_ value: NodeValue) {
+        self.base = value.base
+    }
+
     init(raw: napi_value, in ctx: NodeContext = .current) {
         self.base = NodeValueBase(raw: raw, in: ctx)
     }

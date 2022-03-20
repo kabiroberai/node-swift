@@ -44,9 +44,32 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
     public func index(after i: Int) -> Int {
         value.index(after: i)
     }
-    public subscript(position: Int) -> NodeValue {
-        get { value[position] }
-        set { value[position] = newValue }
+
+    public subscript(index: Int) -> NodeValue {
+        get { value[index] }
+        set { value[index] = newValue }
+    }
+
+    // TODO: Should we make this public? It might confuse users,
+    // since we usually recommend using .as but here they'd be
+    // expected to do something like `try args[0] as String`
+    subscript<T: AnyNodeValueCreatable>(index: Int) -> T {
+        get throws {
+            if index < count {
+                guard let converted = try self[index].as(T.self) else {
+                    throw try NodeError(code: nil, message: "Could not convert parameter \(index) to type \(T.self)")
+                }
+                return converted
+            } else {
+                // if we're asking for an arg that's out of bounds,
+                // return the equivalent of `undefined` if possible,
+                // else throw
+                guard let converted = try Node.undefined.as(T.self) else {
+                    throw try NodeError(code: nil, message: "Function requires at least \(index + 1) arguments")
+                }
+                return converted
+            }
+        }
     }
 }
 
@@ -152,49 +175,49 @@ extension NodeFunction {
 
     public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0))
+            try callback($0[0])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1))
+            try callback($0[0], $0[1])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2))
+            try callback($0[0], $0[1], $0[2])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3))
+            try callback($0[0], $0[1], $0[2], $0[3])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4))
+            try callback($0[0], $0[1], $0[2], $0[3], $0[4])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5))
+            try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5), $0.arg(6))
+            try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5], $0[6])
         }
     }
 
     public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
-            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5), $0.arg(6), $0.arg(7))
+            try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5], $0[6], $0[7])
         }
     }
 
