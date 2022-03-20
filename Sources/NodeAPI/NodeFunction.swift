@@ -4,56 +4,59 @@ private typealias CallbackWrapper = Box<NodeFunction.Callback>
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
-        let arguments = try NodeFunction.Arguments(raw: info, in: ctx)
+        let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callback.value(arguments).rawValue()
     }
 }
 
-public final class NodeFunction: NodeObject {
+public struct NodeArguments: MutableCollection, RandomAccessCollection {
+    private var value: [NodeValue]
+    public let this: NodeObject?
+    public let newTarget: NodeFunction? // new.target
+    let data: UnsafeMutableRawPointer
 
-    public struct Arguments: MutableCollection, RandomAccessCollection {
-        private var value: [NodeValue]
-        public let this: NodeObject?
-        public let newTarget: NodeFunction? // new.target
-        let data: UnsafeMutableRawPointer
+    init(raw: napi_callback_info, in ctx: NodeContext) throws {
+        let env = ctx.environment
 
-        init(raw: napi_callback_info, in ctx: NodeContext) throws {
-            let env = ctx.environment
+        var argc: Int = 0
+        try env.check(napi_get_cb_info(env.raw, raw, &argc, nil, nil, nil))
+        var this: napi_value!
+        var data: UnsafeMutableRawPointer!
+        let args = try [napi_value?](unsafeUninitializedCapacity: argc) { buf, len in
+            len = 0
+            try env.check(napi_get_cb_info(env.raw, raw, &argc, buf.baseAddress, &this, &data))
+            len = argc
+        }.map { AnyNodeValue(raw: $0!, in: ctx) }
 
-            var argc: Int = 0
-            try env.check(napi_get_cb_info(env.raw, raw, &argc, nil, nil, nil))
-            var this: napi_value!
-            var data: UnsafeMutableRawPointer!
-            let args = try [napi_value?](unsafeUninitializedCapacity: argc) { buf, len in
-                len = 0
-                try env.check(napi_get_cb_info(env.raw, raw, &argc, buf.baseAddress, &this, &data))
-                len = argc
-            }.map { AnyNodeValue(raw: $0!, in: ctx) }
+        var newTarget: napi_value?
+        try env.check(napi_get_new_target(env.raw, raw, &newTarget))
 
-            var newTarget: napi_value?
-            try env.check(napi_get_new_target(env.raw, raw, &newTarget))
-
-            self.this = try NodeValueBase(raw: this, in: ctx).as(NodeObject.self)
-            self.newTarget = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
-            self.data = data
-            self.value = args
-        }
-
-        public var startIndex: Int { value.startIndex }
-        public var endIndex: Int { value.endIndex }
-        public func index(after i: Int) -> Int {
-            value.index(after: i)
-        }
-        public subscript(position: Int) -> NodeValue {
-            get { value[position] }
-            set { value[position] = newValue }
-        }
+        self.this = try NodeValueBase(raw: this, in: ctx).as(NodeObject.self)
+        self.newTarget = try newTarget.flatMap { try NodeValueBase(raw: $0, in: ctx).as(NodeFunction.self) }
+        self.data = data
+        self.value = args
     }
 
-    public typealias Callback = (_ arguments: Arguments) throws -> NodeValueConvertible
-    public typealias VoidCallback = (_ arguments: Arguments) throws -> Void
+    public var startIndex: Int { value.startIndex }
+    public var endIndex: Int { value.endIndex }
+    public func index(after i: Int) -> Int {
+        value.index(after: i)
+    }
+    public subscript(position: Int) -> NodeValue {
+        get { value[position] }
+        set { value[position] = newValue }
+    }
+}
+
+public final class NodeFunction: NodeObject {
+
+    @available(*, deprecated, message: "Renamed to NodeArguments")
+    public typealias Arguments = NodeArguments
+
+    public typealias Callback = (_ arguments: NodeArguments) throws -> NodeValueConvertible
+    public typealias VoidCallback = (_ arguments: NodeArguments) throws -> Void
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -70,7 +73,7 @@ public final class NodeFunction: NodeObject {
     // adding such an overload currently confuses the compiler during overload resolution
     // so we need to figure out how to make it select the right one (@_disfavoredOverload
     // doesn't seem to help)
-    public init(name: String = "", callback: @escaping (_ info: Arguments) throws -> NodeValueConvertible) throws {
+    public init(name: String = "", callback: @escaping (_ info: NodeArguments) throws -> NodeValueConvertible) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
@@ -135,6 +138,64 @@ public final class NodeFunction: NodeObject {
 
     public func new(_ arguments: NodeValueConvertible...) throws -> NodeObject {
         try new(arguments: arguments)
+    }
+
+}
+
+extension NodeFunction {
+
+    public convenience init(name: String = "", callback: @escaping () throws -> NodeValueConvertible) throws {
+        try self.init(name: name) { _ in
+            try callback()
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5), $0.arg(6))
+        }
+    }
+
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback($0.arg(0), $0.arg(1), $0.arg(2), $0.arg(3), $0.arg(4), $0.arg(5), $0.arg(6), $0.arg(7))
+        }
     }
 
 }

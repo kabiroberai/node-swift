@@ -119,11 +119,11 @@ public protocol NodeValueConvertible: NodePropertyConvertible {
 // Utility for APIs that take NodeValueConvertible: useful when you
 // want to defer NodeValue creation to the API, for example if you don't
 // want to throw in your own code or if you're on a non-JS thread
-public struct NodeDeferredValue: NodeValueConvertible {
-    let wrapper: () throws -> NodeValue
+public struct NodeDeferredValue: NodeValueConvertible, Sendable {
+    let wrapper: @Sendable () throws -> NodeValue
 
     // thread-safe
-    public init(_ wrapper: @escaping () throws -> NodeValue) {
+    public init(_ wrapper: @escaping @Sendable () throws -> NodeValue) {
         self.wrapper = wrapper
     }
 

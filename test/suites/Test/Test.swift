@@ -16,7 +16,7 @@ final class File: NodeClass {
         self.url = url
     }
 
-    init(_ args: NodeFunction.Arguments) throws {
+    init(_ args: NodeArguments) throws {
         guard let path = try args[0].as(String.self) else {
             throw try NodeError(
                 typeErrorCode: "ERR_INVALID_ARG_TYPE",
@@ -26,7 +26,7 @@ final class File: NodeClass {
         url = URL(fileURLWithPath: path)
     }
 
-    static func `default`(_ args: NodeFunction.Arguments) throws -> NodeValueConvertible {
+    static func `default`(_ args: NodeArguments) throws -> NodeValueConvertible {
         return try File(url: URL(fileURLWithPath: "default.txt")).wrapped()
     }
 
@@ -49,7 +49,7 @@ final class File: NodeClass {
 
     func unlink() throws -> NodeValueConvertible {
         try FileManager.default.removeItem(at: url)
-        return NodeUndefined.deferred
+        return undefined
     }
 }
 

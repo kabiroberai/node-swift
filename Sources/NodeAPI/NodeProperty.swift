@@ -2,7 +2,7 @@
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
-        let arguments = try NodeFunction.Arguments(raw: info, in: ctx)
+        let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<NodeProperty.Callbacks>.fromOpaque(data).takeUnretainedValue()
         return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(arguments).rawValue()

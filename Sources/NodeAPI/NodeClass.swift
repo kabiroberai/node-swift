@@ -4,7 +4,7 @@ private typealias ConstructorWrapper = Box<NodeFunction.Callback>
 
 private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
-        let arguments = try NodeFunction.Arguments(raw: info, in: ctx)
+        let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<ConstructorWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callbacks.value(arguments).rawValue()
@@ -70,11 +70,11 @@ public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable w
     static var name: String { get }
 
     // constructor (default implementation throws)
-    init(_ arguments: NodeFunction.Arguments) throws
+    init(_ arguments: NodeArguments) throws
 }
 
 extension NodeClass {
-    public init(_ arguments: NodeFunction.Arguments) throws {
+    public init(_ arguments: NodeArguments) throws {
         throw NodeAPIError(
             .genericFailure, 
             message: "Class \(Self.name) is not constructible from JavaScript"
@@ -85,7 +85,7 @@ extension NodeClass {
 enum NodeClassSpecialConstructor<T: NodeClass> {
     case wrap(T)
 
-    func callAsFunction(_ args: NodeFunction.Arguments) throws -> T {
+    func callAsFunction(_ args: NodeArguments) throws -> T {
         switch self {
         case .wrap(let value):
             return value
@@ -111,7 +111,7 @@ extension NodeClass {
         return value
     }
 
-    static func from(args: NodeFunction.Arguments) throws -> Self {
+    static func from(args: NodeArguments) throws -> Self {
         guard let this = args.this else { 
             throw NodeAPIError(.objectExpected, message: "Function on \(name) called without binding `this`")
         }
@@ -182,7 +182,7 @@ extension NodeClass {
     }
 }
 
-private extension NodeFunction.Arguments {
+extension NodeArguments {
     func arg<T: AnyNodeValueCreatable>(_ idx: Int) throws -> T {
         guard idx < count else {
             throw try NodeError(code: nil, message: "Function requires at least \(idx + 1) arguments")
@@ -197,17 +197,17 @@ private extension NodeFunction.Arguments {
 extension NodeMethod {
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (NodeFunction.Arguments) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> (NodeArguments) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
 
     private init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T, NodeFunction.Arguments) throws -> NodeValueConvertible
+        _ callback: @escaping (T, NodeArguments) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
-            { (args: NodeFunction.Arguments) in
+            { (args: NodeArguments) in
                 try callback(target, args)
             }
         }

@@ -9,9 +9,9 @@ import Foundation
         let env = NodeEnvironment.current
 
         let captured = try NodeString("hi")
-        try env.global().setTimeout(NodeFunction { _ in
+        try env.global().setTimeout(NodeFunction {
             print("Called our timeout! Captured: \(captured)")
-            return try NodeUndefined()
+            return undefined
         }, 1000)
 
         let res = try env.run(script: "[1, 15]").as(NodeArray.self)!
