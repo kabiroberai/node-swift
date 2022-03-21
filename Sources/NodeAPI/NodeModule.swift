@@ -1,8 +1,8 @@
 @_implementationOnly import CNodeAPI
 import Foundation
 
-public protocol NodeModule {
-    static var name: String { get }
+@NodeActor public protocol NodeModule {
+    nonisolated static var name: String { get }
     init() throws
     var exports: NodeValueConvertible { get }
 }
@@ -18,9 +18,13 @@ private class ModulePriv {
 }
 
 private let threadModuleKey = "NODE_SWIFT_MODULE"
-private var threadModule: UnsafeMutablePointer<napi_module>? {
-    get { Thread.current.threadDictionary[threadModuleKey] as? UnsafeMutablePointer<napi_module> }
-    set { Thread.current.threadDictionary[threadModuleKey] = newValue }
+// a computed var would be nicer but -warn-concurrency doesn't
+// like mutations to globals
+private func threadModule() -> UnsafeMutablePointer<napi_module>? {
+    Thread.current.threadDictionary[threadModuleKey] as? UnsafeMutablePointer<napi_module>
+}
+private func setThreadModule(_ newValue: UnsafeMutablePointer<napi_module>?) {
+    Thread.current.threadDictionary[threadModuleKey] = newValue
 }
 
 // we can't pass params to main, so use TLS to store the current module.
@@ -30,13 +34,13 @@ private var threadModule: UnsafeMutablePointer<napi_module>? {
     main: @convention(c) () -> Int,
     module: UnsafeMutableRawPointer!
 ) {
-    threadModule = module.assumingMemoryBound(to: napi_module.self)
-    defer { threadModule = nil }
+    setThreadModule(module.assumingMemoryBound(to: napi_module.self))
+    defer { setThreadModule(nil) }
     _ = main()
 }
 
 // see comment in NodeSwiftHost/ctor.c
-@_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
+@NodeActor(unsafe) @_cdecl("node_swift_addon_register_func") @_spi(NodeAPI) public func _registerNodeSwiftModule(
     rawEnv: OpaquePointer!,
     exports _: OpaquePointer!,
     module: UnsafeRawPointer!
@@ -52,7 +56,7 @@ private var threadModule: UnsafeMutablePointer<napi_module>? {
 }
 
 extension NodeModule {
-    public static var name: String {
+    nonisolated public static var name: String {
         var fullName = "\(self)"
         let suffix = "Module"
         if fullName.hasSuffix(suffix) {
@@ -61,8 +65,8 @@ extension NodeModule {
         return fullName
     }
 
-    public static func main() {
-        guard let mod = threadModule else {
+    nonisolated public static func main() {
+        guard let mod = threadModule() else {
             nodeFatalError("NodeSwift module \(self) did not register itself correctly")
         }
 

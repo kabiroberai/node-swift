@@ -1,13 +1,26 @@
 @_implementationOnly import CNodeAPI
+import Foundation
+
+extension NodeEnvironment {
+    private static let idKey = NodeInstanceDataKey<UUID>()
+    func instanceID() throws -> UUID {
+        if let id = try instanceData(for: Self.idKey) {
+            return id
+        }
+        let id = UUID()
+        try setInstanceData(id, for: Self.idKey)
+        return id
+    }
+}
 
 private class Token {}
-private typealias CallbackBox = Box<() throws -> Void>
+private typealias CallbackBox = Box<@NodeActor () throws -> Void>
 
 private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer?) {
     Unmanaged<Token>.fromOpaque(data).release()
 }
 
-private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!) {
+@NodeActor(unsafe) private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!) {
     let callback = Unmanaged<CallbackBox>.fromOpaque(data).takeRetainedValue()
 
     guard let env = env else { return }
@@ -23,9 +36,8 @@ private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRa
 // need to figure out how to get back onto the main event loop yourself
 // (probably using libuv), this API does that for you.
 
-// a queue that allows dispatching closures to the JS thread it was initialized on
-// Unless specified otherwise, the APIs on this class are thread-safe
-public final class NodeAsyncQueue {
+// a queue that allows dispatching closures to the JS thread it was initialized on.
+public final class NodeAsyncQueue: @unchecked Sendable {
     // the callbackHandle is effectively an atomic indicator of
     // whether the tsfn finalizer has been called. The only thing
     // holding a strong ref to this is the threadsafe
@@ -38,11 +50,11 @@ public final class NodeAsyncQueue {
     // it atomic or explicitly thread-unsafe
     private var keepsNodeThreadAlive: Bool
 
+    let instanceID: UUID
     private let environment: NodeEnvironment
     private let raw: napi_threadsafe_function
 
-    // MUST be called from a JS thread
-    public init(
+    @NodeActor public init(
         label: String,
         asyncResource: NodeObjectConvertible? = nil,
         keepsNodeThreadAlive: Bool = true,
@@ -58,12 +70,13 @@ public final class NodeAsyncQueue {
             asyncResource?.rawValue(), label.rawValue(),
             maxQueueSize ?? 0, 1,
             box, cFinalizer,
-            nil, cCallback,
+            nil, { cCallback(env: $0, cb: $1, context: $2, data: $3) },
             &result
         ))
         self.raw = result
         // the initial value set by napi itself is `true`
         self.keepsNodeThreadAlive = true
+        self.instanceID = try environment.instanceID()
         try setKeepsNodeThreadAlive(keepsNodeThreadAlive)
     }
 
@@ -91,9 +104,9 @@ public final class NodeAsyncQueue {
         try Self.check(napi_release_threadsafe_function(raw, napi_tsfn_abort))
     }
 
-    // Must be called from the associated JS thread. Determines whether the main thread
-    // stays alive while the receiver is referenced from other threads
-    public func setKeepsNodeThreadAlive(_ keepAlive: Bool) throws {
+    // Determines whether the main thread stays alive while the receiver is referenced
+    // from other threads
+    @NodeActor public func setKeepsNodeThreadAlive(_ keepAlive: Bool) throws {
         guard keepAlive != keepsNodeThreadAlive else { return }
         try ensureValid()
         if keepAlive {
@@ -114,8 +127,8 @@ public final class NodeAsyncQueue {
         }
     }
 
-    // thread-safe. Will throw NodeAPIError(.closing) if another thread called abort()
-    public func async(blocking: Bool = false, _ action: @escaping () throws -> Void) throws {
+    // will throw NodeAPIError(.closing) if another thread called abort()
+    public func run(blocking: Bool = false, _ action: @escaping @NodeActor () throws -> Void) throws {
         try ensureValid()
         // `as AnyObject` should be faster than Box for classes, NS primitives
         let payload = CallbackBox(action)

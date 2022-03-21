@@ -1,10 +1,10 @@
 @_implementationOnly import CNodeAPI
 
 public protocol NodeExceptionConvertible: Error {
-    func exceptionValue() throws -> NodeValue
+    @NodeActor func exceptionValue() throws -> NodeValue
 }
 
-public struct NodeException: NodeExceptionConvertible {
+@NodeActor public struct NodeException: NodeExceptionConvertible {
     public func exceptionValue() throws -> NodeValue { value }
 
     public let value: NodeValue

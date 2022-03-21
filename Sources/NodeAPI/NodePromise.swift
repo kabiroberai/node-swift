@@ -7,7 +7,7 @@ public final class NodePromise: NodeObject {
     }
 
     // similar to Combine.Promise
-    public final class Deferred {
+    @NodeActor public final class Deferred {
         public private(set) var hasCompleted = false
         public let promise: NodePromise
         var raw: napi_deferred
@@ -63,6 +63,55 @@ public final class NodePromise: NodeObject {
         var result = false
         try env.check(napi_is_promise(env.raw, value.rawValue(), &result))
         return result
+    }
+
+}
+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension NodePromise {
+
+    public convenience init(executor: @escaping @Sendable @NodeActor () async throws -> NodeValueConvertible) throws {
+        try self.init { deferred in
+            Task {
+                let result: Result<NodeValueConvertible, Swift.Error>
+                do {
+                    result = .success(try await executor())
+                } catch {
+                    result = .failure(error)
+                }
+                try deferred(result)
+            }
+        }
+    }
+
+    public var value: NodeValue {
+        get async throws {
+            try await withCheckedThrowingContinuation { cont in
+                // since we're on NodeActor, access to hasResumed is serial
+                var hasResumed = false
+                do {
+                    try self.then(NodeFunction { (val: AnyNodeValue) in
+                        if !hasResumed {
+                            hasResumed = true
+                            cont.resume(returning: val)
+                        }
+                        return Node.undefined
+                    })
+                    try self.`catch`(NodeFunction { (err: AnyNodeValue) in
+                        if !hasResumed {
+                            hasResumed = true
+                            cont.resume(throwing: NodeException(value: err))
+                        }
+                        return Node.undefined
+                    })
+                } catch {
+                    if !hasResumed {
+                        hasResumed = true
+                        cont.resume(throwing: error)
+                    }
+                }
+            }
+        }
     }
 
 }

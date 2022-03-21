@@ -17,7 +17,7 @@ private extension NodeEnvironment {
     }
 }
 
-@_spi(NodeAPI) public final class NodeValueBase {
+@_spi(NodeAPI) @NodeActor public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
         case managed(napi_ref, releaseQueue: NodeAsyncQueue, isBoxed: Bool)
@@ -100,7 +100,7 @@ private extension NodeEnvironment {
         case .unmanaged:
             break
         case let .managed(ref, releaseQueue, _):
-            try? releaseQueue.async {
+            try? releaseQueue.run {
                 let env = NodeEnvironment.current
                 try env.check(
                     napi_delete_reference(env.raw, ref)
@@ -113,50 +113,50 @@ private extension NodeEnvironment {
 // MARK: - Protocols
 
 public protocol NodeValueConvertible: NodePropertyConvertible {
-    func nodeValue() throws -> NodeValue
+    @NodeActor func nodeValue() throws -> NodeValue
 }
 
 // Utility for APIs that take NodeValueConvertible: useful when you
 // want to defer NodeValue creation to the API, for example if you don't
 // want to throw in your own code or if you're on a non-JS thread
 public struct NodeDeferredValue: NodeValueConvertible, Sendable {
-    let wrapper: @Sendable () throws -> NodeValue
+    let wrapper: @Sendable @NodeActor () throws -> NodeValue
 
     // thread-safe
-    public init(_ wrapper: @escaping @Sendable () throws -> NodeValue) {
+    public init(_ wrapper: @escaping @Sendable @NodeActor () throws -> NodeValue) {
         self.wrapper = wrapper
     }
 
-    public func nodeValue() throws -> NodeValue {
+    @NodeActor public func nodeValue() throws -> NodeValue {
         try wrapper()
     }
 }
 
 public protocol AnyNodeValueCreatable {
-    static func from(_ value: NodeValue) throws -> Self?
+    @NodeActor static func from(_ value: NodeValue) throws -> Self?
 }
 
 // for when ValueType is losslessly convertible to Self
 // (modulo errors)
 public protocol NodeValueCreatable: AnyNodeValueCreatable {
     associatedtype ValueType: NodeValue
-    static func from(_ value: ValueType) throws -> Self
+    @NodeActor static func from(_ value: ValueType) throws -> Self
 }
 
 extension NodeValueCreatable {
-    public static func from(_ value: NodeValue) throws -> Self? {
+    @NodeActor public static func from(_ value: NodeValue) throws -> Self? {
         // calls the strongly typed from(_:) after converting
         // to ValueType
-        try value.as(ValueType.self).map(from(_:))
+        try value.as(ValueType.self).map { try from($0) }
     }
 }
 
 extension NodeValueConvertible {
-    public var nodeProperty: NodeProperty {
+    @NodeActor public var nodeProperty: NodeProperty {
         NodeProperty(attributes: .defaultProperty, value: .data(self))
     }
 
-    func rawValue() throws -> napi_value {
+    @NodeActor func rawValue() throws -> napi_value {
         try nodeValue().base.rawValue()
     }
 }
@@ -164,7 +164,7 @@ extension NodeValueConvertible {
 public protocol NodeName: NodeValueConvertible {}
 public protocol NodeObjectConvertible: NodeValueConvertible {}
 
-public protocol NodeValue: NodeValueConvertible, AnyNodeValueCreatable, CustomStringConvertible {
+@NodeActor public protocol NodeValue: NodeValueConvertible, AnyNodeValueCreatable, CustomStringConvertible, Sendable {
     @_spi(NodeAPI) var base: NodeValueBase { get }
     @_spi(NodeAPI) init(_ base: NodeValueBase)
 }
@@ -180,17 +180,21 @@ extension NodeValue {
 }
 
 public protocol NodeValueCoercible: NodeValue {
-    init(coercing value: NodeValueConvertible) throws
+    @NodeActor init(coercing value: NodeValueConvertible) throws
+}
+
+// placing this inside the NodeValue extension doesn't compile,
+// seemingly due to a bug in Swift's actor isolation checking
+// (it fails to respect the "unsafe" in @NodeActor(unsafe))
+private func describe(_ value: NodeValue) -> String? {
+    try? NodeContext.runOnActor({ try NodeString(coercing: value).string() })
 }
 
 extension NodeValue {
     public func nodeValue() throws -> NodeValue { self }
 
-    public var description: String {
-        let desc = try? NodeContext.withUnmanagedContext(environment: base.environment) { ctx -> String in
-            try NodeString(coercing: self).string()
-        }
-        return desc ?? "<invalid \(Self.self)>"
+    public nonisolated var description: String {
+        describe(self) ?? "<invalid \(Self.self)>"
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -335,15 +339,15 @@ extension NodeValue {
 
 extension NodeValueConvertible {
 
-    public func nodeType() throws -> NodeValueType {
+    @NodeActor public func nodeType() throws -> NodeValueType {
         try nodeValue().base.nodeType()
     }
 
-    public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
+    @NodeActor public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
         try T.from(nodeValue())
     }
 
-    public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T where T.ValueType == Self {
+    @NodeActor public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T where T.ValueType == Self {
         try T.from(self)
     }
 
@@ -356,7 +360,7 @@ extension NodeValueConvertible {
     //
     // (we could also switch the conformances around, but then [[String]] would work
     // whereas [[NodeValue]] wouldn't)
-    public func `as`<T: NodeValueCreatable>(_ type: [T].Type) throws -> [T]? {
+    @NodeActor public func `as`<T: NodeValueCreatable>(_ type: [T].Type) throws -> [T]? {
         do {
             return try self.as([NodeValue].self)?.map {
                 guard let t = try $0.as(T.self) else { throw NilValueError() }
@@ -367,7 +371,7 @@ extension NodeValueConvertible {
         }
     }
 
-    public func `as`<T: NodeValueCreatable>(_ type: [String: T].Type) throws -> [String: T]? {
+    @NodeActor public func `as`<T: NodeValueCreatable>(_ type: [String: T].Type) throws -> [String: T]? {
         do {
             return try self.as([String: NodeValue].self)?.mapValues {
                 guard let t = try $0.as(T.self) else { throw NilValueError() }

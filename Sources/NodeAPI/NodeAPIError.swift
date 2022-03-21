@@ -1,7 +1,7 @@
 @_implementationOnly import CNodeAPI
 
 public struct NodeAPIError: Error {
-    public enum Code {
+    public enum Code: Sendable {
         case invalidArg
         case objectExpected
         case stringExpected
@@ -76,7 +76,7 @@ public struct NodeAPIError: Error {
         }
     }
 
-    public struct Details {
+    public struct Details: Sendable {
         public let message: String?
         public let engineErrorCode: UInt32
 

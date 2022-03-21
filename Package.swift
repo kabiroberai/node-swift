@@ -6,6 +6,10 @@ import Foundation
 let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC"] == "1"
 let enableEvolution = ProcessInfo.processInfo.environment["NODE_SWIFT_ENABLE_EVOLUTION"] == "1"
 
+let baseSwiftSettings: [SwiftSetting] = [
+//    .unsafeFlags(["-Xfrontend", "-warn-concurrency"])
+]
+
 let package = Package(
     name: "node-swift",
     products: [
@@ -21,9 +25,9 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI"],
-            swiftSettings: enableEvolution ? [
+            swiftSettings: baseSwiftSettings + (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
-            ] : []
+            ] : [])
         )
     ]
 )

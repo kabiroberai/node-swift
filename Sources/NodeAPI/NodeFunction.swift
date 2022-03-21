@@ -2,7 +2,7 @@
 
 private typealias CallbackWrapper = Box<NodeFunction.Callback>
 
-private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+@NodeActor(unsafe) private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
@@ -17,7 +17,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
     public let newTarget: NodeFunction? // new.target
     let data: UnsafeMutableRawPointer
 
-    init(raw: napi_callback_info, in ctx: NodeContext) throws {
+    @NodeActor init(raw: napi_callback_info, in ctx: NodeContext) throws {
         let env = ctx.environment
 
         var argc: Int = 0
@@ -53,7 +53,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
     // TODO: Should we make this public? It might confuse users,
     // since we usually recommend using .as but here they'd be
     // expected to do something like `try args[0] as String`
-    subscript<T: AnyNodeValueCreatable>(index: Int) -> T {
+    @NodeActor subscript<T: AnyNodeValueCreatable>(index: Int) -> T {
         get throws {
             if index < count {
                 guard let converted = try self[index].as(T.self) else {
@@ -78,8 +78,8 @@ public final class NodeFunction: NodeObject {
     @available(*, deprecated, message: "Renamed to NodeArguments")
     public typealias Arguments = NodeArguments
 
-    public typealias Callback = (_ arguments: NodeArguments) throws -> NodeValueConvertible
-    public typealias VoidCallback = (_ arguments: NodeArguments) throws -> Void
+    public typealias Callback = @NodeActor (_ arguments: NodeArguments) throws -> NodeValueConvertible
+    public typealias VoidCallback = @NodeActor (_ arguments: NodeArguments) throws -> Void
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -96,7 +96,7 @@ public final class NodeFunction: NodeObject {
     // adding such an overload currently confuses the compiler during overload resolution
     // so we need to figure out how to make it select the right one (@_disfavoredOverload
     // doesn't seem to help)
-    public init(name: String = "", callback: @escaping (_ info: NodeArguments) throws -> NodeValueConvertible) throws {
+    public init(name: String = "", callback: @escaping Callback) throws {
         let ctx = NodeContext.current
         let env = ctx.environment
         let wrapper = CallbackWrapper(callback)
@@ -167,55 +167,55 @@ public final class NodeFunction: NodeObject {
 
 extension NodeFunction {
 
-    public convenience init(name: String = "", callback: @escaping () throws -> NodeValueConvertible) throws {
+    public convenience init(name: String = "", callback: @escaping @NodeActor () throws -> NodeValueConvertible) throws {
         try self.init(name: name) { _ in
             try callback()
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2], $0[3])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2], $0[3], $0[4])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5], $0[6])
         }
     }
 
-    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible) throws {
+    public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible) throws {
         try self.init(name: name) {
             try callback($0[0], $0[1], $0[2], $0[3], $0[4], $0[5], $0[6], $0[7])
         }

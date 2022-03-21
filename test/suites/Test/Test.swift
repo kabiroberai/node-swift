@@ -7,8 +7,11 @@ final class File: NodeClass {
         "unlink": NodeMethod(unlink),
         "default": NodeMethod(attributes: .static, `default`),
         "filename": NodeComputedProperty(get: filename),
-        "reply": NodeMethod(reply)
+        "reply": NodeMethod(reply),
+        "x": NodeComputedProperty(\File.x),
     ]
+
+    var x: Int = 0
 
     let url: URL
 

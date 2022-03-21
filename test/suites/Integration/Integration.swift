@@ -54,10 +54,19 @@ import Foundation
 
         try Node.setInstanceData(cleanupHandler, for: .init())
 
-        let q = try NodeAsyncQueue(label: "DISPATCH_CB")
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
-            try? q.async {
-                print("dispatch callback")
+        if #available(macOS 10.15, *) {
+            Task {
+                try await Task.sleep(nanoseconds: 2 * NSEC_PER_SEC)
+                try print(Node.run(script: "1+1"))
+            }
+
+            let promise = try NodePromise {
+                try await Task.sleep(nanoseconds: 2 * NSEC_PER_SEC)
+                return 5
+            }
+
+            Task {
+                print("PROMISE: \(try await promise.value)")
             }
         }
     }

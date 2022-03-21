@@ -2,7 +2,7 @@
 
 private typealias ConstructorWrapper = Box<NodeFunction.Callback>
 
-private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+@NodeActor(unsafe) private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
@@ -62,10 +62,10 @@ extension NodeFunction {
 
 }
 
-public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
+@NodeActor public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
     // mapping from Swift -> JS props
     static var properties: NodeClassPropertyList { get }
-    
+
     // default implementations provided:
     static var name: String { get }
 
@@ -169,7 +169,7 @@ extension NodeClass {
         try _constructor().0
     }
 
-    public static var deferredConstructor: NodeValueConvertible {
+    nonisolated public static var deferredConstructor: NodeValueConvertible {
         NodeDeferredValue { try constructor() }
     }
 
@@ -185,7 +185,7 @@ extension NodeClass {
 extension NodeMethod {
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (NodeArguments) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (NodeArguments) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
@@ -203,14 +203,14 @@ extension NodeMethod {
 
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> () throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { target, _ in try callback(target)() }
     }
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0]
@@ -219,7 +219,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1]
@@ -228,7 +228,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2]
@@ -237,7 +237,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2, A3) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2, A3) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2], $1[3]
@@ -246,7 +246,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2, A3, A4) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2], $1[3], $1[4]
@@ -255,7 +255,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2], $1[3], $1[4], $1[5]
@@ -264,7 +264,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2], $1[3], $1[4], $1[5], $1[6]
@@ -273,7 +273,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
-        _ callback: @escaping (T) -> (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible
+        _ callback: @escaping (T) -> @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback($0)(
             $1[0], $1[1], $1[2], $1[3], $1[4], $1[5], $1[6], $1[7]
@@ -284,8 +284,8 @@ extension NodeMethod {
 extension NodeComputedProperty {
     public init<T: NodeClass>(
         attributes: NodeProperty.Attributes = .defaultProperty,
-        get: @escaping (T) -> () throws -> NodeValueConvertible,
-        set: ((T) -> (NodeValue) throws -> Void)? = nil
+        get: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible,
+        set: ((T) -> @NodeActor (NodeValue) throws -> Void)? = nil
     ) {
         self.init(
             attributes: attributes, 
@@ -303,7 +303,7 @@ extension NodeComputedProperty {
 
     public init<T: NodeClass, U: NodeValueConvertible>(
         attributes: NodeProperty.Attributes = .defaultProperty,
-        get: @escaping (T) -> () throws -> U
+        get: @escaping (T) -> @NodeActor () throws -> U
     ) {
         self.init(
             attributes: attributes,
@@ -313,8 +313,8 @@ extension NodeComputedProperty {
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultProperty,
-        get: @escaping (T) -> () throws -> U,
-        set: @escaping (T) -> (U) throws -> Void
+        get: @escaping (T) -> @NodeActor () throws -> U,
+        set: @escaping (T) -> @NodeActor (U) throws -> Void
     ) {
         self.init(
             attributes: attributes, 

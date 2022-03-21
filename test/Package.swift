@@ -23,7 +23,10 @@ func addSuite(_ suite: String) {
         name: suite,
         dependencies: [.product(name: "NodeAPI", package: "node-swift")],
         path: "suites/\(suite)",
-        exclude: ["index.js"]
+        exclude: ["index.js"],
+        swiftSettings: [
+            .unsafeFlags(["-Xfrontend", "-warn-concurrency"])
+        ]
     ))
 }
 

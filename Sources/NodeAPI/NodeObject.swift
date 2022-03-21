@@ -71,7 +71,7 @@ extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == Str
 extension NodeObject {
 
     @dynamicMemberLookup
-    public final class DynamicProperty: NodeValueConvertible {
+    @NodeActor public final class DynamicProperty: NodeValueConvertible {
         let obj: NodeObject
         let key: NodeValueConvertible
 
@@ -426,22 +426,20 @@ extension NodeObject {
 
 // MARK: - Finalizers
 
-private typealias FinalizeWrapper = Box<() throws -> Void>
+private typealias FinalizeWrapper = Box<() -> Void>
 
 private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx in
-        try Unmanaged<FinalizeWrapper>
-            .fromOpaque(data)
-            .takeRetainedValue() // releases the wrapper post-call
-            .value()
-    }
+    Unmanaged<FinalizeWrapper>
+        .fromOpaque(data)
+        .takeRetainedValue() // releases the wrapper post-call
+        .value()
 }
 
 extension NodeObject {
 
     // Wrap should be sufficient in most cases, but finalizers are handy
     // when you don't want to tag the object
-    public final func addFinalizer(_ finalizer: @escaping () throws -> Void) throws {
+    public final func addFinalizer(_ finalizer: @escaping () -> Void) throws {
         let data = Unmanaged.passRetained(FinalizeWrapper(finalizer)).toOpaque()
         try base.environment.check(
             napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)

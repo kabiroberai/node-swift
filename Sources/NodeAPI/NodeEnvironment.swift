@@ -1,10 +1,10 @@
 @_implementationOnly import CNodeAPI
 
 @dynamicMemberLookup
-public final class NodeEnvironment {
+@NodeActor public final class NodeEnvironment {
     let raw: napi_env
 
-    init(_ raw: napi_env) {
+    nonisolated init(_ raw: napi_env) {
         self.raw = raw
     }
 
@@ -292,4 +292,4 @@ extension NodeEnvironment {
 }
 
 // equivalent to NodeEnvironment.current
-public var Node: NodeEnvironment { .current }
+@NodeActor public var Node: NodeEnvironment { .current }

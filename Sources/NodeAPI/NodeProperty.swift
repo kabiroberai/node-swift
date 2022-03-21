@@ -1,6 +1,6 @@
 @_implementationOnly import CNodeAPI
 
-private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
+@NodeActor(unsafe) private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
@@ -18,7 +18,7 @@ private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value
 }
 
 public protocol NodePropertyConvertible {
-    var nodeProperty: NodeProperty { get }
+    @NodeActor var nodeProperty: NodeProperty { get }
 }
 
 // marker protocol: some values can be represented as properties
@@ -41,14 +41,14 @@ public struct NodePropertyList<Property>: ExpressibleByDictionaryLiteral {
 public typealias NodeObjectPropertyList = NodePropertyList<NodePropertyConvertible>
 public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConvertible>
 
-public struct NodeMethod: NodeClassPropertyConvertible {
+@NodeActor public struct NodeMethod: NodeClassPropertyConvertible {
     public let nodeProperty: NodeProperty
     public init(attributes: NodeProperty.Attributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
         nodeProperty = .init(attributes: attributes, value: .method(callback))
     }
 }
 
-public struct NodeComputedProperty: NodeClassPropertyConvertible {
+@NodeActor public struct NodeComputedProperty: NodeClassPropertyConvertible {
     public let nodeProperty: NodeProperty
     public init(
         attributes: NodeProperty.Attributes = .defaultProperty,
@@ -65,14 +65,14 @@ public struct NodeComputedProperty: NodeClassPropertyConvertible {
             value: set.map { set in
                 .computed(get: get) {
                     try set($0)
-                    return try NodeUndefined()
+                    return Node.undefined
                 }
             } ?? .computedGet(get)
         )
     }
 }
 
-public struct NodeProperty: NodePropertyConvertible {
+@NodeActor public struct NodeProperty: NodePropertyConvertible {
     typealias Callbacks = Box<(getterOrMethod: NodeFunction.Callback?, setter: NodeFunction.Callback?)>
 
     public struct Attributes: RawRepresentable, OptionSet {
