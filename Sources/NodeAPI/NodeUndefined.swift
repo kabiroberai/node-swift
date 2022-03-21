@@ -15,7 +15,4 @@ public final class NodeUndefined: NodePrimitive {
         self.base = NodeValueBase(raw: result, in: ctx)
     }
 
-    @available(*, deprecated, message: "Renamed to Node.undefined")
-    public static let deferred = Node.undefined
-
 }

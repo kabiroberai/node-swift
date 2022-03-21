@@ -18,13 +18,9 @@ private class ModulePriv {
 }
 
 private let threadModuleKey = "NODE_SWIFT_MODULE"
-// a computed var would be nicer but -warn-concurrency doesn't
-// like mutations to globals
-private func threadModule() -> UnsafeMutablePointer<napi_module>? {
-    Thread.current.threadDictionary[threadModuleKey] as? UnsafeMutablePointer<napi_module>
-}
-private func setThreadModule(_ newValue: UnsafeMutablePointer<napi_module>?) {
-    Thread.current.threadDictionary[threadModuleKey] = newValue
+nonisolated private var threadModule: UnsafeMutablePointer<napi_module>? {
+    get { Thread.current.threadDictionary[threadModuleKey] as? UnsafeMutablePointer<napi_module> }
+    set { Thread.current.threadDictionary[threadModuleKey] = newValue }
 }
 
 // we can't pass params to main, so use TLS to store the current module.
@@ -34,8 +30,8 @@ private func setThreadModule(_ newValue: UnsafeMutablePointer<napi_module>?) {
     main: @convention(c) () -> Int,
     module: UnsafeMutableRawPointer!
 ) {
-    setThreadModule(module.assumingMemoryBound(to: napi_module.self))
-    defer { setThreadModule(nil) }
+    threadModule = module.assumingMemoryBound(to: napi_module.self)
+    defer { threadModule = nil }
     _ = main()
 }
 
@@ -66,7 +62,7 @@ extension NodeModule {
     }
 
     nonisolated public static func main() {
-        guard let mod = threadModule() else {
+        guard let mod = threadModule else {
             nodeFatalError("NodeSwift module \(self) did not register itself correctly")
         }
 

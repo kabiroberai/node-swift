@@ -64,7 +64,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
                 // if we're asking for an arg that's out of bounds,
                 // return the equivalent of `undefined` if possible,
                 // else throw
-                guard let converted = try Node.undefined.as(T.self) else {
+                guard let converted = try undefined.as(T.self) else {
                     throw try NodeError(code: nil, message: "Function requires at least \(index + 1) arguments")
                 }
                 return converted
@@ -74,9 +74,6 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
 }
 
 public final class NodeFunction: NodeObject {
-
-    @available(*, deprecated, message: "Renamed to NodeArguments")
-    public typealias Arguments = NodeArguments
 
     public typealias Callback = @NodeActor (_ arguments: NodeArguments) throws -> NodeValueConvertible
     public typealias VoidCallback = @NodeActor (_ arguments: NodeArguments) throws -> Void
@@ -146,7 +143,7 @@ public final class NodeFunction: NodeObject {
 
     @discardableResult
     public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
-        try call(receiver: NodeUndefined(), arguments: args)
+        try call(receiver: undefined, arguments: args)
     }
 
     public func new(arguments: [NodeValueConvertible]) throws -> NodeObject {

@@ -65,7 +65,7 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
             value: set.map { set in
                 .computed(get: get) {
                     try set($0)
-                    return Node.undefined
+                    return undefined
                 }
             } ?? .computedGet(get)
         )

@@ -41,7 +41,7 @@ public final class NodePromise: NodeObject {
         public func callAsFunction(_ result: Result<Void, Swift.Error>) throws {
             switch result {
             case .success:
-                try self(.success(NodeUndefined()))
+                try self(.success(undefined))
             case .failure(let error):
                 try self(.failure(error))
             }
@@ -95,14 +95,14 @@ extension NodePromise {
                             hasResumed = true
                             cont.resume(returning: val)
                         }
-                        return Node.undefined
+                        return undefined
                     })
                     try self.`catch`(NodeFunction { (err: AnyNodeValue) in
                         if !hasResumed {
                             hasResumed = true
                             cont.resume(throwing: NodeException(value: err))
                         }
-                        return Node.undefined
+                        return undefined
                     })
                 } catch {
                     if !hasResumed {

@@ -279,9 +279,6 @@ extension NodeEnvironment {
 
 extension NodeEnvironment {
 
-    public var undefined: NodeValueConvertible { NodeDeferredValue { try NodeUndefined() } }
-    public var null: NodeValueConvertible { NodeDeferredValue { try NodeNull() } }
-
     // equivalent to global().<key>
     public subscript(dynamicMember key: String) -> NodeObject.DynamicProperty {
         get throws {
@@ -293,3 +290,9 @@ extension NodeEnvironment {
 
 // equivalent to NodeEnvironment.current
 @NodeActor public var Node: NodeEnvironment { .current }
+
+// we want these to be usable even off of NodeActor, so they can't
+// be NodeEnvironment instance vars because NodeEnvironment.current
+// is NodeActor-isolated
+nonisolated public var undefined: NodeValueConvertible { NodeDeferredValue { try NodeUndefined() } }
+nonisolated public var null: NodeValueConvertible { NodeDeferredValue { try NodeNull() } }

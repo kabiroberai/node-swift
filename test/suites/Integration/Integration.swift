@@ -10,7 +10,7 @@ import Foundation
 
         try Node.setTimeout(NodeFunction {
             print("Called our timeout! Captured: \(captured)")
-            return Node.undefined
+            return undefined
         }, 1000)
 
         let res = try Node.run(script: "[1, 15]").as(NodeArray.self)!
