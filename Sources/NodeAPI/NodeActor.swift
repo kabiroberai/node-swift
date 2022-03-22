@@ -6,6 +6,7 @@ extension NodeAsyncQueue {
 }
 
 extension NodeContext {
+    // if we're on a node thread, run `action` on it
     @NodeActor(unsafe) static func runOnActor<T>(_ action: @NodeActor () throws -> T) rethrows -> T? {
         guard NodeContext.hasCurrent else { return nil }
         return try action()
@@ -56,5 +57,29 @@ private final class NodeExecutor: SerialExecutor {
 
     public static func run<T: Sendable>(resultType: T.Type = T.self, body: @NodeActor @Sendable () throws -> T) async rethrows -> T {
         try await body()
+    }
+}
+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension Task where Failure == Never {
+    // if it's absolutely necessary to create a detached task, use this
+    // instead of Task.detached since the latter doesn't inherit any
+    // task-locals, which means the current Node instance won't be
+    // preserved; this explicitly restores the NodeAsyncQueue local.
+    @discardableResult
+    public static func nodeDetached(priority: TaskPriority? = nil, operation: @escaping @Sendable () async -> Success) -> Task<Success, Failure> {
+        Task.detached(priority: priority) { [q = NodeAsyncQueue.current] in
+            await NodeAsyncQueue.$current.withValue(q, operation: operation)
+        }
+    }
+}
+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension Task where Failure == Error {
+    @discardableResult
+    public static func nodeDetached(priority: TaskPriority? = nil, operation: @escaping @Sendable () async throws -> Success) -> Task<Success, Failure> {
+        Task.detached(priority: priority) { [q = NodeAsyncQueue.current] in
+            try await NodeAsyncQueue.$current.withValue(q, operation: operation)
+        }
     }
 }

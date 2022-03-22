@@ -289,6 +289,7 @@ extension NodeEnvironment {
 }
 
 // equivalent to NodeEnvironment.current
+// FIXME: This isn't dispatching onto NodeActor: SR-16034
 @NodeActor public var Node: NodeEnvironment { .current }
 
 // we want these to be usable even off of NodeActor, so they can't

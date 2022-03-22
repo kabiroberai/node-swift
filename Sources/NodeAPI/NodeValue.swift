@@ -194,7 +194,7 @@ extension NodeValue {
     public func nodeValue() throws -> NodeValue { self }
 
     public nonisolated var description: String {
-        describe(self) ?? "<invalid \(Self.self)>"
+        describe(self) ?? "<\(Self.self)>"
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
