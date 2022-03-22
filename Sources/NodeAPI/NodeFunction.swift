@@ -73,6 +73,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
     }
 }
 
+@dynamicCallable
 public final class NodeFunction: NodeObject {
 
     public typealias Callback = @NodeActor (_ arguments: NodeArguments) throws -> NodeValueConvertible
@@ -120,9 +121,10 @@ public final class NodeFunction: NodeObject {
         try addFinalizer { _ = wrapper }
     }
 
+    @discardableResult
     public func call(
-        receiver: NodeValueConvertible,
-        arguments: [NodeValueConvertible]
+        on receiver: NodeValueConvertible = undefined,
+        _ arguments: [NodeValueConvertible]
     ) throws -> NodeValue {
         let env = base.environment
         var ret: napi_value!
@@ -141,9 +143,12 @@ public final class NodeFunction: NodeObject {
         return AnyNodeValue(raw: ret)
     }
 
+    // we can't use callAsFunction(_ args: NodeValueConvertible...) because if
+    // you pass it a [NodeValueConvertible] it parses it as the entire args list
+    // instead of as a single argument. Weird bug but ok.
     @discardableResult
-    public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
-        try call(receiver: undefined, arguments: args)
+    public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeValue {
+        try call(args)
     }
 
     public func new(arguments: [NodeValueConvertible]) throws -> NodeObject {

@@ -70,6 +70,7 @@ extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == Str
 
 extension NodeObject {
 
+    @dynamicCallable
     @dynamicMemberLookup
     @NodeActor public final class DynamicProperty: NodeValueConvertible {
         let obj: NodeObject
@@ -129,12 +130,13 @@ extension NodeObject {
             return result
         }
 
+        // see NodeFunction for an explanation on why we can't use callAsFunction
         @discardableResult
-        public func callAsFunction(_ args: NodeValueConvertible...) throws -> NodeValue {
+        public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeValue {
             guard let fn = try self.as(NodeFunction.self) else {
                 throw NodeAPIError(.functionExpected)
             }
-            return try fn.call(receiver: obj, arguments: args)
+            return try fn.call(on: obj, args)
         }
 
         public func property(forKey key: NodeValueConvertible) throws -> DynamicProperty {
