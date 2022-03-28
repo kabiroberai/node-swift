@@ -36,7 +36,7 @@ import Foundation
         try obj.setWrappedValue(nil, forKey: key)
         print("wrapped value (shouldn't be found): \(try obj.wrappedValue(forKey: key) ?? "NOT FOUND")")
 
-        try withExtendedLifetime(Node.global()) {
+        try withExtendedLifetime(Node.global) {
             print("First copy of global: \($0)")
         }
 
@@ -49,7 +49,7 @@ import Foundation
                 print("Cleanup!")
             }
         }
-        let global = try Node.global()
+        let global = try Node.global
         let cleanupHandler = CleanupHandler(global: global)
 
         try Node.setInstanceData(cleanupHandler, for: .init())

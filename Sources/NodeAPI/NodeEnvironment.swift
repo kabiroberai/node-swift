@@ -232,24 +232,30 @@ public struct NodeVersion {
 extension NodeEnvironment {
 
     // we could put this in NodeObject but that would allow calling
-    // global() on subclass types as well, which is confusing
-    public func global() throws -> NodeObject {
-        var val: napi_value!
-        try check(napi_get_global(raw, &val))
-        return try NodeValueBase(raw: val, in: .current).as(NodeObject.self)!
+    // `global` on subclass types as well, which is confusing
+    public var global: NodeObject {
+        get throws {
+            var val: napi_value!
+            try check(napi_get_global(raw, &val))
+            return try NodeValueBase(raw: val, in: .current).as(NodeObject.self)!
+        }
     }
 
-    public func nodeVersion() throws -> NodeVersion {
-        // "The returned buffer is statically allocated and does not need to be freed"
-        var version: UnsafePointer<napi_node_version>!
-        try check(napi_get_node_version(raw, &version))
-        return NodeVersion(raw: version.pointee)
+    public var nodeVersion: NodeVersion {
+        get throws {
+            // "The returned buffer is statically allocated and does not need to be freed"
+            var version: UnsafePointer<napi_node_version>!
+            try check(napi_get_node_version(raw, &version))
+            return NodeVersion(raw: version.pointee)
+        }
     }
 
-    public func apiVersion() throws -> Int {
-        var version: UInt32 = 0
-        try check(napi_get_version(raw, &version))
-        return Int(version)
+    public var apiVersion: Int {
+        get throws {
+            var version: UInt32 = 0
+            try check(napi_get_version(raw, &version))
+            return Int(version)
+        }
     }
 
     // returns the adjusted value
@@ -279,10 +285,10 @@ extension NodeEnvironment {
 
 extension NodeEnvironment {
 
-    // equivalent to global().<key>
+    // equivalent to global.<key>
     public subscript(dynamicMember key: String) -> NodeObject.DynamicProperty {
         get throws {
-            try global().property(forKey: key)
+            try global.property(forKey: key)
         }
     }
 
