@@ -8,10 +8,15 @@ public final class NodeBool: NodePrimitive, NodeValueCoercible {
     }
 
     public init(coercing value: NodeValueConvertible) throws {
+        let val = try value.nodeValue()
+        if let val = val as? NodeBool {
+            self.base = val.base
+            return
+        }
         let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_bool(env.raw, value.rawValue(), &coerced))
+        try env.check(napi_coerce_to_bool(env.raw, val.rawValue(), &coerced))
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 

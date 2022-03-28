@@ -8,10 +8,15 @@ public final class NodeNumber: NodePrimitive, NodeValueCoercible {
     }
 
     public init(coercing value: NodeValueConvertible) throws {
+        let val = try value.nodeValue()
+        if let val = val as? NodeNumber {
+            self.base = val.base
+            return
+        }
         let ctx = NodeContext.current
         let env = ctx.environment
         var coerced: napi_value!
-        try env.check(napi_coerce_to_number(env.raw, value.rawValue(), &coerced))
+        try env.check(napi_coerce_to_number(env.raw, val.rawValue(), &coerced))
         self.base = NodeValueBase(raw: coerced, in: ctx)
     }
 
