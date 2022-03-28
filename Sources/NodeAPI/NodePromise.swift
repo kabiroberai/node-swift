@@ -52,9 +52,9 @@ public final class NodePromise: NodeObject {
         super.init(base)
     }
 
-    public init(executor: (_ deferred: Deferred) -> Void) throws {
+    public init(body: (_ deferred: Deferred) -> Void) throws {
         let deferred = try Deferred()
-        executor(deferred)
+        body(deferred)
         super.init(deferred.promise.base)
     }
 
@@ -70,12 +70,12 @@ public final class NodePromise: NodeObject {
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension NodePromise {
 
-    public convenience init(executor: @escaping @Sendable @NodeActor () async throws -> NodeValueConvertible) throws {
+    public convenience init(body: @escaping @Sendable @NodeActor () async throws -> NodeValueConvertible) throws {
         try self.init { deferred in
             Task {
                 let result: Result<NodeValueConvertible, Swift.Error>
                 do {
-                    result = .success(try await executor())
+                    result = .success(try await body())
                 } catch {
                     result = .failure(error)
                 }

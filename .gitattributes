@@ -1,1 +1,2 @@
-vendored/* linguist-vendored
+vendored/** linguist-vendored
+**/generated/** linguist-vendored

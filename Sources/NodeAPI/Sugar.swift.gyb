@@ -1,0 +1,129 @@
+%{
+    # -*- mode: Swift -*-
+    # Ignore the following admonition; it applies to the resulting .swift file only
+}%
+
+// --------
+// Automatically Generated From Sugar.swift.gyb.
+// Do Not Edit Directly!
+// --------
+
+// Instead, edit Sugar.swift.gyb and then `npm run gyb`
+
+%{
+    num_overloads = 10
+}%
+
+extension NodeFunction {
+
+    public convenience init(name: String = "", callback: @escaping @NodeActor () throws -> NodeValueConvertible) throws {
+        try self.init(name: name) { _ in
+            try callback()
+        }
+    }
+
+    % for i in range(1, num_overloads + 1):
+
+        public convenience init<${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(name: String = "", callback: @escaping @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) throws -> NodeValueConvertible) throws {
+            try self.init(name: name) {
+                try callback(${", ".join([f"$0[{x}]" for x in range(i)])})
+            }
+        }
+
+    % end
+
+}
+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension NodeFunction {
+
+    public convenience init(name: String = "", callback: @escaping @NodeActor () async throws -> NodeValueConvertible) throws {
+        try self.init(name: name) { _ in
+            try await callback()
+        }
+    }
+
+    % for i in range(1, num_overloads + 1):
+
+        public convenience init<${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(name: String = "", callback: @escaping @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) async throws -> NodeValueConvertible) throws {
+            try self.init(name: name) {
+                try await callback(${", ".join([f"$0[{x}]" for x in range(i)])})
+            }
+        }
+
+    % end
+
+}
+
+extension NodeMethod {
+
+    private init<T: NodeClass>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T, NodeArguments) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { (target: T) in
+            { (args: NodeArguments) in
+                try callback(target, args)
+            }
+        }
+    }
+
+    public init<T: NodeClass>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { target, _ in try callback(target)() }
+    }
+
+    % for i in range(1, num_overloads + 1):
+
+        public init<T: NodeClass, ${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(
+            attributes: NodeProperty.Attributes = .defaultMethod,
+            _ callback: @escaping (T) -> @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) throws -> NodeValueConvertible
+        ) {
+            self.init(attributes: attributes) { try callback($0)(
+                ${", ".join([f"$1[{x}]" for x in range(i)])}
+            ) }
+        }
+
+    % end
+
+}
+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension NodeMethod {
+
+    private init<T: NodeClass>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T, NodeArguments) async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { (target: T) in
+            { (args: NodeArguments) in
+                try NodePromise {
+                    try await callback(target, args)
+                }
+            }
+        }
+    }
+
+    public init<T: NodeClass>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor () async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { target, _ in try await callback(target)() }
+    }
+
+    % for i in range(1, num_overloads + 1):
+
+        public init<T: NodeClass, ${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(
+            attributes: NodeProperty.Attributes = .defaultMethod,
+            _ callback: @escaping (T) -> @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) async throws -> NodeValueConvertible
+        ) {
+            self.init(attributes: attributes) { try await callback($0)(
+                ${", ".join([f"$1[{x}]" for x in range(i)])}
+            ) }
+        }
+
+    % end
+
+}
