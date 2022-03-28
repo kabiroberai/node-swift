@@ -2,13 +2,11 @@
 import Foundation
 
 extension NodeEnvironment {
-    private static let idKey = NodeInstanceDataKey<UUID>()
+    @NodeInstanceData private static var id: UUID?
     func instanceID() throws -> UUID {
-        if let id = try instanceData(for: Self.idKey) {
-            return id
-        }
+        if let id = Self.id { return id }
         let id = UUID()
-        try setInstanceData(id, for: Self.idKey)
+        Self.id = id
         return id
     }
 }
@@ -38,17 +36,15 @@ private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint:
 
 // a queue that allows dispatching closures to the JS thread it was initialized on.
 public final class NodeAsyncQueue: @unchecked Sendable {
-    // the callbackHandle is effectively an atomic indicator of
-    // whether the tsfn finalizer has been called. The only thing
+    // tsfnToken is effectively an atomic indicator of whether
+    // the tsfn finalizer has been called. The only thing
     // holding a strong ref to this is the threadsafe
     // function itself, and that ref is released when cFinalizer
     // is invoked, therefore making this handle nil
     private weak var _tsfnToken: AnyObject?
     private var isValid: Bool { _tsfnToken != nil }
 
-    // this property can be made publicly readable, but we'd need to make
-    // it atomic or explicitly thread-unsafe
-    private var keepsNodeThreadAlive: Bool
+    @NodeActor public private(set) var keepsNodeThreadAlive: Bool
 
     let instanceID: UUID
     private let environment: NodeEnvironment
@@ -60,23 +56,28 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         keepsNodeThreadAlive: Bool = true,
         maxQueueSize: Int? = nil
     ) throws {
+        environment = .current
+        self.instanceID = try environment.instanceID()
         let tsfnToken = Token()
         self._tsfnToken = tsfnToken
-        let box = Unmanaged.passRetained(tsfnToken).toOpaque()
+        let box = Unmanaged.passRetained(tsfnToken)
         var result: napi_threadsafe_function!
-        environment = .current
-        try environment.check(napi_create_threadsafe_function(
-            environment.raw, nil,
-            asyncResource?.rawValue(), label.rawValue(),
-            maxQueueSize ?? 0, 1,
-            box, cFinalizer,
-            nil, { cCallback(env: $0, cb: $1, context: $2, data: $3) },
-            &result
-        ))
+        do {
+            try environment.check(napi_create_threadsafe_function(
+                environment.raw, nil,
+                asyncResource?.rawValue(), label.rawValue(),
+                maxQueueSize ?? 0, 1,
+                box.toOpaque(), cFinalizer,
+                nil, { cCallback(env: $0, cb: $1, context: $2, data: $3) },
+                &result
+            ))
+        } catch {
+            box.release() // we stan strong exception safety
+            throw error
+        }
         self.raw = result
         // the initial value set by napi itself is `true`
         self.keepsNodeThreadAlive = true
-        self.instanceID = try environment.instanceID()
         try setKeepsNodeThreadAlive(keepsNodeThreadAlive)
     }
 
@@ -104,6 +105,31 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         try Self.check(napi_release_threadsafe_function(raw, napi_tsfn_abort))
     }
 
+    public class Handle: @unchecked Sendable {
+        public let queue: NodeAsyncQueue
+
+        @NodeActor fileprivate init(_ queue: NodeAsyncQueue) throws {
+            let env = queue.environment
+            try env.check(napi_ref_threadsafe_function(env.raw, queue.raw))
+            self.queue = queue
+        }
+
+        deinit {
+            // capture props right here since `queue` might be deinitialized
+            // by the time we enter the closure
+            try? queue.run { [raw = queue.raw, env = queue.environment] in
+                try env.check(napi_unref_threadsafe_function(env.raw, raw))
+            }
+        }
+    }
+
+    // returns a handle to the queue that keeps the node thread alive
+    // while the handle is alive, even if the queue's own
+    // keepsNodeThreadAlive is false
+    @NodeActor public func handle() throws -> Handle {
+        try Handle(self)
+    }
+
     // Determines whether the main thread stays alive while the receiver is referenced
     // from other threads
     @NodeActor public func setKeepsNodeThreadAlive(_ keepAlive: Bool) throws {
@@ -128,9 +154,8 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     }
 
     // will throw NodeAPIError(.closing) if another thread called abort()
-    public func run(blocking: Bool = false, _ action: @escaping @NodeActor () throws -> Void) throws {
+    public func run(blocking: Bool = false, @_implicitSelfCapture _ action: @escaping @NodeActor () throws -> Void) throws {
         try ensureValid()
-        // `as AnyObject` should be faster than Box for classes, NS primitives
         let payload = CallbackBox(action)
         let unmanagedPayload = Unmanaged.passRetained(payload)
         let rawPayload = unmanagedPayload.toOpaque()

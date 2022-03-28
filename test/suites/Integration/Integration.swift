@@ -3,6 +3,17 @@ import Foundation
 
 @main struct NativeStuff: NodeModule {
 
+    class CleanupHandler {
+        let global: NodeObject
+        init(global: NodeObject) {
+            self.global = global
+        }
+        deinit {
+            print("Cleanup!")
+        }
+    }
+    @NodeInstanceData static var cleanupHandler: CleanupHandler?
+
     var exports: NodeValueConvertible
 
     init() throws {
@@ -40,19 +51,7 @@ import Foundation
             print("First copy of global: \($0)")
         }
 
-        class CleanupHandler {
-            let global: NodeObject
-            init(global: NodeObject) {
-                self.global = global
-            }
-            deinit {
-                print("Cleanup!")
-            }
-        }
-        let global = try Node.global
-        let cleanupHandler = CleanupHandler(global: global)
-
-        try Node.setInstanceData(cleanupHandler, for: .init())
+        Self.cleanupHandler = CleanupHandler(global: try Node.global)
 
         if #available(macOS 10.15, *) {
             Task {

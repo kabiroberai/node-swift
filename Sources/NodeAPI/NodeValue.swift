@@ -1,22 +1,5 @@
 @_implementationOnly import CNodeAPI
 
-private extension NodeEnvironment {
-    private static let releaseQueueKey =
-        NodeInstanceDataKey<NodeAsyncQueue>()
-
-    func getReleaseQueue() throws -> NodeAsyncQueue {
-        if let q = try instanceData(for: Self.releaseQueueKey) {
-            return q
-        }
-        let q = try NodeAsyncQueue(
-            label: "NAPI_SWIFT_RELEASE_REF",
-            keepsNodeThreadAlive: false
-        )
-        try setInstanceData(q, for: Self.releaseQueueKey)
-        return q
-    }
-}
-
 @_spi(NodeAPI) @NodeActor public final class NodeValueBase {
     private enum Guts {
         case unmanaged(napi_value)
@@ -49,7 +32,7 @@ private extension NodeEnvironment {
         try persist()
     }
 
-    func persist() throws {
+    func persist(releaseQueue: NodeAsyncQueue? = nil) throws {
         switch guts {
         case .managed:
             break // already persisted
@@ -71,7 +54,7 @@ private extension NodeEnvironment {
             }
             var ref: napi_ref!
             try environment.check(napi_create_reference(environment.raw, boxedRaw, 1, &ref))
-            let releaseQueue = try environment.getReleaseQueue()
+            let releaseQueue = try releaseQueue ?? environment.getDefaultQueue()
             self.guts = .managed(ref, releaseQueue: releaseQueue, isBoxed: isBoxed)
         }
     }

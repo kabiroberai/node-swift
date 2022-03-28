@@ -57,10 +57,6 @@
 
 private typealias InstanceData = Box<[ObjectIdentifier: Any]>
 
-public final class NodeInstanceDataKey<T> {
-    public init() {}
-}
-
 private func finalizeInstanceData(
     env rawEnv: napi_env?,
     data: UnsafeMutableRawPointer?,
@@ -71,6 +67,19 @@ private func finalizeInstanceData(
 }
 
 extension NodeEnvironment {
+    // TODO: don't use the instance data APIs at all;
+    // other non-Swift native modules might try to set
+    // instance_data and hence overwrite it, so using
+    // this prop isn't a good idea. Instead, we can utilize
+    // the fact that napi_env is unique per environment, to
+    // store instance data in a global dict protected by a
+    // (RW?)lock, keyed by the env's address. Values can be
+    // removed from this dict via napi_add_env_cleanup_hook.
+    //
+    // Or, maybe use the thread ID? not sure if that's guaranteed
+    // to be stable; napi_get_uv_event_loop could help since
+    // maybe the uv loop address is stable. Or maybe set a
+    // nodeSwiftEnvID prop on Node.global to represent the env ID
     private func instanceDataDict() throws -> InstanceData {
         var data: UnsafeMutableRawPointer?
         try check(napi_get_instance_data(raw, &data))
@@ -91,13 +100,40 @@ extension NodeEnvironment {
     func setInstanceData(_ value: Any?, for id: ObjectIdentifier) throws {
         try instanceDataDict().value[id] = value
     }
+}
 
-    public func instanceData<T>(for key: NodeInstanceDataKey<T>) throws -> T? {
-        try instanceData(for: ObjectIdentifier(key)) as? T
+@NodeActor
+@propertyWrapper public final class NodeInstanceData<Value> {
+    private let defaultValue: Value
+
+    private var key: ObjectIdentifier { ObjectIdentifier(self) }
+
+    public func get() throws -> Value {
+        try Node.instanceData(for: key) as? Value ?? defaultValue
     }
 
-    public func setInstanceData<T>(_ value: T?, for key: NodeInstanceDataKey<T>) throws {
-        try setInstanceData(value, for: ObjectIdentifier(key))
+    public func set(to newValue: Value) throws {
+        try Node.setInstanceData(newValue, for: key)
+    }
+
+    public var wrappedValue: Value {
+        get { (try? get()) ?? defaultValue }
+        set { try? set(to: newValue) }
+    }
+
+    public var projectedValue: NodeInstanceData<Value> { self }
+
+    public nonisolated init(wrappedValue defaultValue: Value) {
+        self.defaultValue = defaultValue
+    }
+
+    @available(*, unavailable, message: "NodeInstanceData cannot be an instance member")
+    public static subscript(
+        _enclosingInstance object: Never,
+        wrapped wrappedKeyPath: ReferenceWritableKeyPath<Never, Value>,
+        storage storageKeyPath: ReferenceWritableKeyPath<Never, NodeInstanceData<Value>>
+    ) -> Value {
+        get {}
     }
 }
 
@@ -162,8 +198,10 @@ extension NodeEnvironment {
 
 }
 
-// MARK: - Cleanup Hooks
+// MARK: - Async Cleanup Hooks
 
+// async hooks require NAPI 8+. sync requires 3+, so no
+// need to check the version for sync.
 #if !NAPI_VERSIONED || NAPI_GE_8
 
 public final class AsyncCleanupHook {
@@ -199,6 +237,19 @@ extension NodeEnvironment {
             &token.handle
         ))
         return token
+    }
+
+    // just some nice sugar
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+    public func addAsyncCleanupHook(
+        action: @escaping () async -> Void
+    ) throws -> AsyncCleanupHook {
+        try addAsyncCleanupHook { completion in
+            Task {
+                await action()
+                completion()
+            }
+        }
     }
 
     public func removeCleanupHook(_ hook: AsyncCleanupHook) throws {

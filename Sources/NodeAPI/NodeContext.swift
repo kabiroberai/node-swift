@@ -1,6 +1,19 @@
 import Foundation
 @_implementationOnly import CNodeAPI
 
+extension NodeEnvironment {
+    @NodeInstanceData private static var defaultQueue: NodeAsyncQueue?
+    func getDefaultQueue() throws -> NodeAsyncQueue {
+        if let q = Self.defaultQueue { return q }
+        let q = try NodeAsyncQueue(
+            label: "NAPI_SWIFT_EXECUTOR",
+            keepsNodeThreadAlive: false
+        )
+        Self.defaultQueue = q
+        return q
+    }
+}
+
 // An object context that manages allocations in native code.
 // You **must not** allow NodeContext instances to escape
 // the scope in which they were called.
@@ -34,8 +47,11 @@ final class NodeContext {
         do {
             ret = try action(ctx)
             if isTopLevel {
+                // get the release queue one time and pass it in
+                // to all persist calls for perf
+                let q = try env.getDefaultQueue()
                 for val in ctx.values {
-                    try val.value?.persist()
+                    try val.value?.persist(releaseQueue: q)
                 }
                 ctx.values.removeAll()
             } else {
@@ -94,8 +110,8 @@ final class NodeContext {
             defer { weakCtx = ctx }
             #endif
             if isTopLevel, #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *) {
-                let q = try NodeAsyncQueue(label: "NAPI_SWIFT_EXECUTOR")
-                return try NodeAsyncQueue.$current.withValue(q) {
+                let q = try env.getDefaultQueue()
+                return try NodeActor.$target.withValue(q.handle()) {
                     try _withContext(ctx, environment: env, isTopLevel: isTopLevel, do: action)
                 }
             } else {
