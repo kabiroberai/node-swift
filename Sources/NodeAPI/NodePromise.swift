@@ -96,8 +96,7 @@ extension NodePromise {
                             cont.resume(returning: val)
                         }
                         return undefined
-                    })
-                    try self.`catch`(NodeFunction { (err: AnyNodeValue) in
+                    }).`catch`(NodeFunction { (err: AnyNodeValue) in
                         if !hasResumed {
                             hasResumed = true
                             cont.resume(throwing: NodeException(value: err))

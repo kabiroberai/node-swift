@@ -1,8 +1,7 @@
 @_implementationOnly import CNodeAPI
 import Foundation
 
-@dynamicMemberLookup
-public class NodeObject: NodeValue, NodeObjectConvertible {
+public class NodeObject: NodeValue, NodeObjectConvertible, NodeLookupable {
 
     @_spi(NodeAPI) public final let base: NodeValueBase
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
@@ -70,9 +69,7 @@ extension Dictionary: NodeValueCreatable, AnyNodeValueCreatable where Key == Str
 
 extension NodeObject {
 
-    @dynamicCallable
-    @dynamicMemberLookup
-    @NodeActor public final class DynamicProperty: NodeValueConvertible {
+    @NodeActor public final class DynamicProperty: NodeValueConvertible, NodeCallable, NodeLookupable {
         let obj: NodeObject
         let key: NodeValueConvertible
 
@@ -130,15 +127,6 @@ extension NodeObject {
             return result
         }
 
-        // see NodeFunction for an explanation on why we can't use callAsFunction
-        @discardableResult
-        public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeValue {
-            guard let fn = try self.as(NodeFunction.self) else {
-                throw NodeAPIError(.functionExpected)
-            }
-            return try fn.call(on: obj, args)
-        }
-
         public func property(forKey key: NodeValueConvertible) throws -> DynamicProperty {
             // forwards to nodeValue()
             guard let obj = try self.as(NodeObject.self) else {
@@ -146,30 +134,10 @@ extension NodeObject {
             }
             return DynamicProperty(obj: obj, key: key)
         }
-
-        public subscript(key: NodeValueConvertible) -> DynamicProperty {
-            get throws {
-                try property(forKey: key)
-            }
-        }
-
-        public subscript(dynamicMember key: String) -> DynamicProperty {
-            get throws {
-                try property(forKey: key)
-            }
-        }
     }
 
     public final func property(forKey key: NodeValueConvertible) -> DynamicProperty {
         DynamicProperty(obj: self, key: key)
-    }
-
-    public final subscript(key: NodeValueConvertible) -> DynamicProperty {
-        property(forKey: key)
-    }
-
-    public final subscript(dynamicMember key: String) -> DynamicProperty {
-        property(forKey: key)
     }
 
     public final func hasOwnProperty(_ key: NodeName) throws -> Bool {
@@ -269,7 +237,7 @@ extension NodeObject {
         }
     }
 
-    public final func prototype() throws -> NodeValue {
+    public final func prototype() throws -> AnyNodeValue {
         let env = base.environment
         var result: napi_value!
         try env.check(napi_get_prototype(env.raw, base.rawValue(), &result))

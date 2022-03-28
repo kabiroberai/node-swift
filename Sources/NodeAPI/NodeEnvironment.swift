@@ -261,7 +261,7 @@ extension NodeEnvironment {
     }
 
     @discardableResult
-    public func run(script: String) throws -> NodeValue {
+    public func run(script: String) throws -> AnyNodeValue {
         var val: napi_value!
         try check(
             napi_run_script(

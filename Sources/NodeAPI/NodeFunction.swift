@@ -12,7 +12,7 @@ private typealias CallbackWrapper = Box<NodeFunction.Callback>
 }
 
 public struct NodeArguments: MutableCollection, RandomAccessCollection {
-    private var value: [NodeValue]
+    private var value: [AnyNodeValue]
     public let this: NodeObject?
     public let newTarget: NodeFunction? // new.target
     let data: UnsafeMutableRawPointer
@@ -45,7 +45,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
         value.index(after: i)
     }
 
-    public subscript(index: Int) -> NodeValue {
+    public subscript(index: Int) -> AnyNodeValue {
         get { value[index] }
         set { value[index] = newValue }
     }
@@ -73,8 +73,7 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
     }
 }
 
-@dynamicCallable
-public final class NodeFunction: NodeObject {
+public final class NodeFunction: NodeObject, NodeCallable {
 
     public typealias Callback = @NodeActor (_ arguments: NodeArguments) throws -> NodeValueConvertible
     public typealias VoidCallback = @NodeActor (_ arguments: NodeArguments) throws -> Void
@@ -85,7 +84,7 @@ public final class NodeFunction: NodeObject {
 
     // this may seem useless since .function is handled in NodeValueType, but
     // consider the following example ("new Function()")
-    // try env.global().Function.as(NodeFunction.self)!.new().as(NodeFunction.self)
+    // try Node.Function.as(NodeFunction.self)!.new().as(NodeFunction.self)
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
         try value.nodeType() == .function
     }
@@ -125,7 +124,7 @@ public final class NodeFunction: NodeObject {
     public func call(
         on receiver: NodeValueConvertible = undefined,
         _ arguments: [NodeValueConvertible]
-    ) throws -> NodeValue {
+    ) throws -> AnyNodeValue {
         let env = base.environment
         var ret: napi_value!
         let rawArgs = try arguments.map { arg -> napi_value? in
@@ -143,15 +142,7 @@ public final class NodeFunction: NodeObject {
         return AnyNodeValue(raw: ret)
     }
 
-    // we can't use callAsFunction(_ args: NodeValueConvertible...) because if
-    // you pass it a [NodeValueConvertible] it parses it as the entire args list
-    // instead of as a single argument. Weird bug but ok.
-    @discardableResult
-    public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeValue {
-        try call(args)
-    }
-
-    public func new(arguments: [NodeValueConvertible]) throws -> NodeObject {
+    public func construct(withArguments arguments: [NodeValueConvertible]) throws -> NodeObject {
         let env = base.environment
         let argv: [napi_value?] = try arguments.map { try $0.rawValue() }
         var result: napi_value!
@@ -159,10 +150,6 @@ public final class NodeFunction: NodeObject {
             napi_new_instance(env.raw, base.rawValue(), arguments.count, argv, &result)
         )
         return try NodeValueBase(raw: result, in: .current).as(NodeObject.self)!
-    }
-
-    public func new(_ arguments: NodeValueConvertible...) throws -> NodeObject {
-        try new(arguments: arguments)
     }
 
 }

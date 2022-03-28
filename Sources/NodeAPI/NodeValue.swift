@@ -169,6 +169,53 @@ public protocol NodeObjectConvertible: NodeValueConvertible {}
     @_spi(NodeAPI) init(_ base: NodeValueBase)
 }
 
+@dynamicCallable
+@NodeActor public protocol NodeCallable: NodeValueConvertible {}
+extension NodeCallable {
+    // we can't use callAsFunction(_ args: NodeValueConvertible...) because if
+    // you pass it a [NodeValueConvertible] there's a bug where it parses it as
+    // the entire args list instead of as a single argument
+    @discardableResult
+    public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> AnyNodeValue {
+        guard let fn = try self.as(NodeFunction.self) else {
+            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function")
+        }
+        return try fn.call(args)
+    }
+
+    public var new: NodeConstructor {
+        NodeConstructor(callable: self)
+    }
+}
+
+// this type exists due to the aforementioned callAsFunction bug
+@dynamicCallable
+@NodeActor public struct NodeConstructor {
+    let callable: NodeCallable
+    public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeObject {
+        guard let fn = try callable.as(NodeFunction.self) else {
+            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function")
+        }
+        return try fn.construct(withArguments: args)
+    }
+}
+
+@dynamicMemberLookup
+@NodeActor public protocol NodeLookupable: NodeValueConvertible {}
+extension NodeLookupable {
+    public subscript(key: NodeValueConvertible) -> NodeObject.DynamicProperty {
+        get throws {
+            try NodeObject(coercing: self).property(forKey: key)
+        }
+    }
+
+    public subscript(dynamicMember key: String) -> NodeObject.DynamicProperty {
+        get throws {
+            try NodeObject(coercing: self).property(forKey: key)
+        }
+    }
+}
+
 extension NodeValue {
     @_spi(NodeAPI) public var base: NodeValueBase { 
         fatalError("Custom implementations of NodeValue are unsupported")
@@ -344,11 +391,13 @@ extension NodeValueConvertible {
     }
 
     @NodeActor public func `as`<T: AnyNodeValueCreatable>(_ type: T.Type) throws -> T? {
-        try T.from(nodeValue())
+        let val = try nodeValue()
+        // just a short circuit for perf reasons
+        return try (val as? T) ?? T.from(val)
     }
 
     @NodeActor public func `as`<T: NodeValueCreatable>(_ type: T.Type) throws -> T where T.ValueType == Self {
-        try T.from(self)
+        try (self as? T) ?? T.from(self)
     }
 
     // Array itself conforms to NodeValueCreatable iff Element == NodeValue, i.e.
@@ -387,7 +436,7 @@ extension NodeValueConvertible {
 // when we have an untyped napi_value and we want an opaque NodeValue
 // (the user can inspect the type with nodeType() and/or cast accordingly
 // using .as())
-public struct AnyNodeValue: NodeValue {
+public struct AnyNodeValue: NodeValue, NodeCallable, NodeLookupable {
     @_spi(NodeAPI) public let base: NodeValueBase
     @_spi(NodeAPI) public init(_ base: NodeValueBase) {
         self.base = base
