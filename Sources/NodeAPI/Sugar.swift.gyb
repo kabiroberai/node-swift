@@ -12,6 +12,9 @@
 
 %{
     num_overloads = 10
+    overloads = range(1, num_overloads + 1)
+    def fmt(s, n): # fmt("A{}", 3) == "A0, A1, A2"
+        return ", ".join([s.replace("{}", str(x)) for x in range(n)])
 }%
 
 extension NodeFunction {
@@ -22,11 +25,11 @@ extension NodeFunction {
         }
     }
 
-    % for i in range(1, num_overloads + 1):
+    % for i in overloads:
 
-        public convenience init<${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(name: String = "", callback: @escaping @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) throws -> NodeValueConvertible) throws {
+        public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
-                try callback(${", ".join([f"$0[{x}]" for x in range(i)])})
+                try callback(${fmt("$0[{}]", i)})
             }
         }
 
@@ -43,11 +46,11 @@ extension NodeFunction {
         }
     }
 
-    % for i in range(1, num_overloads + 1):
+    % for i in overloads:
 
-        public convenience init<${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(name: String = "", callback: @escaping @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) async throws -> NodeValueConvertible) throws {
+        public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
-                try await callback(${", ".join([f"$0[{x}]" for x in range(i)])})
+                try await callback(${fmt("$0[{}]", i)})
             }
         }
 
@@ -75,14 +78,14 @@ extension NodeMethod {
         self.init(attributes: attributes) { target, _ in try callback(target)() }
     }
 
-    % for i in range(1, num_overloads + 1):
+    % for i in overloads:
 
-        public init<T: NodeClass, ${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(
+        public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
             attributes: NodeProperty.Attributes = .defaultMethod,
-            _ callback: @escaping (T) -> @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) throws -> NodeValueConvertible
+            _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible
         ) {
             self.init(attributes: attributes) { try callback($0)(
-                ${", ".join([f"$1[{x}]" for x in range(i)])}
+                ${fmt("$1[{}]", i)}
             ) }
         }
 
@@ -113,14 +116,14 @@ extension NodeMethod {
         self.init(attributes: attributes) { target, _ in try await callback(target)() }
     }
 
-    % for i in range(1, num_overloads + 1):
+    % for i in overloads:
 
-        public init<T: NodeClass, ${", ".join([f"A{x}: AnyNodeValueCreatable" for x in range(i)])}>(
+        public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
             attributes: NodeProperty.Attributes = .defaultMethod,
-            _ callback: @escaping (T) -> @NodeActor (${", ".join([f"A{x}" for x in range(i)])}) async throws -> NodeValueConvertible
+            _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible
         ) {
             self.init(attributes: attributes) { try await callback($0)(
-                ${", ".join([f"$1[{x}]" for x in range(i)])}
+                ${fmt("$1[{}]", i)}
             ) }
         }
 

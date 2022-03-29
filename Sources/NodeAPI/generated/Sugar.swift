@@ -7,7 +7,7 @@
 
 // Instead, edit Sugar.swift.gyb and then `npm run gyb`
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 16)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 19)
 
 extension NodeFunction {
 
@@ -17,7 +17,7 @@ extension NodeFunction {
         }
     }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -25,7 +25,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -33,7 +33,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -41,7 +41,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -49,7 +49,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -57,7 +57,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -65,7 +65,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -73,7 +73,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -81,7 +81,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7, A8) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -89,7 +89,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 26)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 29)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable, A9: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7, A8, A9) throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -97,7 +97,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 34)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 37)
 
 }
 
@@ -110,7 +110,7 @@ extension NodeFunction {
         }
     }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -118,7 +118,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -126,7 +126,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -134,7 +134,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -142,7 +142,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -150,7 +150,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -158,7 +158,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -166,7 +166,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -174,7 +174,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7, A8) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -182,7 +182,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 47)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 50)
 
         public convenience init<A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable, A9: AnyNodeValueCreatable>(name: String = "", callback: @escaping @NodeActor (A0, A1, A2, A3, A4, A5, A6, A7, A8, A9) async throws -> NodeValueConvertible) throws {
             try self.init(name: name) {
@@ -190,7 +190,7 @@ extension NodeFunction {
             }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 55)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 58)
 
 }
 
@@ -214,7 +214,7 @@ extension NodeMethod {
         self.init(attributes: attributes) { target, _ in try callback(target)() }
     }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -225,7 +225,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -236,7 +236,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -247,7 +247,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -258,7 +258,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -269,7 +269,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -280,7 +280,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -291,7 +291,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -302,7 +302,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -313,7 +313,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 79)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 82)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable, A9: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -324,7 +324,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 90)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 93)
 
 }
 
@@ -351,7 +351,7 @@ extension NodeMethod {
         self.init(attributes: attributes) { target, _ in try await callback(target)() }
     }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -362,7 +362,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -373,7 +373,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -384,7 +384,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -395,7 +395,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -406,7 +406,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -417,7 +417,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -428,7 +428,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -439,7 +439,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -450,7 +450,7 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 117)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 120)
 
         public init<T: NodeClass, A0: AnyNodeValueCreatable, A1: AnyNodeValueCreatable, A2: AnyNodeValueCreatable, A3: AnyNodeValueCreatable, A4: AnyNodeValueCreatable, A5: AnyNodeValueCreatable, A6: AnyNodeValueCreatable, A7: AnyNodeValueCreatable, A8: AnyNodeValueCreatable, A9: AnyNodeValueCreatable>(
             attributes: NodeProperty.Attributes = .defaultMethod,
@@ -461,6 +461,6 @@ extension NodeMethod {
             ) }
         }
 
-// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 128)
+// ###sourceLocation(file: "/Users/kabiroberai/Developer/node-swift/Sources/NodeAPI/Sugar.swift.gyb", line: 131)
 
 }
