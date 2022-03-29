@@ -2,11 +2,8 @@
     # -*- mode: Swift -*-
     # Ignore the following admonition; it applies to the resulting .swift file only
 }%
-
-// --------
 // Automatically Generated From Sugar.swift.gyb.
 // Do Not Edit Directly!
-// --------
 
 // Instead, edit Sugar.swift.gyb and then `npm run gyb`
 
@@ -16,7 +13,6 @@
     def fmt(s, n): # fmt("A{}", 3) == "A0, A1, A2"
         return ", ".join([s.replace("{}", str(x)) for x in range(n)])
 }%
-
 extension NodeFunction {
 
     public convenience init(name: String = "", callback: @escaping @NodeActor () throws -> NodeValueConvertible) throws {
@@ -26,15 +22,13 @@ extension NodeFunction {
     }
 
     % for i in overloads:
-
-        public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible) throws {
-            try self.init(name: name) {
-                try callback(${fmt("$0[{}]", i)})
-            }
+    public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try callback(${fmt("$0[{}]", i)})
         }
+    }
 
     % end
-
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -47,15 +41,13 @@ extension NodeFunction {
     }
 
     % for i in overloads:
-
-        public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible) throws {
-            try self.init(name: name) {
-                try await callback(${fmt("$0[{}]", i)})
-            }
+    public convenience init<${fmt("A{}: AnyNodeValueCreatable", i)}>(name: String = "", callback: @escaping @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible) throws {
+        try self.init(name: name) {
+            try await callback(${fmt("$0[{}]", i)})
         }
+    }
 
     % end
-
 }
 
 extension NodeMethod {
@@ -79,18 +71,16 @@ extension NodeMethod {
     }
 
     % for i in overloads:
-
-        public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
-            attributes: NodeProperty.Attributes = .defaultMethod,
-            _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible
-        ) {
-            self.init(attributes: attributes) { try callback($0)(
-                ${fmt("$1[{}]", i)}
-            ) }
-        }
+    public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { try callback($0)(
+            ${fmt("$1[{}]", i)}
+        ) }
+    }
 
     % end
-
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -117,16 +107,14 @@ extension NodeMethod {
     }
 
     % for i in overloads:
-
-        public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
-            attributes: NodeProperty.Attributes = .defaultMethod,
-            _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible
-        ) {
-            self.init(attributes: attributes) { try await callback($0)(
-                ${fmt("$1[{}]", i)}
-            ) }
-        }
+    public init<T: NodeClass, ${fmt("A{}: AnyNodeValueCreatable", i)}>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (${fmt("A{}", i)}) async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { try await callback($0)(
+            ${fmt("$1[{}]", i)}
+        ) }
+    }
 
     % end
-
 }

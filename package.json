@@ -10,7 +10,7 @@
     "build": "tsc",
     "prepare": "npm run build",
     "lint": "eslint .",
-    "gyb": "./vendored/swift/gyb.py Sources/NodeAPI/Sugar.swift.gyb > Sources/NodeAPI/generated/Sugar.swift"
+    "gyb": "./vendored/swift/gyb.py --line-directive '' Sources/NodeAPI/Sugar.swift.gyb > Sources/NodeAPI/generated/Sugar.swift"
   },
   "files": [
     "lib",
