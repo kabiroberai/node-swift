@@ -12,20 +12,24 @@ extension NodeEnvironment {
 }
 
 private class Token {}
-private typealias CallbackBox = Box<@NodeActor () throws -> Void>
+private typealias CallbackBox = Box<@NodeActor (NodeEnvironment) -> Void>
 
-private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer?) {
+private func cFinalizer(
+    rawEnv: napi_env!,
+    data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer?
+) {
     Unmanaged<Token>.fromOpaque(data).release()
 }
 
-@NodeActor(unsafe) private func cCallback(env: napi_env?, cb: napi_value?, context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!) {
+@NodeActor(unsafe) private func cCallback(
+    env: napi_env?, cb: napi_value?,
+    context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!
+) {
     let callback = Unmanaged<CallbackBox>.fromOpaque(data).takeRetainedValue()
 
     guard let env = env else { return }
 
-    NodeContext.withContext(environment: NodeEnvironment(env)) { ctx in
-        try callback.value()
-    }
+    callback.value(NodeEnvironment(env))
 }
 
 // this is the only async API we implement because it's more or less isomorphic
@@ -44,18 +48,18 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     private weak var _tsfnToken: AnyObject?
     private var isValid: Bool { _tsfnToken != nil }
 
-    @NodeActor public private(set) var keepsNodeThreadAlive: Bool
-
+    let label: String
     let instanceID: UUID
     private let environment: NodeEnvironment
     private let raw: napi_threadsafe_function
+    private weak var currentHandle: Handle?
 
     @NodeActor public init(
         label: String,
         asyncResource: NodeObjectConvertible? = nil,
-        keepsNodeThreadAlive: Bool = true,
         maxQueueSize: Int? = nil
     ) throws {
+        self.label = label
         environment = .current
         self.instanceID = try environment.instanceID()
         let tsfnToken = Token()
@@ -76,9 +80,8 @@ public final class NodeAsyncQueue: @unchecked Sendable {
             throw error
         }
         self.raw = result
-        // the initial value set by napi itself is `true`
-        self.keepsNodeThreadAlive = true
-        try setKeepsNodeThreadAlive(keepsNodeThreadAlive)
+        try environment.check(napi_acquire_threadsafe_function(raw))
+        try environment.check(napi_unref_threadsafe_function(environment.raw, raw))
     }
 
     private static func check(_ status: napi_status) throws {
@@ -115,10 +118,18 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         }
 
         deinit {
-            // capture props right here since `queue` might be deinitialized
-            // by the time we enter the closure
-            try? queue.run { [raw = queue.raw, env = queue.environment] in
-                try env.check(napi_unref_threadsafe_function(env.raw, raw))
+            // capture raw right here since `queue` might be deinitialized
+            // by the time we enter the closure. Also, we use the variant
+            // of `run` that doesn't do NodeContext.withContext since that
+            // would result in a new handle being created, meaning that we'd
+            // effectively never end up with a nil currentHandle.
+            try? queue.run { [raw = queue.raw, weak queue] env in
+                // unref isn't ref-counted (e.g. ref, ref, unref is equivalent
+                // to ref, unref) so we only want to call it when we're really
+                // sure we're done; that is, if we're the last handle to be
+                // deinitialized
+                guard queue?.currentHandle == nil else { return }
+                napi_unref_threadsafe_function(env.raw, raw)
             }
         }
     }
@@ -127,24 +138,13 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     // while the handle is alive, even if the queue's own
     // keepsNodeThreadAlive is false
     @NodeActor public func handle() throws -> Handle {
-        try Handle(self)
-    }
-
-    // Determines whether the main thread stays alive while the receiver is referenced
-    // from other threads
-    @NodeActor public func setKeepsNodeThreadAlive(_ keepAlive: Bool) throws {
-        guard keepAlive != keepsNodeThreadAlive else { return }
-        try ensureValid()
-        if keepAlive {
-            try environment.check(
-                napi_ref_threadsafe_function(environment.raw, raw)
-            )
+        if let currentHandle = currentHandle {
+            return currentHandle
         } else {
-            try environment.check(
-                napi_unref_threadsafe_function(environment.raw, raw)
-            )
+            let handle = try Handle(self)
+            currentHandle = handle
+            return handle
         }
-        keepsNodeThreadAlive = keepAlive
     }
 
     deinit {
@@ -154,7 +154,10 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     }
 
     // will throw NodeAPIError(.closing) if another thread called abort()
-    public func run(blocking: Bool = false, @_implicitSelfCapture _ action: @escaping @NodeActor () throws -> Void) throws {
+    private func run(
+        blocking: Bool = false,
+        _ action: @escaping @NodeActor (NodeEnvironment) -> Void
+    ) throws {
         try ensureValid()
         let payload = CallbackBox(action)
         let unmanagedPayload = Unmanaged.passRetained(payload)
@@ -171,4 +174,25 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         }
     }
 
+    public func run(
+        blocking: Bool = false,
+        @_implicitSelfCapture _ action: @escaping @NodeActor () throws -> Void
+    ) throws {
+        try run(blocking: blocking) {
+            NodeContext.withContext(environment: $0) { _ in try action() }
+        }
+    }
+
+}
+
+extension NodeAsyncQueue: CustomStringConvertible {
+    public var description: String {
+        "<NodeAsyncQueue: \(label)>"
+    }
+}
+
+extension NodeAsyncQueue.Handle: CustomStringConvertible {
+    public var description: String {
+        "<NodeAsyncQueue.Handle: \(queue.label)>"
+    }
 }

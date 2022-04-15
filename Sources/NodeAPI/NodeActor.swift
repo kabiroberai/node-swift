@@ -1,4 +1,5 @@
 import Foundation
+@_implementationOnly import CNodeAPI
 
 extension NodeContext {
     // if we're on a node thread, run `action` on it
@@ -8,14 +9,66 @@ extension NodeContext {
     }
 }
 
+private enum TLS {
+    // https://github.com/apple/swift-system/blob/8e3c23987f32d4f449c68ff4b702121025980a7c/Sources/System/Internals/Exports.swift#L128
+    struct Key: RawRepresentable, ExpressibleByIntegerLiteral {
+        #if os(Windows)
+        typealias RawValue = DWORD
+        #else
+        typealias RawValue = pthread_key_t
+        #endif
+        let rawValue: RawValue
+        init(_ value: RawValue) {
+            self.rawValue = value
+        }
+        init(rawValue value: RawValue) {
+            self.rawValue = value
+        }
+        init(integerLiteral value: RawValue) {
+            self.rawValue = value
+        }
+    }
+    static subscript(key: Key) -> UnsafeMutableRawPointer? {
+        get {
+            #if os(Windows)
+            return FlsGetValue(key.rawValue)
+            #else
+            return pthread_getspecific(key.rawValue)
+            #endif
+        }
+        set {
+            #if os(Windows)
+            guard FlsSetValue(key.rawValue, newValue) else {
+                fatalError("Unable to set TLS")
+            }
+            #else
+            guard 0 == pthread_setspecific(key.rawValue, newValue) else {
+                fatalError("Unable to set TLS")
+            }
+            #endif
+        }
+    }
+}
+
+// https://github.com/apple/swift/blob/d0cc5757b914c694e2549a413fe7e96e328cca3e/include/swift/Runtime/ThreadLocalStorage.h#L74
+// i'm not sure if this is ABI, but it's the best we have for now
+private let swiftTaskKey: TLS.Key = 103
+
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 private final class NodeExecutor: SerialExecutor {
     func enqueue(_ job: UnownedJob) {
-        let ref = asUnownedSerialExecutor()
+        // temporarily spoof the current task so that we can access
+        // its task-local storage. Here be dragons.
+        let prevTask = TLS[swiftTaskKey]
+        TLS[swiftTaskKey] = unsafeBitCast(job, to: UnsafeMutableRawPointer.self)
+        let target = NodeActor.target
+        TLS[swiftTaskKey] = prevTask
 
-        guard let q = NodeActor.target?.queue else {
+        guard let q = target?.queue else {
             nodeFatalError("There is no target NodeAsyncQueue associated with this Task")
         }
+
+        let ref = asUnownedSerialExecutor()
 
         if q.instanceID == NodeContext.runOnActor({ try? Node.instanceID() }) {
             // if we're already on the right thread, skip a hop
@@ -45,7 +98,7 @@ private final class NodeExecutor: SerialExecutor {
     private init() {}
     public static let shared = NodeActor()
 
-    @TaskLocal static var target: NodeAsyncQueue.Handle?
+    @TaskLocal public static var target: NodeAsyncQueue.Handle?
 
     private nonisolated let _unownedExecutor = NodeExecutor()
     public nonisolated var unownedExecutor: UnownedSerialExecutor {

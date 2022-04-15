@@ -25,6 +25,7 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI"],
+            exclude: ["Sugar.swift.gyb"],
             swiftSettings: baseSwiftSettings + (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])

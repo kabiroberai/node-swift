@@ -383,6 +383,10 @@ extension NodeValueConvertible {
         try (self as? T) ?? T.from(self)
     }
 
+    @NodeActor public func `as`(_ type: AnyNodeValue.Type) throws -> AnyNodeValue {
+        try AnyNodeValue(nodeValue())
+    }
+
     // Array itself conforms to NodeValueCreatable iff Element == NodeValue, i.e.
     // for [NodeValue]. This means that specializations, like [String], don't
     // themselves have this conformance. Consequently, this function special-cases

@@ -11,5 +11,8 @@
   "dependencies": {
     "node-swift": "file:.."
   },
+  "swift": {
+      "macVersion": "10.15"
+  },
   "private": true
 }

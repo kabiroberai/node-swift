@@ -123,7 +123,7 @@ extension NodeClass {
         let env = NodeEnvironment.current
         // we memoize this because we don't want to call napi_define_class multiple
         // times
-        if let pair = try env.instanceData(for: id) as? (NodeFunction, NodeSymbol) {
+        if let pair = env.instanceData(for: id) as? (NodeFunction, NodeSymbol) {
             return pair
         }
         // this symbol is a special indicator: if we call the constructor with this symbol
@@ -156,7 +156,7 @@ extension NodeClass {
             try this.setWrappedValue(value, forID: id)
         }
         let pair = (newCtor, sym)
-        try env.setInstanceData(pair, for: id)
+        env.setInstanceData(pair, for: id)
         return pair
     }
 

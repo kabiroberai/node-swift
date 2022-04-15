@@ -53,90 +53,6 @@
     }
 }
 
-// MARK: - Instance Data
-
-private typealias InstanceData = Box<[ObjectIdentifier: Any]>
-
-private func finalizeInstanceData(
-    env rawEnv: napi_env?,
-    data: UnsafeMutableRawPointer?,
-    hint: UnsafeMutableRawPointer?
-) {
-    guard let data = data else { return }
-    Unmanaged<InstanceData>.fromOpaque(data).release()
-}
-
-extension NodeEnvironment {
-    // TODO: don't use the instance data APIs at all;
-    // other non-Swift native modules might try to set
-    // instance_data and hence overwrite it, so using
-    // this prop isn't a good idea. Instead, we can utilize
-    // the fact that napi_env is unique per environment, to
-    // store instance data in a global dict protected by a
-    // (RW?)lock, keyed by the env's address. Values can be
-    // removed from this dict via napi_add_env_cleanup_hook.
-    //
-    // Or, maybe use the thread ID? not sure if that's guaranteed
-    // to be stable; napi_get_uv_event_loop could help since
-    // maybe the uv loop address is stable. Or maybe set a
-    // nodeSwiftEnvID prop on Node.global to represent the env ID
-    private func instanceDataDict() throws -> InstanceData {
-        var data: UnsafeMutableRawPointer?
-        try check(napi_get_instance_data(raw, &data))
-        if let data = data {
-            return Unmanaged<InstanceData>.fromOpaque(data)
-                .takeUnretainedValue()
-        }
-        let obj = InstanceData([:])
-        let rawObj = Unmanaged.passRetained(obj).toOpaque()
-        try check(napi_set_instance_data(raw, rawObj, finalizeInstanceData, nil))
-        return obj
-    }
-
-    func instanceData(for id: ObjectIdentifier) throws -> Any? {
-        try instanceDataDict().value[id]
-    }
-
-    func setInstanceData(_ value: Any?, for id: ObjectIdentifier) throws {
-        try instanceDataDict().value[id] = value
-    }
-}
-
-@NodeActor
-@propertyWrapper public final class NodeInstanceData<Value> {
-    private let defaultValue: Value
-
-    private var key: ObjectIdentifier { ObjectIdentifier(self) }
-
-    public func get() throws -> Value {
-        try Node.instanceData(for: key) as? Value ?? defaultValue
-    }
-
-    public func set(to newValue: Value) throws {
-        try Node.setInstanceData(newValue, for: key)
-    }
-
-    public var wrappedValue: Value {
-        get { (try? get()) ?? defaultValue }
-        set { try? set(to: newValue) }
-    }
-
-    public var projectedValue: NodeInstanceData<Value> { self }
-
-    public nonisolated init(wrappedValue defaultValue: Value) {
-        self.defaultValue = defaultValue
-    }
-
-    @available(*, unavailable, message: "NodeInstanceData cannot be an instance member")
-    public static subscript(
-        _enclosingInstance object: Never,
-        wrapped wrappedKeyPath: ReferenceWritableKeyPath<Never, Value>,
-        storage storageKeyPath: ReferenceWritableKeyPath<Never, NodeInstanceData<Value>>
-    ) -> Value {
-        get {}
-    }
-}
-
 // MARK: - Exceptions
 
 extension NodeEnvironment {
@@ -198,7 +114,47 @@ extension NodeEnvironment {
 
 }
 
-// MARK: - Async Cleanup Hooks
+// MARK: - Cleanup Hooks
+
+public final class CleanupHook {
+    let callback: () -> Void
+    init(callback: @escaping () -> Void) {
+        self.callback = callback
+    }
+}
+
+@NodeActor(unsafe)
+private func cCleanupHook(_ payload: UnsafeMutableRawPointer?) {
+    guard let payload = payload else { return }
+    Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue().callback()
+}
+
+extension NodeEnvironment {
+
+    @discardableResult
+    public func addCleanupHook(
+        action: @escaping () -> Void
+    ) throws -> CleanupHook {
+        let token = CleanupHook(callback: action)
+        try check(napi_add_env_cleanup_hook(
+            raw,
+            cCleanupHook,
+            Unmanaged.passRetained(token).toOpaque()
+        ))
+        return token
+    }
+
+    public func removeCleanupHook(_ hook: CleanupHook) throws {
+        let arg = Unmanaged.passUnretained(hook)
+        try check(napi_remove_env_cleanup_hook(
+            raw, cCleanupHook, arg.toOpaque())
+        )
+        // only release if we succeed at removing the hook, otherwise
+        // napi may still store a dangling pointer
+        arg.release()
+    }
+
+}
 
 // async hooks require NAPI 8+. sync requires 3+, so no
 // need to check the version for sync.
@@ -212,6 +168,7 @@ public final class AsyncCleanupHook {
     }
 }
 
+@NodeActor(unsafe)
 private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload: UnsafeMutableRawPointer!) {
     guard let payload = payload else { return }
     let hook = Unmanaged<AsyncCleanupHook>.fromOpaque(payload).takeRetainedValue()
@@ -220,13 +177,10 @@ private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload:
 
 extension NodeEnvironment {
 
-    // we choose not to implement sync cleanup hooks because those can be replicated by
-    // using instanceData + a deinitializer
-
     // action must call the passed in completion handler once it is done with
     // its cleanup
     @discardableResult
-    public func addAsyncCleanupHook(
+    public func addCleanupHook(
         action: @escaping (@escaping () -> Void) -> Void
     ) throws -> AsyncCleanupHook {
         let token = AsyncCleanupHook(callback: action)
@@ -241,10 +195,10 @@ extension NodeEnvironment {
 
     // just some nice sugar
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
-    public func addAsyncCleanupHook(
+    public func addCleanupHook(
         action: @escaping () async -> Void
     ) throws -> AsyncCleanupHook {
-        try addAsyncCleanupHook { completion in
+        try addCleanupHook { completion in
             Task {
                 await action()
                 completion()
@@ -254,10 +208,10 @@ extension NodeEnvironment {
 
     public func removeCleanupHook(_ hook: AsyncCleanupHook) throws {
         let arg = Unmanaged.passUnretained(hook)
-        defer { arg.release() }
         try check(
             napi_remove_async_cleanup_hook(hook.handle)
         )
+        arg.release()
     }
 
 }

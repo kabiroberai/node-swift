@@ -65,6 +65,32 @@ public final class NodePromise: NodeObject {
         return result
     }
 
+    // sugar around then/catch
+    public func get(completion: @escaping (Result<AnyNodeValue, Swift.Error>) -> Void) {
+        // since we're on NodeActor, access to hasResumed is serial
+        var hasResumed = false
+        do {
+            try self.then(NodeFunction { (val: AnyNodeValue) in
+                if !hasResumed {
+                    hasResumed = true
+                    completion(.success(val))
+                }
+                return undefined
+            }).catch(NodeFunction { (err: AnyNodeValue) in
+                if !hasResumed {
+                    hasResumed = true
+                    completion(.failure(NodeException(value: err)))
+                }
+                return undefined
+            })
+        } catch {
+            if !hasResumed {
+                hasResumed = true
+                completion(.failure(error))
+            }
+        }
+    }
+
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -84,31 +110,10 @@ extension NodePromise {
         }
     }
 
-    public var value: NodeValue {
+    public var value: AnyNodeValue {
         get async throws {
-            try await withCheckedThrowingContinuation { cont in
-                // since we're on NodeActor, access to hasResumed is serial
-                var hasResumed = false
-                do {
-                    try self.then(NodeFunction { (val: AnyNodeValue) in
-                        if !hasResumed {
-                            hasResumed = true
-                            cont.resume(returning: val)
-                        }
-                        return undefined
-                    }).`catch`(NodeFunction { (err: AnyNodeValue) in
-                        if !hasResumed {
-                            hasResumed = true
-                            cont.resume(throwing: NodeException(value: err))
-                        }
-                        return undefined
-                    })
-                } catch {
-                    if !hasResumed {
-                        hasResumed = true
-                        cont.resume(throwing: error)
-                    }
-                }
+            try await withCheckedThrowingContinuation {
+                get(completion: $0.resume)
             }
         }
     }

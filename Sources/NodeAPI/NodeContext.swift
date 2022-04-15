@@ -5,10 +5,7 @@ extension NodeEnvironment {
     @NodeInstanceData private static var defaultQueue: NodeAsyncQueue?
     func getDefaultQueue() throws -> NodeAsyncQueue {
         if let q = Self.defaultQueue { return q }
-        let q = try NodeAsyncQueue(
-            label: "NAPI_SWIFT_EXECUTOR",
-            keepsNodeThreadAlive: false
-        )
+        let q = try NodeAsyncQueue(label: "NAPI_SWIFT_EXECUTOR")
         Self.defaultQueue = q
         return q
     }
@@ -112,7 +109,7 @@ final class NodeContext {
             if isTopLevel, #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *) {
                 let q = try env.getDefaultQueue()
                 return try NodeActor.$target.withValue(q.handle()) {
-                    try _withContext(ctx, environment: env, isTopLevel: isTopLevel, do: action)
+                    return try _withContext(ctx, environment: env, isTopLevel: isTopLevel, do: action)
                 }
             } else {
                 return try _withContext(ctx, environment: env, isTopLevel: isTopLevel, do: action)
