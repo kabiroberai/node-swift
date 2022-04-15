@@ -19,7 +19,6 @@ export interface Config {
     product?: string
 
     triple?: string
-    macVersion?: string
     napi?: number | "experimental"
 
     static?: boolean
@@ -93,15 +92,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     const buildDir = config.buildPath || defaultBuildPath;
 
-    let macVersion;
-    if (typeof config.macVersion === "string") {
-        macVersion = config.macVersion;
-    } else if (typeof config.macVersion === "undefined") {
-        macVersion = "10.10";
-    } else {
-        throw new Error("Invalid value for macVersion option.");
-    }
-
     let product = config.product;
 
     let napi = config.napi;
@@ -168,6 +158,11 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     } else if (typeof product !== "string") {
         throw new Error("The config product field should be of type string, if present");
     }
+
+    let macVersion = (parsedPackage.platforms as [any])
+        ?.find(plat => plat.platformName === "macos")
+        ?.version 
+        || "10.10";
 
     let libName;
     let ldflags;
