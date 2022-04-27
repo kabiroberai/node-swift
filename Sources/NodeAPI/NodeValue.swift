@@ -153,8 +153,12 @@ public protocol NodeObjectConvertible: NodeValueConvertible {}
 }
 
 @dynamicCallable
-@NodeActor public protocol NodeCallable: NodeValueConvertible {}
+@NodeActor public protocol NodeCallable: NodeValueConvertible {
+    @_spi(NodeAPI) var receiver: NodeValueConvertible { get }
+}
 extension NodeCallable {
+    @_spi(NodeAPI) public var receiver: NodeValueConvertible { undefined }
+
     // we can't use callAsFunction(_ args: NodeValueConvertible...) because if
     // you pass it a [NodeValueConvertible] there's a bug where it parses it as
     // the entire args list instead of as a single argument
@@ -163,7 +167,7 @@ extension NodeCallable {
         guard let fn = try self.as(NodeFunction.self) else {
             throw NodeAPIError(.functionExpected, message: "Cannot call a non-function")
         }
-        return try fn.call(args)
+        return try fn.call(on: receiver, args)
     }
 
     public var new: NodeConstructor {

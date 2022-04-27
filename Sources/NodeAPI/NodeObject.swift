@@ -79,6 +79,8 @@ extension NodeObject {
         let obj: NodeObject
         let key: NodeValueConvertible
 
+        @_spi(NodeAPI) public var receiver: NodeValueConvertible { obj }
+
         init(obj: NodeObject, key: NodeValueConvertible) {
             self.obj = obj
             self.key = key
