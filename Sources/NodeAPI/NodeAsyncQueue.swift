@@ -156,7 +156,7 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     // will throw NodeAPIError(.closing) if another thread called abort()
     private func run(
         blocking: Bool = false,
-        _ action: @escaping @NodeActor (NodeEnvironment) -> Void
+        _ action: @escaping @Sendable @NodeActor (NodeEnvironment) -> Void
     ) throws {
         try ensureValid()
         let payload = CallbackBox(action)
@@ -176,10 +176,35 @@ public final class NodeAsyncQueue: @unchecked Sendable {
 
     public func run(
         blocking: Bool = false,
-        @_implicitSelfCapture _ action: @escaping @NodeActor () throws -> Void
+        @_implicitSelfCapture _ action: @escaping @Sendable @NodeActor () throws -> Void
     ) throws {
         try run(blocking: blocking) {
             NodeContext.withContext(environment: $0) { _ in try action() }
+        }
+    }
+
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+    public func run<T: Sendable>(
+        blocking: Bool = false,
+        resultType: T.Type = T.self,
+        @_implicitSelfCapture body: @NodeActor @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withoutActuallyEscaping(body) { body in
+            try await withCheckedThrowingContinuation { cont in
+                do {
+                    try run(blocking: blocking) {
+                        Task {
+                            do {
+                                cont.resume(returning: try await body())
+                            } catch {
+                                cont.resume(throwing: error)
+                            }
+                        }
+                    }
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
         }
     }
 
