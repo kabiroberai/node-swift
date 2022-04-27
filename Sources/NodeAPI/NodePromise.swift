@@ -32,7 +32,7 @@ public final class NodePromise: NodeObject {
             case .success(let value):
                 try env.check(napi_resolve_deferred(env.raw, raw, value.rawValue()))
             case .failure(let error):
-                try env.check(napi_reject_deferred(env.raw, raw, NodeException(error: error).value.rawValue()))
+                try env.check(napi_reject_deferred(env.raw, raw, AnyNodeValue(error: error).rawValue()))
             }
             hasCompleted = true
         }
@@ -79,7 +79,7 @@ public final class NodePromise: NodeObject {
             }).catch(NodeFunction { (err: AnyNodeValue) in
                 if !hasResumed {
                     hasResumed = true
-                    completion(.failure(NodeException(value: err)))
+                    completion(.failure(err))
                 }
                 return undefined
             })

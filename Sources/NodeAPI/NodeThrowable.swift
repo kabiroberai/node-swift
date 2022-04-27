@@ -1,23 +1,13 @@
 @_implementationOnly import CNodeAPI
 
-public protocol NodeExceptionConvertible: Error {
-    @NodeActor func exceptionValue() throws -> NodeValue
-}
-
-@NodeActor public struct NodeException: NodeExceptionConvertible {
-    public func exceptionValue() throws -> NodeValue { value }
-
-    public let value: NodeValue
-    public init(value: NodeValue) {
-        self.value = value
-    }
+extension AnyNodeValue {
+    private static let exceptionKey = NodeWrappedDataKey<Error>()
 
     public init(error: Error) throws {
         switch error {
-        case let error as NodeExceptionConvertible:
-            // if it's already NodeExceptionConvertible, use that
-            // exception value
-            self.value = try error.exceptionValue()
+        case let error as NodeValue:
+            // if it's already a NodeValue, assign the base directly
+            self.init(error)
         // TODO: handle specific error types
 //        case let error as NodeAPIError:
 //            break
@@ -27,8 +17,14 @@ public protocol NodeExceptionConvertible: Error {
         // TODO: maybe create our own Error class which allows round-tripping the
         // actual error object, instead of merely passing along stringified vals
         case let error:
-            self.value = try NodeError(code: "\(type(of: error))", message: "\(error)")
+            let nodeError = try NodeError(code: "\(type(of: error))", message: "\(error)")
+            try nodeError.setWrappedValue(error, forKey: Self.exceptionKey)
+            self.init(nodeError)
         }
+    }
+
+    public var nativeError: Error? {
+        try? self.as(NodeError.self)?.wrappedValue(forKey: Self.exceptionKey)
     }
 }
 

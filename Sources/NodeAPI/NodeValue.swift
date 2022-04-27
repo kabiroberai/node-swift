@@ -147,7 +147,7 @@ extension NodeValueConvertible {
 public protocol NodeName: NodeValueConvertible {}
 public protocol NodeObjectConvertible: NodeValueConvertible {}
 
-@NodeActor public protocol NodeValue: NodeValueConvertible, AnyNodeValueCreatable, CustomStringConvertible, Sendable {
+@NodeActor public protocol NodeValue: NodeValueConvertible, AnyNodeValueCreatable, CustomStringConvertible, Error {
     @_spi(NodeAPI) var base: NodeValueBase { get }
     @_spi(NodeAPI) init(_ base: NodeValueBase)
 }

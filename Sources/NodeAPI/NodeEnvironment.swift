@@ -27,7 +27,7 @@
         var exception: napi_value!
         if isExceptionPending {
             if napi_get_and_clear_last_exception(raw, &exception) == napi_ok {
-                throw NodeException(value: AnyNodeValue(raw: exception))
+                throw AnyNodeValue(raw: exception)
             } else {
                 // there's a pending exception but we couldn't fetch it wtf
                 throw NodeAPIError(.genericFailure)
@@ -60,12 +60,12 @@ extension NodeEnvironment {
     // this is for internal use. In user code, errors that bubble up to the top
     // will automatically be thrown to JS.
     func `throw`(_ error: Error) throws {
-        try check(napi_throw(raw, NodeException(error: error).value.rawValue()))
+        try check(napi_throw(raw, AnyNodeValue(error: error).rawValue()))
     }
 
     public func throwUncaught(_ error: Error) throws {
         try check(
-            napi_fatal_exception(raw, NodeException(error: error).value.rawValue())
+            napi_fatal_exception(raw, AnyNodeValue(error: error).rawValue())
         )
     }
 

@@ -1,6 +1,6 @@
 @_implementationOnly import CNodeAPI
 
-public final class NodeError: NodeObject, NodeExceptionConvertible {
+public final class NodeError: NodeObject {
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
