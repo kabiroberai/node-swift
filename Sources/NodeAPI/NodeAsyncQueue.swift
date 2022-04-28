@@ -80,7 +80,6 @@ public final class NodeAsyncQueue: @unchecked Sendable {
             throw error
         }
         self.raw = result
-        try environment.check(napi_acquire_threadsafe_function(raw))
         try environment.check(napi_unref_threadsafe_function(environment.raw, raw))
     }
 
@@ -97,7 +96,7 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     // for it
     private func ensureValid() throws {
         guard isValid else {
-            throw NodeAPIError(.closing)
+            throw NodeAPIError(.closing, message: "NodeAsyncQueue '\(label)' has been released")
         }
     }
 
