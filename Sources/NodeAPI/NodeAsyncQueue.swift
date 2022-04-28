@@ -186,23 +186,21 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     public func run<T: Sendable>(
         blocking: Bool = false,
         resultType: T.Type = T.self,
-        @_implicitSelfCapture body: @NodeActor @Sendable () async throws -> T
+        @_implicitSelfCapture body: @escaping @Sendable @NodeActor () async throws -> T
     ) async throws -> T {
-        try await withoutActuallyEscaping(body) { body in
-            try await withCheckedThrowingContinuation { cont in
-                do {
-                    try run(blocking: blocking) {
-                        Task {
-                            do {
-                                cont.resume(returning: try await body())
-                            } catch {
-                                cont.resume(throwing: error)
-                            }
+        try await withCheckedThrowingContinuation { cont in
+            do {
+                try run(blocking: blocking) {
+                    Task {
+                        do {
+                            cont.resume(returning: try await body())
+                        } catch {
+                            cont.resume(throwing: error)
                         }
                     }
-                } catch {
-                    cont.resume(throwing: error)
                 }
+            } catch {
+                cont.resume(throwing: error)
             }
         }
     }
