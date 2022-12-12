@@ -9,60 +9,40 @@ extension NodeContext {
     }
 }
 
-private enum TLS {
-    // https://github.com/apple/swift-system/blob/8e3c23987f32d4f449c68ff4b702121025980a7c/Sources/System/Internals/Exports.swift#L128
-    struct Key: RawRepresentable, ExpressibleByIntegerLiteral {
-        #if os(Windows)
-        typealias RawValue = DWORD
-        #else
-        typealias RawValue = pthread_key_t
-        #endif
-        let rawValue: RawValue
-        init(_ value: RawValue) {
-            self.rawValue = value
-        }
-        init(rawValue value: RawValue) {
-            self.rawValue = value
-        }
-        init(integerLiteral value: RawValue) {
-            self.rawValue = value
-        }
-    }
-    static subscript(key: Key) -> UnsafeMutableRawPointer? {
-        get {
-            #if os(Windows)
-            return FlsGetValue(key.rawValue)
-            #else
-            return pthread_getspecific(key.rawValue)
-            #endif
-        }
-        set {
-            #if os(Windows)
-            guard FlsSetValue(key.rawValue, newValue) else {
-                fatalError("Unable to set TLS")
-            }
-            #else
-            guard 0 == pthread_setspecific(key.rawValue, newValue) else {
-                fatalError("Unable to set TLS")
-            }
-            #endif
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension UnownedJob {
+    func asCurrent<T>(work: () -> T) -> T {
+        withoutActuallyEscaping(work) { work in
+            var result: T!
+            node_swift_as_current_task(unsafeBitCast(self, to: OpaquePointer.self), { ctx in
+                Unmanaged<Box<() -> Void>>.fromOpaque(ctx).takeRetainedValue().value()
+            }, Unmanaged.passRetained(Box<() -> Void> {
+                result = work()
+            }).toOpaque())
+            return result
         }
     }
 }
 
-// https://github.com/apple/swift/blob/d0cc5757b914c694e2549a413fe7e96e328cca3e/include/swift/Runtime/ThreadLocalStorage.h#L74
-// i'm not sure if this is ABI, but it's the best we have for now
-private let swiftTaskKey: TLS.Key = 103
-
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 private final class NodeExecutor: SerialExecutor {
     func enqueue(_ job: UnownedJob) {
-        // temporarily spoof the current task so that we can access
-        // its task-local storage. Here be dragons.
-        let prevTask = TLS[swiftTaskKey]
-        TLS[swiftTaskKey] = unsafeBitCast(job, to: UnsafeMutableRawPointer.self)
-        let target = NodeActor.target
-        TLS[swiftTaskKey] = prevTask
+        // We want to access `job`'s task-local storage. To do so,
+        // this temporarily swaps ResumeTask for our own function.
+        // Then, swift_job_run is called, which sets the active task to
+        // the receiver and invokes its ResumeTask. We then execute the
+        // given closure, allowing us to grab task-local values. Finally,
+        // we "suspend" the task and return ResumeTask to its old value.
+        //
+        // on Darwin we can instead replace the "current task" thread-local
+        // (key 103) temporarily, but that isn't portable.
+        //
+        // This is sort of like inserting a "work(); await Task.yield()" block
+        // at the top of the task, since when a Task awaits it similarly changes
+        // the Resume function and suspends. Note that we can assume that this
+        // is a Task and not a basic Job, because Executor.enqueue is only
+        // called from swift_task_enqueue.
+        let target = job.asCurrent { NodeActor.target }
 
         guard let q = target?.queue else {
             nodeFatalError("There is no target NodeAsyncQueue associated with this Task")
@@ -98,7 +78,7 @@ private final class NodeExecutor: SerialExecutor {
     private init() {}
     public static let shared = NodeActor()
 
-    @TaskLocal public static var target: NodeAsyncQueue.Handle?
+    @TaskLocal static var target: NodeAsyncQueue.Handle?
 
     private nonisolated let _unownedExecutor = NodeExecutor()
     public nonisolated var unownedExecutor: UnownedSerialExecutor {

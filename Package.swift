@@ -30,5 +30,6 @@ let package = Package(
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])
         )
-    ]
+    ],
+    cxxLanguageStandard: .cxx14
 )
