@@ -1,7 +1,7 @@
 {
-  "name": "node-swift-example",
+  "name": "node-swift-push-notifications",
   "version": "1.0.0",
-  "description": "Example node-swift package",
+  "description": "node-swift package for push notifications",
   "main": "index.js",
   "scripts": {
     "install": "node-swift rebuild"

@@ -57,7 +57,7 @@ private extension UNNotificationCategory {
 }
 
 @main
-struct MyExample: NodeModule {
+struct AmiePushNotifications: NodeModule {
     let exports: NodeValueConvertible
     init() throws {
         exports = try [

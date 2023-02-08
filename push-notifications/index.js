@@ -1,4 +1,4 @@
-const { setUp, showNotification } = require("./build/MyExample.node");
+const { setUp, showNotification } = require("./build/AmiePushNotifications.node");
 
 exports.setUp = () => { 
     setUp();

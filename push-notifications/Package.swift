@@ -3,12 +3,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "MyExample",
+    name: "AmiePushNotifications",
     platforms: [.macOS(.v10_15)],
     products: [
         .library(
-            name: "MyExample",
-            targets: ["MyExample"]
+            name: "AmiePushNotifications",
+            targets: ["AmiePushNotifications"]
         ),
     ],
     dependencies: [
@@ -16,7 +16,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "MyExample",
+            name: "AmiePushNotifications",
             dependencies: [
                 .product(name: "NodeAPI", package: "node-swift")
             ]
