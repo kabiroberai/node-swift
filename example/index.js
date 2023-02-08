@@ -1,4 +1,10 @@
-const { nums, str, add } = require("./build/MyExample.node");
-console.log(nums); // [ 3, 4 ]
-console.log(str); // NodeSwift! NodeSwift! NodeSwift!
-add(5, 10).then(console.log); // 5.0 + 10.0 = 15.0
+const { setUp, showNotification } = require("./build/MyExample.node");
+
+exports.setUp = () => { 
+    setUp();
+};
+
+exports.showNotification = (id, title, body, containsCall, action) => { 
+    const notificationId = showNotification(id, title, body, containsCall, action);
+    return notificationId
+};
