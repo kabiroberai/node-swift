@@ -4,7 +4,7 @@ exports.setUp = () => {
     setUp();
 };
 
-exports.showNotification = (id, title, body, containsCall, action) => { 
-    const notificationId = showNotification(id, title, body, containsCall, action);
+exports.showNotification = (id, title, body, actions, onAction) => { 
+    const notificationId = showNotification(id, title, body, actions, onAction);
     return notificationId
 };

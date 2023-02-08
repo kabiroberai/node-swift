@@ -6,7 +6,7 @@ private let notificationDelegate = AmieUserNotificationCenterDelegate()
 
 private var jsQueue: NodeAsyncQueue?
 
-class AmieUserNotificationCenterDelegate: NSObject, UNUserNotificationCenterDelegate {
+private class AmieUserNotificationCenterDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     var actions: [String: NodeFunction] = [:]
 
@@ -21,61 +21,38 @@ class AmieUserNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     ) async {
 
         let id = response.notification.request.identifier
-        guard let action = Action(identifier: response.actionIdentifier) else { return }
+
+        let action = response.actionIdentifier == UNNotificationDefaultActionIdentifier
+            ? "click"
+            : response.actionIdentifier
+
         let nodeFunction = actions[id]
 
         try? jsQueue?.run {
-            _ = try? nodeFunction?(id, action.rawValue)
+            _ = try? nodeFunction?(id, action)
         }
     }
 }
 
-enum Action: String {
+private extension UNNotificationCategory {
 
-    case click
-    case join
+    @NodeActor
+    static func make(id: String, actions: NodeArray) -> UNNotificationCategory {
 
-    init?(identifier: String) {
-        switch identifier {
-        case UNNotificationDefaultActionIdentifier:
-            // ⚠️ For the default action, we simply propagate "click" to the JS callback
-            self = .click
-        case Action.join.rawValue:
-            self = .join
-        default:
-            return nil
-        }
-    }
-
-    var unNotificationAction: UNNotificationAction? {
-        switch self {
-
-        case .click:
-            return nil
-
-        case .join:
-            return UNNotificationAction(
-                identifier: rawValue,
-                title: "Join",
+        let stringActions: [String]? = try? Array.from(actions).compactMap { try? String.from($0) }
+        let notificationActions: [UNNotificationAction] = (stringActions ?? []).compactMap { action in
+            UNNotificationAction(
+                identifier: action,
+                title: action,
                 options: []
             )
         }
-    }
-}
 
-enum Category: String, CaseIterable {
-
-    case call
-
-    var unNotificationCategory: UNNotificationCategory {
-        switch self {
-        case .call:
-            return UNNotificationCategory(
-                identifier: rawValue,
-                actions: [Action.join.unNotificationAction].compactMap { $0 },
-                intentIdentifiers: []
-            )
-        }
+        return UNNotificationCategory(
+            identifier: id,
+            actions: notificationActions,
+            intentIdentifiers: []
+        )
     }
 }
 
@@ -88,32 +65,34 @@ struct MyExample: NodeModule {
                 jsQueue = try? NodeAsyncQueue(label: "swift-js-queue")
                 let notificationCenter = UNUserNotificationCenter.current()
                 notificationCenter.delegate = notificationDelegate
-                let categories = Category.allCases.map(\.unNotificationCategory)
-                notificationCenter.setNotificationCategories(Set(categories))
                 return ""
             },
             "showNotification": NodeFunction {
-                (id: String, title: String, body: String, containsCall: Bool, action: NodeFunction) in
+                (id: String, title: String, body: String, actions: NodeArray, onAction: NodeFunction) in
 
                 let content = UNMutableNotificationContent()
                 let notificationCenter = UNUserNotificationCenter.current()
+                
+                // Assign category for notification's actions
+                let category = UNNotificationCategory.make(id: id, actions: actions)
+                notificationCenter.setNotificationCategories([category])
 
-                if containsCall {
-                    content.categoryIdentifier = Category.call.rawValue
-                }
-
+                // Create notification
                 content.title = title
                 content.body = body
                 content.sound = .default
+                content.categoryIdentifier = category.identifier
                 if #available(macOS 12.0, *) {
                     content.interruptionLevel = .timeSensitive
                 }
+                
+                // Schedule notification
                 let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
                 let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
                 notificationCenter.add(request)
 
                 // Save action to propagate responses back to the JS thread
-                notificationDelegate.saveAction(id: id, action: action)
+                notificationDelegate.saveAction(id: id, action: onAction)
 
                 return id
             },
