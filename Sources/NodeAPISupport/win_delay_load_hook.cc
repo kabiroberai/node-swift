@@ -1,3 +1,5 @@
+// from node-gyp (see node_gyp_LICENSE)
+
 /*
  * When this file is linked to a DLL, it sets up a delay-load hook that
  * intervenes when the DLL is trying to load the host executable
@@ -25,7 +27,7 @@ static FARPROC WINAPI load_exe_hook(unsigned int event, DelayLoadInfo* info) {
   if (event != dliNotePreLoadLibrary)
     return NULL;
 
-  if (_stricmp(info->szDll, HOST_BINARY) != 0)
+  if (_stricmp(info->szDll, "node.exe") != 0)
     return NULL;
 
   m = GetModuleHandle(NULL);

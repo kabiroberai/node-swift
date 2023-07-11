@@ -17,7 +17,11 @@ let package = Package(
             name: "NodeAPI",
             type: buildDynamic ? .dynamic : nil,
             targets: ["NodeAPI"]
-        )
+        ),
+        .library(
+            name: "NodeAPISupport",
+            targets: ["NodeAPISupport"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", branch: "release/5.9"),
@@ -37,6 +41,10 @@ let package = Package(
             swiftSettings: (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])
+        ),
+        .target(
+            name: "NodeAPISupport",
+            dependencies: ["CNodeAPI"]
         ),
     ],
     cxxLanguageStandard: .cxx14

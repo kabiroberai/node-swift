@@ -46,7 +46,7 @@ async function getWinLib(): Promise<string> {
             break;
         default:
             throw new Error(
-                `The arch ${process.arch} is currently unsupported by node-swift.`
+                `The arch ${process.arch} is currently unsupported by node-swift on Windows.`
             );
     }
     return path.join(__dirname, "..", "vendored", "node", "lib", filename);
@@ -92,8 +92,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     const buildDir = config.buildPath || defaultBuildPath;
 
-    let product = config.product;
-
     let napi = config.napi;
 
     if (typeof config.triple === "string") {
@@ -127,61 +125,24 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         ...linkerFlags.flatMap(f => ["-Xlinker", f]),
     ];
 
-    const dump = spawnSync(
-        "swift",
-        [
-            "package",
-            "dump-package",
-            "--package-path", packagePath,
-            ...spmFlags.filter(f => f !== "-v"),
-            ...nonSPMFlags,
-        ],
-        { stdio: ["inherit", "pipe", "inherit"] }
-    );
-    if (dump.status !== 0) {
-        throw new Error(`swift package dump-package exited with status ${dump.status}`);
-    }
-    const parsedPackage = JSON.parse(dump.stdout.toString());
-    if (typeof product === "undefined") {
-        const products = parsedPackage.products;
-        if (products.length === 0) {
-            throw new Error("No products found in Swift Package");
-        } else if (products.length === 1) {
-            product = products[0].name;
-        } else {
-            throw new Error(
-                "Found more than 1 product in the Swift Package. Consider " +
-                "specifying which product should be built via the swift.product " +
-                "field in package.json."
-            );
-        }
-    } else if (typeof product !== "string") {
-        throw new Error("The config product field should be of type string, if present");
-    }
-
-    let macVersion = (parsedPackage.platforms as [any])
-        ?.find(plat => plat.platformName === "macos")
-        ?.version 
-        || "10.10";
-
     let libName;
     let ldflags;
     switch (process.platform) {
         case "darwin":
-            libName = "libNodeSwiftHost.dylib";
+            libName = "libModule.dylib";
             ldflags = [
                 "-Xlinker", "-undefined",
                 "-Xlinker", "dynamic_lookup",
             ];
             break;
         case "linux":
-            libName = "libNodeSwiftHost.so";
+            libName = "libModule.so";
             ldflags = [
                 "-Xlinker", "-undefined",
             ];
             break;
         case "win32":
-            libName = "NodeSwiftHost.dll";
+            libName = "Module.dll";
             ldflags = [
                 "-Xlinker", await getWinLib(),
                 "-Xlinker", "delayimp.lib",
@@ -205,9 +166,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         [
             "build",
             "-c", mode,
-            "--product", "NodeSwiftHost",
+            "--product", "Module",
             "--build-path", buildDir,
-            "--package-path", path.join(__dirname, "..", "NodeSwiftHost"),
+            "--package-path", packagePath,
             ...ldflags,
             ...spmFlags,
             ...nonSPMFlags,
@@ -215,11 +176,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         {
             stdio: "inherit",
             env: {
-                "NODE_SWIFT_TARGET_PACKAGE": parsedPackage.name,
-                "NODE_SWIFT_TARGET_PATH": packagePath,
-                "NODE_SWIFT_TARGET_NAME": product,
                 "NODE_SWIFT_HOST_BINARY": winHost,
-                "NODE_SWIFT_TARGET_MAC_VERSION": macVersion,
                 "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
                 "NODE_SWIFT_ENABLE_EVOLUTION": enableEvolution ? "1" : "0",
                 ...process.env,
@@ -230,7 +187,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         throw new Error(`swift build exited with status ${result.status}`);
     }
 
-    const binaryPath = path.join(buildDir, mode, `${product}.node`);
+    const binaryPath = path.join(buildDir, mode, "module.node");
 
     await rename(
         path.join(buildDir, mode, libName),
@@ -238,8 +195,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     );
 
     await forceSymlink(
-        path.join(mode, `${product}.node`),
-        path.join(buildDir, `${product}.node`)
+        path.join(mode, "module.node"),
+        path.join(buildDir, "module.node")
     );
 
     if (process.platform === "darwin") {

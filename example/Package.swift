@@ -10,6 +10,11 @@ let package = Package(
             name: "MyExample",
             targets: ["MyExample"]
         ),
+        .library(
+            name: "Module",
+            type: .dynamic,
+            targets: ["MyExample"]
+        )
     ],
     dependencies: [
         .package(path: "node_modules/node-swift")
@@ -18,7 +23,8 @@ let package = Package(
         .target(
             name: "MyExample",
             dependencies: [
-                .product(name: "NodeAPI", package: "node-swift")
+                .product(name: "NodeAPI", package: "node-swift"),
+                .product(name: "NodeAPISupport", package: "node-swift"),
             ]
         )
     ]

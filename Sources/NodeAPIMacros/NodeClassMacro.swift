@@ -1,7 +1,5 @@
 import SwiftSyntax
 import SwiftSyntaxMacros
-import SwiftCompilerPlugin
-import SwiftDiagnostics
 
 struct NodeClassMacro: ConformanceMacro, MemberMacro {
     public static func expansion(
@@ -83,18 +81,8 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
     }
 }
 
-struct NodeMarkerMacro: PeerMacro {
-    static func expansion(
-        of node: AttributeSyntax,
-        providingPeersOf declaration: some DeclSyntaxProtocol,
-        in context: some MacroExpansionContext
-    ) throws -> [DeclSyntax] {
-        []
-    }
-}
-
 extension AttributeListSyntax {
-    func attribute(named name: String) -> AttributeSyntax? {
+    fileprivate func attribute(named name: String) -> AttributeSyntax? {
         lazy.compactMap(\.attribute).first {
             $0.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == name
         }
@@ -102,7 +90,7 @@ extension AttributeListSyntax {
 }
 
 extension AttributeListSyntax.Element {
-    var attribute: AttributeSyntax? {
+    fileprivate var attribute: AttributeSyntax? {
         switch self {
         case .attribute(let attributeSyntax):
             return attributeSyntax
@@ -113,7 +101,7 @@ extension AttributeListSyntax.Element {
 }
 
 extension AttributeSyntax {
-    var nodeAttributes: ExprSyntax? {
+    fileprivate var nodeAttributes: ExprSyntax? {
         if case .argumentList(let tuple) = argument, let elt = tuple.first {
             elt.expression
         } else {
@@ -123,7 +111,7 @@ extension AttributeSyntax {
 }
 
 extension FunctionSignatureSyntax {
-    var functionType: FunctionTypeSyntax {
+    fileprivate var functionType: FunctionTypeSyntax {
         FunctionTypeSyntax(
             arguments: TupleTypeElementListSyntax(input.parameterList.map { .init(type: $0.type) }),
             effectSpecifiers: .init(
@@ -134,44 +122,7 @@ extension FunctionSignatureSyntax {
         )
     }
 
-    var arguments: DeclNameArgumentsSyntax {
+    fileprivate var arguments: DeclNameArgumentsSyntax {
         DeclNameArgumentsSyntax(arguments: .init(input.parameterList.map { .init(name: $0.firstName.trimmed) }))
     }
-}
-
-public struct NodeDiagnosticMessage: DiagnosticMessage {
-    public let message: String
-    private let messageID: String
-
-    fileprivate init(_ message: String, messageID: String = #function) {
-        self.message = message
-        self.messageID = messageID
-    }
-
-    public var diagnosticID: MessageID {
-        MessageID(domain: "NodeAPIMacros", id: "\(type(of: self)).\(messageID)")
-    }
-
-    public var severity: DiagnosticSeverity { .error }
-}
-
-extension DiagnosticMessage where Self == NodeDiagnosticMessage {
-    public static var expectedClassDecl: Self {
-        .init("Expected 'class' declaration")
-    }
-
-    public static var expectedFinal: Self {
-        .init("NodeClass must be final")
-    }
-
-    public static var tooManyConstructors: Self {
-        .init("A NodeClass can have at most one @NodeConstructor initializer; multiple found")
-    }
-}
-
-@main struct NodeAPIMacros: CompilerPlugin {
-    let providingMacros: [Macro.Type] = [
-        NodeClassMacro.self,
-        NodeMarkerMacro.self,
-    ]
 }
