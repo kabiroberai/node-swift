@@ -73,3 +73,18 @@ private postfix func ++(value: inout Int) -> Int {
     value += 1
     return old
 }
+
+@attached(conformance)
+@attached(member, names: named(properties), named(construct))
+public macro NodeClass() = #externalMacro(module: "NodeAPIMacros", type: "NodeClassMacro")
+
+@attached(peer)
+public macro NodeConstructor() = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")
+
+@attached(peer)
+public macro NodeMethod(_: NodeProperty.Attributes = .defaultMethod)
+    = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")
+
+@attached(peer)
+public macro NodeComputedProperty(_: NodeProperty.Attributes = .defaultProperty)
+    = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")

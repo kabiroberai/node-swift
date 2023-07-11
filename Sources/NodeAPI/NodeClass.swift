@@ -62,6 +62,13 @@ extension NodeFunction {
 
 }
 
+public struct NodeConstructor<T: NodeClass> {
+    fileprivate let invoke: @NodeActor (NodeArguments) throws -> T
+    public init(_ invoke: @escaping @NodeActor (NodeArguments) throws -> T) {
+        self.invoke = invoke
+    }
+}
+
 @NodeActor public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
     // mapping from Swift -> JS props
     static var properties: NodeClassPropertyList { get }
@@ -70,15 +77,17 @@ extension NodeFunction {
     static var name: String { get }
 
     // constructor (default implementation throws)
-    init(_ arguments: NodeArguments) throws
+    static var construct: NodeConstructor<Self> { get }
 }
 
 extension NodeClass {
-    public init(_ arguments: NodeArguments) throws {
-        throw NodeAPIError(
-            .genericFailure, 
-            message: "Class \(Self.name) is not constructible from JavaScript"
-        )
+    public static var construct: NodeConstructor<Self> {
+        .init { _ in
+            throw NodeAPIError(
+                .genericFailure,
+                message: "Class \(Self.name) is not constructible from JavaScript"
+            )
+        }
     }
 }
 
@@ -151,7 +160,7 @@ extension NodeClass {
                         }
                     value = try special(args)
                 } else {
-                    value = try self.init(args)
+                    value = try self.construct.invoke(args)
                 }
             try this.setWrappedValue(value, forID: id)
         }
