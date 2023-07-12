@@ -123,6 +123,10 @@ extension FunctionSignatureSyntax {
     }
 
     fileprivate var arguments: DeclNameArgumentsSyntax {
-        DeclNameArgumentsSyntax(arguments: .init(input.parameterList.map { .init(name: $0.firstName.trimmed) }))
+        if input.parameterList.isEmpty {
+            DeclNameArgumentsSyntax(leftParen: .unknown(""), arguments: [], rightParen: .unknown(""))
+        } else {
+            DeclNameArgumentsSyntax(arguments: .init(input.parameterList.map { .init(name: $0.firstName.trimmed) }))
+        }
     }
 }

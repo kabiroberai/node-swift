@@ -5,8 +5,8 @@ extension NodeFunction {
         callback: @escaping @NodeActor (repeat each A) throws -> NodeValueConvertible
     ) throws {
         try self.init(name: name) { args in
-            var i = 0
-            return try callback(repeat args[i++] as (each A))
+            var reader = ArgReader(args)
+            return try callback(repeat reader.next() as (each A))
         }
     }
 
@@ -15,8 +15,8 @@ extension NodeFunction {
         callback: @escaping @NodeActor (repeat each A) async throws -> NodeValueConvertible
     ) throws {
         try self.init(name: name) { args in
-            var i = 0
-            return try await callback(repeat args[i++] as (each A))
+            var reader = ArgReader(args)
+            return try await callback(repeat reader.next() as (each A))
         }
     }
 
@@ -33,8 +33,8 @@ extension NodeMethod {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
                 fatalError("Cannot implement yet due to a compiler bug")
-//                var i = 0
-//                return try callback(target)(repeat args[i++] as (each A))
+//                var reader = ArgReader(args)
+//                return try callback(target)(repeat reader.next() as (each A))
             }
         }
     }
@@ -47,8 +47,8 @@ extension NodeMethod {
             { (args: NodeArguments) in
                 try NodePromise {
                     fatalError("Cannot implement yet due to a compiler bug")
-//                    var i = 0
-//                    return try await callback(target)(repeat args[i++] as (each A))
+//                    var reader = ArgReader(args)
+//                    return try await callback(target)(repeat reader.next() as (each A))
                 }
             }
         }
@@ -61,17 +61,41 @@ extension NodeConstructor {
         _ invoke: @escaping @NodeActor (repeat each A) throws -> T
     ) {
         self.init { args in
-            var i = 0
-            return try invoke(repeat (each A).from(args[i++])!)
+            var reader = ArgReader(args)
+            return try invoke(repeat reader.next() as (each A))
         }
     }
 }
 
-// return of the king
-private postfix func ++(value: inout Int) -> Int {
-    let old = value
-    value += 1
-    return old
+@NodeActor private struct ArgReader {
+    var index = 0
+    let arguments: NodeArguments
+    init(_ arguments: NodeArguments) {
+        self.arguments = arguments
+    }
+    mutating func next<T: AnyNodeValueCreatable>() throws -> T {
+        defer { index += 1 }
+        if index < arguments.count {
+            guard let converted = try arguments[index].as(T.self) else {
+                throw try NodeError(
+                    code: nil,
+                    message: "Could not convert parameter \(index) to type \(T.self)"
+                )
+            }
+            return converted
+        } else {
+            // if we're asking for an arg that's out of bounds,
+            // return the equivalent of `undefined` if possible,
+            // else throw
+            guard let converted = try undefined.as(T.self) else {
+                throw try NodeError(
+                    code: nil,
+                    message: "At least \(index + 1) argument\(index == 0 ? "" : "s") required. Got \(arguments.count)."
+                )
+            }
+            return converted
+        }
+    }
 }
 
 @attached(conformance)
