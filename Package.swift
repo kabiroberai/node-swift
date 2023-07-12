@@ -23,8 +23,8 @@ let package = Package(
             targets: ["NodeAPI"]
         ),
         .library(
-            name: "NodeModules",
-            targets: ["NodeModules"]
+            name: "NodeModuleSupport",
+            targets: ["NodeModuleSupport"]
         ),
     ],
     dependencies: [
@@ -47,22 +47,9 @@ let package = Package(
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])
         ),
-        .macro(
-            name: "NodeModulesMacros",
-            dependencies: [
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ],
-            swiftSettings: baseSwiftSettings
-        ),
         .target(
-            name: "CNodeModules",
+            name: "NodeModuleSupport",
             dependencies: ["CNodeAPI"]
-        ),
-        .target(
-            name: "NodeModules",
-            dependencies: ["CNodeModules", "NodeAPI", "NodeModulesMacros"],
-            swiftSettings: baseSwiftSettings
         ),
     ],
     cxxLanguageStandard: .cxx14

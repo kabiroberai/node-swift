@@ -24,7 +24,7 @@ let package = Package(
             name: "MyExample",
             dependencies: [
                 .product(name: "NodeAPI", package: "node-swift"),
-                .product(name: "NodeModules", package: "node-swift"),
+                .product(name: "NodeModuleSupport", package: "node-swift"),
             ]
         )
     ]
