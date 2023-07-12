@@ -10,8 +10,8 @@ import NodeAPI
 
 @freestanding(declaration)
 public macro NodeModule(init: @escaping @NodeActor () throws -> NodeValueConvertible)
-    = #externalMacro(module: "NodeModuleMacros", type: "NodeModuleMacro")
+    = #externalMacro(module: "NodeModulesMacros", type: "NodeModuleMacro")
 
 @freestanding(declaration)
 public macro NodeModule(exports: NodeValueConvertible)
-    = #externalMacro(module: "NodeModuleMacros", type: "NodeModuleMacro")
+    = #externalMacro(module: "NodeModulesMacros", type: "NodeModuleMacro")

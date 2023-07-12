@@ -48,7 +48,7 @@ let package = Package(
             ] : [])
         ),
         .macro(
-            name: "NodeModuleMacros",
+            name: "NodeModulesMacros",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
@@ -61,7 +61,7 @@ let package = Package(
         ),
         .target(
             name: "NodeModules",
-            dependencies: ["CNodeModules", "NodeAPI", "NodeModuleMacros"],
+            dependencies: ["CNodeModules", "NodeAPI", "NodeModulesMacros"],
             swiftSettings: baseSwiftSettings
         ),
     ],
