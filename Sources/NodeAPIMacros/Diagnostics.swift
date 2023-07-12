@@ -29,8 +29,4 @@ extension DiagnosticMessage where Self == NodeDiagnosticMessage {
     public static var tooManyConstructors: Self {
         .init("A NodeClass can have at most one @NodeConstructor initializer; multiple found")
     }
-
-    public static var expectedInitialization: Self {
-        .init("Expected initialization expression in #NodeModule")
-    }
 }

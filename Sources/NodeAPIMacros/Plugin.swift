@@ -1,10 +1,9 @@
 import SwiftCompilerPlugin
 import SwiftSyntaxMacros
 
-@main struct NodeAPIMacros: CompilerPlugin {
+@main struct Plugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         NodeClassMacro.self,
-        NodeModuleMacro.self,
         NodeMarkerMacro.self,
     ]
 }

@@ -1,19 +1,17 @@
-@_implementationOnly import CNodeAPI
-import Foundation
+import NodeAPI
 
+@_documentation(visibility: private)
 @NodeActor public func _registerModule(
     _ env: OpaquePointer?,
     _ create: @escaping @NodeActor () throws -> NodeValueConvertible
 ) -> OpaquePointer? {
-    NodeContext.withContext(environment: NodeEnvironment(env!)) { _ in
-        try create().rawValue()
-    }
+    moduleEntrypoint(env, create)
 }
 
 @freestanding(declaration)
 public macro NodeModule(init: @escaping @NodeActor () throws -> NodeValueConvertible)
-    = #externalMacro(module: "NodeAPIMacros", type: "NodeModuleMacro")
+    = #externalMacro(module: "NodeModuleMacros", type: "NodeModuleMacro")
 
 @freestanding(declaration)
 public macro NodeModule(exports: NodeValueConvertible)
-    = #externalMacro(module: "NodeAPIMacros", type: "NodeModuleMacro")
+    = #externalMacro(module: "NodeModuleMacros", type: "NodeModuleMacro")

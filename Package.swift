@@ -23,8 +23,8 @@ let package = Package(
             targets: ["NodeAPI"]
         ),
         .library(
-            name: "NodeAPISupport",
-            targets: ["NodeAPISupport"]
+            name: "NodeModules",
+            targets: ["NodeModules"]
         ),
     ],
     dependencies: [
@@ -37,7 +37,8 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
+            ],
+            swiftSettings: baseSwiftSettings
         ),
         .target(
             name: "NodeAPI",
@@ -46,9 +47,22 @@ let package = Package(
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])
         ),
+        .macro(
+            name: "NodeModuleMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ],
+            swiftSettings: baseSwiftSettings
+        ),
         .target(
-            name: "NodeAPISupport",
+            name: "CNodeModules",
             dependencies: ["CNodeAPI"]
+        ),
+        .target(
+            name: "NodeModules",
+            dependencies: ["CNodeModules", "NodeAPI", "NodeModuleMacros"],
+            swiftSettings: baseSwiftSettings
         ),
     ],
     cxxLanguageStandard: .cxx14

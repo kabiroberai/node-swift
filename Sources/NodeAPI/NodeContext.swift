@@ -154,3 +154,12 @@ final class NodeContext {
         return Unmanaged.fromOpaque(last).takeUnretainedValue()
     }
 }
+
+@NodeActor package func moduleEntrypoint(
+    _ env: OpaquePointer?,
+    _ create: @escaping @NodeActor () throws -> NodeValueConvertible
+) -> OpaquePointer? {
+    NodeContext.withContext(environment: NodeEnvironment(env!)) { _ in
+        try create().rawValue()
+    }
+}

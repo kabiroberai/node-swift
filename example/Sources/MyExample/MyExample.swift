@@ -1,4 +1,5 @@
 import NodeAPI
+import NodeModules
 
 #NodeModule(exports: [
     "nums": [Double.pi.rounded(.down), Double.pi.rounded(.up)],

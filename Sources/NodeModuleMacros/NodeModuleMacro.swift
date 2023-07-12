@@ -1,5 +1,6 @@
 import SwiftSyntax
 import SwiftSyntaxMacros
+import SwiftCompilerPlugin
 
 struct NodeModuleMacro: DeclarationMacro {
     static func expansion(
@@ -19,16 +20,25 @@ struct NodeModuleMacro: DeclarationMacro {
                 ctor = argument.expression
             }
         } else {
-            context.diagnose(.init(node: Syntax(node), message: .expectedInitialization))
-            return []
+            throw MacroError(description: "Expected initialization expression in #NodeModule")
         }
 
         return ["""
         @_cdecl("node_swift_register")
         @NodeAPI.NodeActor(unsafe)
         public func \(swiftName)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
-            NodeAPI._registerModule(env, \(ctor))
+            NodeModules._registerModule(env, \(ctor))
         }
         """]
     }
+}
+
+struct MacroError: Error, CustomStringConvertible {
+    let description: String
+}
+
+@main struct Plugin: CompilerPlugin {
+    let providingMacros: [Macro.Type] = [
+        NodeModuleMacro.self,
+    ]
 }
