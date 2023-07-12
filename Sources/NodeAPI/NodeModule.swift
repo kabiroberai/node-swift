@@ -4,11 +4,13 @@
         self.env = env
     }
     // NB: these should match the #NodeModule signatures for the macro to forward properly
-    public func register(init: @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
-        moduleEntrypoint(env, `init`)
+    public func register(init create: @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
+        NodeContext.withContext(environment: NodeEnvironment(env!)) { _ in
+            try create().rawValue()
+        }
     }
-    public func register(exports: @autoclosure @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
-        moduleEntrypoint(env, exports)
+    public func register(exports create: @autoclosure @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
+        register(init: create)
     }
 }
 
