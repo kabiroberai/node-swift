@@ -2,7 +2,7 @@ import SwiftSyntax
 import SwiftSyntaxMacros
 
 struct NodeClassMacro: ConformanceMacro, MemberMacro {
-    public static func expansion(
+    static func expansion(
         of node: AttributeSyntax,
         providingConformancesOf declaration: some DeclGroupSyntax,
         in context: some MacroExpansionContext
@@ -10,7 +10,7 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
         [("NodeClass", nil)]
     }
 
-    public static func expansion(
+    static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
         in context: some MacroExpansionContext
