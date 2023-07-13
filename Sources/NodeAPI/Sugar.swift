@@ -96,17 +96,23 @@ extension NodeConstructor {
     }
 }
 
+extension NodeClass {
+    // used to refer to Self as a non-covariant
+    @_documentation(visibility: private)
+    public typealias _NodeSelf = Self
+}
+
 @attached(conformance)
 @attached(member, names: named(properties), named(construct))
 public macro NodeClass() = #externalMacro(module: "NodeAPIMacros", type: "NodeClassMacro")
 
-@attached(peer)
-public macro NodeConstructor() = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")
+@attached(peer, names: named(construct))
+public macro NodeConstructor() = #externalMacro(module: "NodeAPIMacros", type: "NodeConstructorMacro")
 
-@attached(peer)
+@attached(peer, names: prefixed(`$`))
 public macro NodeMethod(_: NodeProperty.Attributes = .defaultMethod)
-    = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")
+    = #externalMacro(module: "NodeAPIMacros", type: "NodeMethodMacro")
 
-@attached(peer)
-public macro NodeComputedProperty(_: NodeProperty.Attributes = .defaultProperty)
-    = #externalMacro(module: "NodeAPIMacros", type: "NodeMarkerMacro")
+@attached(peer, names: prefixed(`$`))
+public macro NodeProperty(_: NodeProperty.Attributes = .defaultProperty)
+    = #externalMacro(module: "NodeAPIMacros", type: "NodePropertyMacro")

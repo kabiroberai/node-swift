@@ -19,14 +19,22 @@ struct NodeDiagnosticMessage: DiagnosticMessage {
 
 extension DiagnosticMessage where Self == NodeDiagnosticMessage {
     static var expectedClassDecl: Self {
-        .init("Expected 'class' declaration")
+        .init("@NodeClass can only be applied to a class")
     }
 
     static var expectedFinal: Self {
-        .init("NodeClass must be final")
+        .init("@NodeClass classes must be final")
     }
 
-    static var tooManyConstructors: Self {
-        .init("A NodeClass can have at most one @NodeConstructor initializer; multiple found")
+    static var expectedFunction: Self {
+        .init("@NodeMethod can only be applied to a function")
+    }
+
+    static var expectedProperty: Self {
+        .init("@NodeProperty can only be applied to a property")
+    }
+
+    static var expectedInit: Self {
+        .init("@NodeConstructor can only be applied to an initializer")
     }
 }
