@@ -45,11 +45,9 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
-                try NodePromise {
-                    fatalError("Cannot implement yet due to a compiler bug")
-//                    var reader = ArgReader(args)
-//                    return try await callback(target)(repeat reader.next() as (each A))
-                }
+                fatalError("Cannot implement yet due to a compiler bug")
+//                var reader = ArgReader(args)
+//                return try await callback(target)(repeat reader.next() as (each A))
             }
         }
     }

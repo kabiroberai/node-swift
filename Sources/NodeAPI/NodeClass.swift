@@ -198,6 +198,17 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
+
+    public init<T: NodeClass>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (NodeArguments) async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { args in
+            try NodePromise {
+                try await callback(T.from(args: args))(args)
+            }
+        }
+    }
 }
 
 extension NodeComputedProperty {
