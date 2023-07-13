@@ -29,10 +29,10 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
             for member in classDecl.memberBlock.members {
                 let identifier =
                     if let function = member.decl.as(FunctionDeclSyntax.self),
-                       function.attributes?.attribute(named: "NodeMethod") != nil {
+                       function.attributes?.hasAttribute(named: "NodeMethod") == true {
                         function.identifier
                     } else if let property = member.decl.as(VariableDeclSyntax.self),
-                              property.attributes?.attribute(named: "NodeProperty") != nil {
+                              property.attributes?.hasAttribute(named: "NodeProperty") == true {
                         property.identifier
                     } else {
                         nil as TokenSyntax?
@@ -53,14 +53,13 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
 }
 
 extension AttributeListSyntax {
-    fileprivate func attribute(named name: String) -> AttributeSyntax? {
-        lazy.compactMap {
-            switch $0 {
-            case .attribute(let value): value
-            case .ifConfigDecl: nil
+    fileprivate func hasAttribute(named name: String) -> Bool {
+        contains {
+            if case let .attribute(value) = $0 {
+                value.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == name
+            } else {
+                false
             }
-        }.first {
-            $0.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == name
         }
     }
 }
