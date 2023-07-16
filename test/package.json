@@ -1,0 +1,11 @@
+{
+  "name": "node-swift-tests",
+  "scripts": {
+    "test": "node ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^9.1.0"
+  },
+  "private": true
+}

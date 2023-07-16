@@ -17,7 +17,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(path: "node_modules/node-swift")
+        .package(path: "..")
     ],
     targets: [
         .target(

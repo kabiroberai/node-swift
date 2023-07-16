@@ -26,9 +26,14 @@ let package = Package(
             name: "NodeModuleSupport",
             targets: ["NodeModuleSupport"]
         ),
+        .plugin(
+            name: "BuildNodeModule",
+            targets: ["BuildNodeModule"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-syntax.git", branch: "release/5.9"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.0"),
     ],
     targets: [
         .target(name: "CNodeAPI"),
@@ -50,6 +55,22 @@ let package = Package(
         .target(
             name: "NodeModuleSupport",
             dependencies: ["CNodeAPI"]
+        ),
+        .executableTarget(
+            name: "BuildNodeModuleHelper",
+            dependencies: [
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ),
+        .plugin(
+            name: "BuildNodeModule",
+            capability: .command(
+                intent: .custom(verb: "module", description: "Build Node module"),
+                permissions: [.writeToPackageDirectory(
+                    reason: "To output your Node module."
+                )]
+            ),
+            dependencies: ["BuildNodeModuleHelper"]
         ),
     ],
     cxxLanguageStandard: .cxx14

@@ -1,5 +1,4 @@
 const fs = require("fs").promises;
-const builder = require("../lib/builder");
 const { spawnSync } = require("child_process");
 
 process.chdir(__dirname);
@@ -11,12 +10,18 @@ function usage() {
 
 async function runSuite(suite, isChild) {
     console.log(`Running suite '${suite}'`);
-    await builder.build("debug", { product: suite });
+    const status = spawnSync(
+        'swift', 
+        ['package', '--allow-writing-to-package-directory', 'module', '--product', suite], 
+        { stdio: 'inherit' }
+    ).status
+    if (status !== 0) throw new Error(`Failed to build suite '${suite}'`)
     require(`./suites/${suite}`);
 }
 
 async function runAll() {
     const suites = (await fs.readdir("suites")).filter(f => !f.startsWith("."));
+    let hasFailure = false;
     for (const suite of suites) {
         // invoke isChild processes because that way lifetime stuff
         // is handled on a per-test basis
@@ -28,9 +33,10 @@ async function runAll() {
             console.log(`Suite '${suite}' passed!`);
         } else {
             console.log(`Suite '${suite}' failed: exit code ${status}`);
+            hasFailure = true;
         }
     }
-    console.log("All tests passed!");
+    if (!hasFailure) console.log("All tests passed!");
 }
 
 (async () => {
@@ -39,7 +45,7 @@ async function runAll() {
     switch (command) {
         case "all":
             if (process.argv.length > 3) usage();
-            await builder.clean();
+            spawnSync('swift package clean');
             await runAll();
             break;
         case "_suite":
@@ -48,7 +54,7 @@ async function runAll() {
         case "suite":
             if (process.argv.length !== 4) usage();
             const suite = process.argv[3];
-            if (!isChild) await builder.clean();
+            if (!isChild) spawnSync('swift package clean');
             await runSuite(suite, isChild);
             break;
         default:

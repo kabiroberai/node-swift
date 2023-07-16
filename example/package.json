@@ -4,12 +4,9 @@
   "description": "Example node-swift package",
   "main": "index.js",
   "scripts": {
-    "install": "node-swift rebuild"
+    "install": "swift package --allow-writing-to-package-directory module"
   },
   "author": "Kabir Oberai",
   "license": "CC0-1.0",
-  "dependencies": {
-    "node-swift": "file:.."
-  },
   "private": true
 }
