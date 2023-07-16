@@ -13,7 +13,6 @@
   },
   "files": [
     "lib",
-    "NodeSwiftHost",
     "Sources",
     "vendored",
     "Package.swift"

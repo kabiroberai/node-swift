@@ -213,12 +213,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     process.stdout.write("\r[2/2] Initializing...");
     console.log();
 
-    // the NodeSwiftHost package acts as a "host" which uses the user's
-    // package as a dependency (passed via env vars). This allows us to
-    // move any flags and boilerplate that we need into the host package,
-    // keeping the user's package simple.
-    // TODO: Maybe simplify this by making NodeAPI a dynamic target, which
-    // can serve as where we put the flags?
     const result = spawnSync(
         "swift",
         [
