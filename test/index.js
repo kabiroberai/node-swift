@@ -17,6 +17,7 @@ async function runSuite(suite, isChild) {
 
 async function runAll() {
     const suites = (await fs.readdir("suites")).filter(f => !f.startsWith("."));
+    let hasFailure = false;
     for (const suite of suites) {
         // invoke isChild processes because that way lifetime stuff
         // is handled on a per-test basis
@@ -27,10 +28,11 @@ async function runAll() {
         if (status === 0) {
             console.log(`Suite '${suite}' passed!`);
         } else {
+            hasFailure = true;
             console.log(`Suite '${suite}' failed: exit code ${status}`);
         }
     }
-    console.log("All tests passed!");
+    if (!hasFailure) console.log("All tests passed!");
 }
 
 (async () => {

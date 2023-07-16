@@ -2,8 +2,9 @@ import { rm, rename, realpath } from "fs/promises";
 import { spawnSync } from "child_process";
 import { forceSymlink } from "./utils";
 import path from "path";
+import { isDeepStrictEqual } from "util";
 
-const defaultBuildPath = "build";
+const defaultBuildPath = ".build";
 
 // the name of the binary that the DLL loader *expects* to find
 // (probably doesn't need to be changed)
@@ -125,24 +126,76 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         ...linkerFlags.flatMap(f => ["-Xlinker", f]),
     ];
 
+    const dump = spawnSync(
+        "swift",
+        [
+            "package",
+            "dump-package",
+            "--package-path", packagePath,
+            ...spmFlags.filter(f => f !== "-v"),
+            ...nonSPMFlags,
+        ],
+        { stdio: ["inherit", "pipe", "inherit"] }
+    );
+    if (dump.status !== 0) {
+        throw new Error(`swift package dump-package exited with status ${dump.status}`);
+    }
+    const parsedPackage = JSON.parse(dump.stdout.toString());
+    const products = parsedPackage.products as any[];
+    let dylib;
+    if (typeof config.product === "undefined") {
+        const dylibs = products.filter(p => isDeepStrictEqual(p.type, { library: ["dynamic"] }));
+        if (dylibs.length === 0) {
+            throw new Error("No .dynamic products found in Swift Package");
+        } else if (dylibs.length === 1) {
+            dylib = dylibs[0];
+        } else {
+            throw new Error(
+                "Found more than 1 dynamic library in the Swift Package. Consider " +
+                "specifying which product should be built via the swift.product " +
+                "field in package.json."
+            );
+        }
+    } else if (typeof config.product === "string") {
+        dylib = products.find(p => p.name === config.product);
+        if (!dylib) {
+            throw new Error(`Could not find a product named '${config.product}'`);
+        }
+        if (!isDeepStrictEqual(dylib.type, { library: ["dynamic"] })) {
+            throw new Error(`Product '${config.product}' must be a .dynamic library`);
+        }
+    } else {
+        throw new Error("The config product field should be of type string, if present");
+    }
+    const product: string = dylib.name;
+
+    const targetNames = new Set(dylib.targets as string[]);
+    const hasSupportLib = !!parsedPackage.targets.find((t: any) => (
+        targetNames.has(t.name) &&
+            t.dependencies?.find((d: any) =>
+                isDeepStrictEqual(d, { product: [ "NodeModuleSupport", "node-swift", null, null ] })
+            )
+    ));
+    if (!hasSupportLib) throw new Error(`Product '${product}' must have '.product(name: "NodeModuleSupport", package: "node-swift")' as a dependency`);
+
     let libName;
     let ldflags;
     switch (process.platform) {
         case "darwin":
-            libName = "libModule.dylib";
+            libName = `lib${product}.dylib`;
             ldflags = [
                 "-Xlinker", "-undefined",
                 "-Xlinker", "dynamic_lookup",
             ];
             break;
         case "linux":
-            libName = "libModule.so";
+            libName = `lib${product}.so`;
             ldflags = [
                 "-Xlinker", "-undefined",
             ];
             break;
         case "win32":
-            libName = "Module.dll";
+            libName = `${product}.dll`;
             ldflags = [
                 "-Xlinker", await getWinLib(),
                 "-Xlinker", "delayimp.lib",
@@ -166,7 +219,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         [
             "build",
             "-c", mode,
-            "--product", "Module",
+            "--product", product,
             "--build-path", buildDir,
             "--package-path", packagePath,
             ...ldflags,
@@ -187,7 +240,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         throw new Error(`swift build exited with status ${result.status}`);
     }
 
-    const binaryPath = path.join(buildDir, mode, "module.node");
+    const binaryPath = path.join(buildDir, mode, `${product}.node`);
 
     await rename(
         path.join(buildDir, mode, libName),
@@ -195,8 +248,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     );
 
     await forceSymlink(
-        path.join(mode, "module.node"),
-        path.join(buildDir, "module.node")
+        path.join(mode, `${product}.node`),
+        path.join(buildDir, `${product}.node`)
     );
 
     if (process.platform === "darwin") {
