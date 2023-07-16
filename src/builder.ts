@@ -126,6 +126,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         ...linkerFlags.flatMap(f => ["-Xlinker", f]),
     ];
 
+    process.stdout.write("[1/2] Initializing...");
+
     const dump = spawnSync(
         "swift",
         [
@@ -172,9 +174,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const targetNames = new Set(dylib.targets as string[]);
     const hasSupportLib = !!parsedPackage.targets.find((t: any) => (
         targetNames.has(t.name) &&
-            t.dependencies?.find((d: any) =>
-                isDeepStrictEqual(d, { product: [ "NodeModuleSupport", "node-swift", null, null ] })
-            )
+            t.dependencies?.find((d: any) => isDeepStrictEqual(
+                d?.product.slice(0, 2), ["NodeModuleSupport", "node-swift"]
+            ))
     ));
     if (!hasSupportLib) throw new Error(`Product '${product}' must have '.product(name: "NodeModuleSupport", package: "node-swift")' as a dependency`);
 
@@ -207,6 +209,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 `The platform ${process.platform} is currently unsupported by node-swift.`
             );
     }
+
+    process.stdout.write("\r[2/2] Initializing...");
+    console.log();
 
     // the NodeSwiftHost package acts as a "host" which uses the user's
     // package as a dependency (passed via env vars). This allows us to
