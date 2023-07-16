@@ -179,7 +179,7 @@ extension NodeClass {
     }
 
     nonisolated public static var deferredConstructor: NodeValueConvertible {
-        NodeDeferredValue { try constructor() }
+        NodeDeferredValue { try constructor }
     }
 
     public func wrapped() throws -> NodeObject {

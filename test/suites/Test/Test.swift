@@ -29,6 +29,8 @@ final class File: NodeClass {
         url = URL(fileURLWithPath: path)
     }
 
+    static let construct = NodeConstructor(File.init(_:))
+
     static func `default`(_ args: NodeArguments) throws -> NodeValueConvertible {
         return try File(url: URL(fileURLWithPath: "default.txt")).wrapped()
     }
@@ -56,6 +58,4 @@ final class File: NodeClass {
     }
 }
 
-@main struct Test: NodeModule {
-    let exports: NodeValueConvertible = ["File": File.deferredConstructor]
-}
+#NodeModule(exports: ["File": File.deferredConstructor])

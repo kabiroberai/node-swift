@@ -11,17 +11,22 @@ let nodeSwiftPath = URL(fileURLWithPath: #filePath)
 
 let package = Package(
     name: "NodeAPITests",
+    platforms: [.macOS("10.15")],
     dependencies: [.package(name: "node-swift", path: nodeSwiftPath)]
 )
 
 func addSuite(_ suite: String) {
     package.products.append(.library(
         name: suite,
+        type: .dynamic,
         targets: [suite]
     ))
     package.targets.append(.target(
         name: suite,
-        dependencies: [.product(name: "NodeAPI", package: "node-swift")],
+        dependencies: [
+            .product(name: "NodeAPI", package: "node-swift"),
+            .product(name: "NodeModuleSupport", package: "node-swift"),
+        ],
         path: "suites/\(suite)",
         exclude: ["index.js"],
         swiftSettings: [

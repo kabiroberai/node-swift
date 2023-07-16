@@ -20,10 +20,6 @@ struct NodeModuleMacro: DeclarationMacro {
         let start = context.location(of: node, at: .afterLeadingTrivia, filePathMode: .filePath)!
 
         return ["""
-        #if !canImport(NodeModuleSupport)
-        #error("Please add NodeModuleSupport as a dependency.")
-        #endif
-
         @_cdecl("node_swift_register")
         @NodeAPI.NodeActor(unsafe)
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
