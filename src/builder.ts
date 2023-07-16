@@ -229,10 +229,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         {
             stdio: "inherit",
             env: {
-                "NODE_SWIFT_HOST_BINARY": winHost,
+                ...process.env,
                 "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
                 "NODE_SWIFT_ENABLE_EVOLUTION": enableEvolution ? "1" : "0",
-                ...process.env,
             },
         }
     );
