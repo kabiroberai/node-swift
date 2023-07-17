@@ -3,11 +3,11 @@
 import PackageDescription
 import Foundation
 
-// using ".." doesn't work on Windows
-let nodeSwiftPath = URL(fileURLWithPath: #filePath)
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .path
+// using ".." doesn't work on Windows. Also,
+// relative paths work via the CLI but not with Xcode.
+let testDir = URL(filePath: #filePath).deletingLastPathComponent()
+let suites = testDir.appending(component: "suites")
+let nodeSwiftPath = testDir.deletingLastPathComponent().path
 
 let package = Package(
     name: "NodeAPITests",
@@ -34,11 +34,6 @@ func addSuite(_ suite: String) {
         ]
     ))
 }
-
-// relative paths work via the CLI but not with Xcode
-let suites = URL(fileURLWithPath: #filePath)
-    .deletingLastPathComponent()
-    .appendingPathComponent("suites")
 
 for suite in try FileManager.default.contentsOfDirectory(atPath: suites.path)
     where !suite.hasPrefix(".") {
