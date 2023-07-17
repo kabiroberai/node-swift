@@ -32,8 +32,8 @@ async function runAll() {
         if (status === 0) {
             console.log(`Suite '${suite}' passed!`);
         } else {
-            console.log(`Suite '${suite}' failed: exit code ${status}`);
             hasFailure = true;
+            console.log(`Suite '${suite}' failed: exit code ${status}`);
         }
     }
     if (!hasFailure) console.log("All tests passed!");
