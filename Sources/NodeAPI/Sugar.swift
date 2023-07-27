@@ -24,17 +24,14 @@ extension NodeFunction {
 
 extension NodeMethod {
 
-    #warning("TODO: swiftc currently crashes when implementing these")
-
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
-                fatalError("Cannot implement yet due to a compiler bug")
-//                var reader = ArgReader(args)
-//                return try callback(target)(repeat reader.next() as (each A))
+                var reader = ArgReader(args)
+                return try callback(target)(repeat reader.next() as (each A))
             }
         }
     }
@@ -45,9 +42,8 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
-                fatalError("Cannot implement yet due to a compiler bug")
-//                var reader = ArgReader(args)
-//                return try await callback(target)(repeat reader.next() as (each A))
+                var reader = ArgReader(args)
+                return try await callback(target)(repeat reader.next() as (each A))
             }
         }
     }
