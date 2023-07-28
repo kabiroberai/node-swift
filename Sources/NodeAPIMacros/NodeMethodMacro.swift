@@ -22,7 +22,7 @@ struct NodeMethodMacro: PeerMacro {
         }
 
         return ["""
-        @NodeActor private static let $\(function.identifier)
+        @NodeActor static let $\(function.identifier)
             = NodeMethod(attributes: \(attributes), _NodeSelf.\(function.identifier)\(sig.arguments) as \(type))
         """]
     }

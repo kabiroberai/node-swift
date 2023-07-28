@@ -1,20 +1,14 @@
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-struct NodeClassMacro: ConformanceMacro, MemberMacro {
+struct NodeClassMacro: ExtensionMacro {
     static func expansion(
         of node: AttributeSyntax,
-        providingConformancesOf declaration: some DeclGroupSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
-    ) throws -> [(TypeSyntax, GenericWhereClauseSyntax?)] {
-        [("NodeClass", nil)]
-    }
-
-    static func expansion(
-        of node: AttributeSyntax,
-        providingMembersOf declaration: some DeclGroupSyntax,
-        in context: some MacroExpansionContext
-    ) throws -> [DeclSyntax] {
+    ) throws -> [ExtensionDeclSyntax] {
         guard let classDecl = declaration.as(ClassDeclSyntax.self) else {
             context.diagnose(.init(node: Syntax(declaration), message: .expectedClassDecl))
             return []
@@ -46,8 +40,14 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
             }
         }
 
-        return ["""
-        @NodeActor static let properties: NodeClassPropertyList = \(dict)
-        """]
+        let inheritanceClause = protocols.isEmpty ? nil : TypeInheritanceClauseSyntax(
+            inheritedTypeCollection: .init(protocols.map { .init(typeName: $0) })
+        )
+
+        return [ExtensionDeclSyntax(extendedType: type, inheritanceClause: inheritanceClause) {
+            DeclSyntax("""
+            @NodeActor static let properties: NodeClassPropertyList = \(dict)
+            """)
+        }]
     }
 }

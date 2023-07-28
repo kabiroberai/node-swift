@@ -122,8 +122,7 @@ extension NodeClass {
     public typealias _NodeSelf = Self
 }
 
-@attached(conformance)
-@attached(member, names: named(properties), named(construct))
+@attached(extension, conformances: NodeClass, names: named(properties), named(construct))
 public macro NodeClass() = #externalMacro(module: "NodeAPIMacros", type: "NodeClassMacro")
 
 @attached(peer, names: named(construct))

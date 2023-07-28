@@ -45,7 +45,9 @@ let package = Package(
             dependencies: ["CNodeAPI", "NodeAPIMacros"],
             swiftSettings: baseSwiftSettings + (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
-            ] : [])
+            ] : []) + [
+                .enableExperimentalFeature("ExtensionMacros")
+            ]
         ),
         .target(
             name: "NodeModuleSupport",
