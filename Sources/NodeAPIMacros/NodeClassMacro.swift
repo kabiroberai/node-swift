@@ -20,7 +20,7 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
             return []
         }
 
-        guard let mods = classDecl.modifiers, mods.lazy.map(\.name.tokenKind).contains(.keyword(.final)) else {
+        guard classDecl.modifiers?.hasKeyword(.final) == true else {
             context.diagnose(.init(node: Syntax(declaration), message: .expectedFinal))
             return []
         }
@@ -53,14 +53,20 @@ struct NodeClassMacro: ConformanceMacro, MemberMacro {
 }
 
 extension AttributeListSyntax {
-    fileprivate func hasAttribute(named name: String) -> Bool {
+    func hasAttribute(named name: String) -> Bool {
         contains {
             if case let .attribute(value) = $0 {
-                value.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == name
+                value.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.trimmed.text == name
             } else {
                 false
             }
         }
+    }
+}
+
+extension ModifierListSyntax {
+    func hasKeyword(_ keyword: Keyword) -> Bool {
+        lazy.map(\.name.tokenKind).contains(.keyword(keyword))
     }
 }
 

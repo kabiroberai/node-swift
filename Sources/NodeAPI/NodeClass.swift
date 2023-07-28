@@ -204,9 +204,7 @@ extension NodeMethod {
         _ callback: @escaping (T) -> @NodeActor (NodeArguments) async throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { args in
-            try NodePromise {
-                try await callback(T.from(args: args))(args)
-            }
+            try await callback(T.from(args: args))(args)
         }
     }
 }

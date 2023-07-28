@@ -46,6 +46,12 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
     public init(attributes: NodeProperty.Attributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
         nodeProperty = .init(attributes: attributes, value: .method(callback))
     }
+
+    public init(attributes: NodeProperty.Attributes = .defaultMethod, _ callback: @escaping NodeFunction.AsyncCallback) {
+        self.init(attributes: attributes) { args in
+            try NodePromise { try await callback(args) }
+        }
+    }
 }
 
 @NodeActor public struct NodeComputedProperty: NodeClassPropertyConvertible {

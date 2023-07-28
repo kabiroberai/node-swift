@@ -24,6 +24,8 @@ extension NodeFunction {
 
 extension NodeMethod {
 
+    // instance methods
+
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodeProperty.Attributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> NodeValueConvertible
@@ -45,6 +47,28 @@ extension NodeMethod {
                 var reader = ArgReader(args)
                 return try await callback(target)(repeat reader.next() as (each A))
             }
+        }
+    }
+
+    // static methods
+
+    public init<each A: AnyNodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping @NodeActor (repeat each A) throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
+            var reader = ArgReader(args)
+            return try callback(repeat reader.next() as (each A))
+        }
+    }
+
+    public init<each A: AnyNodeValueCreatable>(
+        attributes: NodeProperty.Attributes = .defaultMethod,
+        _ callback: @escaping @NodeActor (repeat each A) async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
+            var reader = ArgReader(args)
+            return try await callback(repeat reader.next() as (each A))
         }
     }
 
