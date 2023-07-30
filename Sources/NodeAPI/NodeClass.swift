@@ -70,17 +70,26 @@ public struct NodeConstructor<T: NodeClass> {
 }
 
 @NodeActor public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
-    // mapping from Swift -> JS props
+    // mapping from Swift -> JS props (macro-specified)
     static var properties: NodeClassPropertyList { get }
 
-    // default implementations provided:
+    // --- default implementations provided:
+
+    // class name
     static var name: String { get }
+
+    // additional JS props
+    static var extraProperties: NodeClassPropertyList { get }
 
     // constructor (default implementation throws)
     static var construct: NodeConstructor<Self> { get }
 }
 
 extension NodeClass {
+    public static var name: String { "\(self)" }
+
+    public static var extraProperties: NodeClassPropertyList { [:] }
+
     public static var construct: NodeConstructor<Self> {
         .init { _ in
             throw NodeAPIError(
@@ -103,8 +112,6 @@ enum NodeClassSpecialConstructor<T: NodeClass> {
 }
 
 extension NodeClass {
-    public static var name: String { "\(self)" }
-
     private static var classID: ObjectIdentifier {
         .init(self)
     }
@@ -127,6 +134,10 @@ extension NodeClass {
         return try this.as(self)
     }
 
+    private static var allProperties: NodeClassPropertyList {
+        NodeClassPropertyList(properties.elements + extraProperties.elements)
+    }
+
     private static func _constructor() throws -> (NodeFunction, NodeSymbol) {
         let id = classID
         let env = NodeEnvironment.current
@@ -140,7 +151,7 @@ extension NodeClass {
         // only be made by someone who possesses the symbol, and therefore can't be forged
         // from JS
         let sym = try NodeSymbol(description: "Special constructor for NodeSwift class '\(name)'")
-        let newCtor = try NodeFunction(className: name, properties: properties) { args in
+        let newCtor = try NodeFunction(className: name, properties: allProperties) { args in
             guard let this = args.this else { 
                 throw NodeAPIError(
                     .objectExpected, 
