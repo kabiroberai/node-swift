@@ -230,7 +230,7 @@ extension NodeObject {
     public final func define(_ properties: NodeObjectPropertyList) throws {
         let env = base.environment
         var descriptors: [napi_property_descriptor] = []
-        var callbacks: [NodeProperty.Callbacks] = []
+        var callbacks: [NodePropertyBase.Callbacks] = []
         for (name, prop) in properties.elements {
             let (desc, cb) = try prop.nodeProperty.raw(name: name)
             descriptors.append(desc)

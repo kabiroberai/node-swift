@@ -27,7 +27,7 @@ extension NodeMethod {
     // instance methods
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
@@ -39,7 +39,7 @@ extension NodeMethod {
     }
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) async throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
@@ -53,7 +53,7 @@ extension NodeMethod {
     // static methods
 
     public init<each A: AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping @NodeActor (repeat each A) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
@@ -63,7 +63,7 @@ extension NodeMethod {
     }
 
     public init<each A: AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping @NodeActor (repeat each A) async throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
@@ -129,9 +129,9 @@ public macro NodeClass() = #externalMacro(module: "NodeAPIMacros", type: "NodeCl
 public macro NodeConstructor() = #externalMacro(module: "NodeAPIMacros", type: "NodeConstructorMacro")
 
 @attached(peer, names: prefixed(`$`))
-public macro NodeMethod(_: NodeProperty.Attributes = .defaultMethod)
+public macro NodeMethod(_: NodePropertyAttributes = .defaultMethod)
     = #externalMacro(module: "NodeAPIMacros", type: "NodeMethodMacro")
 
 @attached(peer, names: prefixed(`$`))
-public macro NodeProperty(_: NodeProperty.Attributes = .defaultProperty)
+public macro NodeProperty(_: NodePropertyAttributes = .defaultProperty)
     = #externalMacro(module: "NodeAPIMacros", type: "NodePropertyMacro")

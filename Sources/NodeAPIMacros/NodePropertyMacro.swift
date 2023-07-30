@@ -16,7 +16,7 @@ struct NodePropertyMacro: PeerMacro {
 
         return ["""
         @NodeActor static let $\(identifier) = \
-            NodeComputedProperty(attributes: \(attributes), \\_NodeSelf.\(identifier))
+            NodeProperty(attributes: \(attributes), \\_NodeSelf.\(identifier))
         """]
     }
 }

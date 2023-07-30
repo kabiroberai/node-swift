@@ -19,7 +19,7 @@ extension NodeFunction {
         constructor: @escaping NodeFunction.VoidCallback
     ) throws {
         var descriptors: [napi_property_descriptor] = []
-        var callbacks: [NodeProperty.Callbacks] = []
+        var callbacks: [NodePropertyBase.Callbacks] = []
         for (propName, prop) in properties.elements {
             let nodeProp = prop.nodeProperty
             let (desc, cb) = try nodeProp.raw(name: propName)
@@ -193,14 +193,14 @@ extension NodeClass {
 
 extension NodeMethod {
     public init<T: NodeClass>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (NodeArguments) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
 
     public init<T: NodeClass>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (NodeArguments) async throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { args in
@@ -209,9 +209,9 @@ extension NodeMethod {
     }
 }
 
-extension NodeComputedProperty {
+extension NodeProperty {
     public init<T: NodeClass>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible,
         set: ((T) -> @NodeActor (NodeValue) throws -> Void)? = nil
     ) {
@@ -230,7 +230,7 @@ extension NodeComputedProperty {
     }
 
     public init<T: NodeClass, U: NodeValueConvertible>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> U
     ) {
         self.init(
@@ -240,7 +240,7 @@ extension NodeComputedProperty {
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> U,
         set: @escaping (T) -> @NodeActor (U) throws -> Void
     ) {
@@ -257,14 +257,14 @@ extension NodeComputedProperty {
     }
 
     public init<T: NodeClass, U: NodeValueConvertible>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         _ keyPath: KeyPath<T, U>
     ) {
         self.init(attributes: attributes) { (obj: T) in { obj[keyPath: keyPath] } }
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         _ keyPath: ReferenceWritableKeyPath<T, U>
     ) {
         self.init(attributes: attributes) {

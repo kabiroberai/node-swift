@@ -135,8 +135,8 @@ extension NodeValueCreatable {
 }
 
 extension NodeValueConvertible {
-    @NodeActor public var nodeProperty: NodeProperty {
-        NodeProperty(attributes: .defaultProperty, value: .data(self))
+    @NodeActor public var nodeProperty: NodePropertyBase {
+        NodePropertyBase(attributes: .defaultProperty, value: .data(self))
     }
 
     @NodeActor func rawValue() throws -> napi_value {
