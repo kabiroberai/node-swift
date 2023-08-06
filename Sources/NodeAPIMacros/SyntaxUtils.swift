@@ -31,7 +31,11 @@ extension AttributeSyntax {
 extension FunctionSignatureSyntax {
     var functionType: FunctionTypeSyntax {
         FunctionTypeSyntax(
-            arguments: TupleTypeElementListSyntax(input.parameterList.map { .init(type: $0.type) }),
+            arguments: TupleTypeElementListSyntax {
+                for parameter in input.parameterList {
+                    TupleTypeElementSyntax(type: parameter.type, trailingComma: parameter.trailingComma)
+                }
+            },
             effectSpecifiers: .init(
                 asyncSpecifier: effectSpecifiers?.asyncSpecifier,
                 throwsSpecifier: effectSpecifiers?.throwsSpecifier
