@@ -6,7 +6,18 @@ extension NodeFunction {
     ) throws {
         try self.init(name: name) { args in
             var reader = ArgReader(args)
-            return try callback(repeat reader.next() as (each A))
+            return try callback(repeat reader.next() as each A)
+        }
+    }
+
+    public convenience init<each A: AnyNodeValueCreatable>(
+        name: String = "",
+        callback: @escaping @NodeActor (repeat each A) throws -> Void
+    ) throws {
+        try self.init(name: name) { args in
+            var reader = ArgReader(args)
+            try callback(repeat reader.next() as each A)
+            return try NodeUndefined()
         }
     }
 
@@ -16,7 +27,18 @@ extension NodeFunction {
     ) throws {
         try self.init(name: name) { args in
             var reader = ArgReader(args)
-            return try await callback(repeat reader.next() as (each A))
+            return try await callback(repeat reader.next() as each A)
+        }
+    }
+
+    public convenience init<each A: AnyNodeValueCreatable>(
+        name: String = "",
+        callback: @escaping @NodeActor (repeat each A) async throws -> Void
+    ) throws {
+        try self.init(name: name) { args in
+            var reader = ArgReader(args)
+            try await callback(repeat reader.next() as each A)
+            return try NodeUndefined()
         }
     }
 
@@ -33,7 +55,20 @@ extension NodeMethod {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
                 var reader = ArgReader(args)
-                return try callback(target)(repeat reader.next() as (each A))
+                return try callback(target)(repeat reader.next() as each A)
+            }
+        }
+    }
+
+    public init<T: NodeClass, each A: AnyNodeValueCreatable>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> Void
+    ) {
+        self.init(attributes: attributes) { (target: T) in
+            { (args: NodeArguments) in
+                var reader = ArgReader(args)
+                try callback(target)(repeat reader.next() as each A)
+                return try NodeUndefined()
             }
         }
     }
@@ -45,7 +80,20 @@ extension NodeMethod {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
                 var reader = ArgReader(args)
-                return try await callback(target)(repeat reader.next() as (each A))
+                return try await callback(target)(repeat reader.next() as each A)
+            }
+        }
+    }
+
+    public init<T: NodeClass, each A: AnyNodeValueCreatable>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (repeat each A) async throws -> Void
+    ) {
+        self.init(attributes: attributes) { (target: T) in
+            { (args: NodeArguments) in
+                var reader = ArgReader(args)
+                try await callback(target)(repeat reader.next() as each A)
+                return try NodeUndefined()
             }
         }
     }
@@ -58,7 +106,18 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
             var reader = ArgReader(args)
-            return try callback(repeat reader.next() as (each A))
+            return try callback(repeat reader.next() as each A)
+        }
+    }
+
+    public init<each A: AnyNodeValueCreatable>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping @NodeActor (repeat each A) throws -> Void
+    ) {
+        self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
+            var reader = ArgReader(args)
+            try callback(repeat reader.next() as each A)
+            return try NodeUndefined()
         }
     }
 
@@ -68,7 +127,18 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
             var reader = ArgReader(args)
-            return try await callback(repeat reader.next() as (each A))
+            return try await callback(repeat reader.next() as each A)
+        }
+    }
+
+    public init<each A: AnyNodeValueCreatable>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping @NodeActor (repeat each A) async throws -> Void
+    ) {
+        self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
+            var reader = ArgReader(args)
+            try await callback(repeat reader.next() as each A)
+            return try NodeUndefined()
         }
     }
 
