@@ -185,12 +185,12 @@ extension NodeClass {
         return try ctor.new(sym, NodeExternal(value: specialConstructor))
     }
 
-    public static var constructor: NodeFunction {
-        get throws { try _constructor().0 }
+    public static func constructor() throws -> NodeFunction {
+        try _constructor().0
     }
 
     nonisolated public static var deferredConstructor: NodeValueConvertible {
-        NodeDeferredValue { try constructor }
+        NodeDeferredValue { try constructor() }
     }
 
     public func wrapped() throws -> NodeObject {
