@@ -16,8 +16,7 @@ extension NodeFunction {
     ) throws {
         try self.init(name: name) { args in
             var reader = ArgReader(args)
-            try callback(repeat reader.next() as each A)
-            return try NodeUndefined()
+            return try callback(repeat reader.next() as each A)
         }
     }
 
@@ -37,8 +36,7 @@ extension NodeFunction {
     ) throws {
         try self.init(name: name) { args in
             var reader = ArgReader(args)
-            try await callback(repeat reader.next() as each A)
-            return try NodeUndefined()
+            return try await callback(repeat reader.next() as each A)
         }
     }
 
@@ -67,8 +65,7 @@ extension NodeMethod {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
                 var reader = ArgReader(args)
-                try callback(target)(repeat reader.next() as each A)
-                return try NodeUndefined()
+                return try callback(target)(repeat reader.next() as each A)
             }
         }
     }
@@ -92,8 +89,7 @@ extension NodeMethod {
         self.init(attributes: attributes) { (target: T) in
             { (args: NodeArguments) in
                 var reader = ArgReader(args)
-                try await callback(target)(repeat reader.next() as each A)
-                return try NodeUndefined()
+                return try await callback(target)(repeat reader.next() as each A)
             }
         }
     }
@@ -116,8 +112,7 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
             var reader = ArgReader(args)
-            try callback(repeat reader.next() as each A)
-            return try NodeUndefined()
+            return try callback(repeat reader.next() as each A)
         }
     }
 
@@ -137,8 +132,7 @@ extension NodeMethod {
     ) {
         self.init(attributes: attributes.union(.static)) { (args: NodeArguments) in
             var reader = ArgReader(args)
-            try await callback(repeat reader.next() as each A)
-            return try NodeUndefined()
+            return try await callback(repeat reader.next() as each A)
         }
     }
 

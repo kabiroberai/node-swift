@@ -43,13 +43,28 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
 
 @NodeActor public struct NodeMethod: NodeClassPropertyConvertible {
     public let nodeProperty: NodePropertyBase
+
     public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
         nodeProperty = .init(attributes: attributes, value: .method(callback))
+    }
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.VoidCallback) {
+        self.init(attributes: attributes) { args in
+            try callback(args)
+            return try NodeUndefined()
+        }
     }
 
     public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.AsyncCallback) {
         self.init(attributes: attributes) { args in
             try NodePromise { try await callback(args) }
+        }
+    }
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.AsyncVoidCallback) {
+        self.init(attributes: attributes) { args in
+            try await callback(args)
+            return try NodeUndefined()
         }
     }
 }
