@@ -46,7 +46,7 @@ struct NodeClassMacro: ExtensionMacro {
 
         return [ExtensionDeclSyntax(extendedType: type, inheritanceClause: inheritanceClause) {
             DeclSyntax("""
-            @NodeActor static let properties: NodeClassPropertyList = \(dict)
+            @NodeActor public static let properties: NodeClassPropertyList = \(dict)
             """)
         }]
     }
