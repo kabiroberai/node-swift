@@ -283,6 +283,13 @@ extension NodeProperty {
         )
     }
 
+    public init<T: NodeClass>(
+        attributes: NodePropertyAttributes = .defaultProperty,
+        _ keyPath: KeyPath<T, NodeValueConvertible>
+    ) {
+        self.init(attributes: attributes) { (obj: T) in { obj[keyPath: keyPath] } }
+    }
+
     public init<T: NodeClass, U: NodeValueConvertible>(
         attributes: NodePropertyAttributes = .defaultProperty,
         _ keyPath: KeyPath<T, U>
