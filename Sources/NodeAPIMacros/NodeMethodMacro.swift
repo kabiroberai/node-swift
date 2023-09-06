@@ -15,15 +15,15 @@ struct NodeMethodMacro: PeerMacro {
         let attributes = node.nodeAttributes ?? ".defaultMethod"
         let sig = function.signature
 
-        let type: TypeSyntax = if function.modifiers?.hasKeyword(.static) == true {
+        let type: TypeSyntax = if function.modifiers.hasKeyword(.static) {
             "\(sig.functionType)"
         } else {
             "(_NodeSelf) -> \(sig.functionType)"
         }
 
         return ["""
-        @NodeActor static let $\(function.identifier)
-            = NodeMethod(attributes: \(attributes), _NodeSelf.\(function.identifier)\(sig.arguments) as \(type))
+        @NodeActor static let $\(function.name)
+            = NodeMethod(attributes: \(attributes), _NodeSelf.\(function.name)\(sig.arguments) as \(type))
         """]
     }
 }

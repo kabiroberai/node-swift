@@ -14,7 +14,7 @@ struct NodeClassMacro: ExtensionMacro {
             return []
         }
 
-        guard classDecl.modifiers?.hasKeyword(.final) == true else {
+        guard classDecl.modifiers.hasKeyword(.final) else {
             context.diagnose(.init(node: Syntax(declaration), message: .expectedFinal))
             return []
         }
@@ -23,25 +23,25 @@ struct NodeClassMacro: ExtensionMacro {
             for member in classDecl.memberBlock.members {
                 let identifier =
                     if let function = member.decl.as(FunctionDeclSyntax.self),
-                       function.attributes?.hasAttribute(named: "NodeMethod") == true {
-                        function.identifier
+                       function.attributes.hasAttribute(named: "NodeMethod") == true {
+                        function.name
                     } else if let property = member.decl.as(VariableDeclSyntax.self),
-                              property.attributes?.hasAttribute(named: "NodeProperty") == true {
+                              property.attributes.hasAttribute(named: "NodeProperty") == true {
                         property.identifier
                     } else {
                         nil as TokenSyntax?
                     }
                 if let identifier {
                     DictionaryElementSyntax(
-                        keyExpression: "\(literal: identifier.text)" as ExprSyntax,
-                        valueExpression: "$\(identifier)" as ExprSyntax
+                        key: "\(literal: identifier.text)" as ExprSyntax,
+                        value: "$\(identifier)" as ExprSyntax
                     )
                 }
             }
         }
 
-        let inheritanceClause = protocols.isEmpty ? nil : TypeInheritanceClauseSyntax(
-            inheritedTypeCollection: .init(protocols.map { .init(typeName: $0) })
+        let inheritanceClause = protocols.isEmpty ? nil : InheritanceClauseSyntax(
+            inheritedTypes: .init(protocols.map { .init(type: $0) })
         )
 
         return [ExtensionDeclSyntax(extendedType: type, inheritanceClause: inheritanceClause) {

@@ -13,7 +13,7 @@ struct NodeConstructorMacro: PeerMacro {
         }
 
         var sig = ctor.signature
-        sig.output = .init(returnType: "_NodeSelf" as TypeSyntax)
+        sig.returnClause = .init(type: "_NodeSelf" as TypeSyntax)
 
         return ["""
         @NodeActor public static let construct = NodeConstructor(_NodeSelf.init\(sig.arguments) as \(sig.functionType))

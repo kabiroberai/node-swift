@@ -4,7 +4,7 @@ extension AttributeListSyntax {
     func hasAttribute(named name: String) -> Bool {
         contains {
             if case let .attribute(value) = $0 {
-                value.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.trimmed.text == name
+                value.attributeName.as(IdentifierTypeSyntax.self)?.name.trimmed.text == name
             } else {
                 false
             }
@@ -12,7 +12,7 @@ extension AttributeListSyntax {
     }
 }
 
-extension ModifierListSyntax {
+extension DeclModifierListSyntax {
     func hasKeyword(_ keyword: Keyword) -> Bool {
         lazy.map(\.name.tokenKind).contains(.keyword(keyword))
     }
@@ -20,7 +20,7 @@ extension ModifierListSyntax {
 
 extension AttributeSyntax {
     var nodeAttributes: ExprSyntax? {
-        if case .argumentList(let tuple) = argument, let elt = tuple.first {
+        if case .argumentList(let tuple) = arguments, let elt = tuple.first {
             elt.expression
         } else {
             nil
@@ -31,8 +31,8 @@ extension AttributeSyntax {
 extension FunctionSignatureSyntax {
     var functionType: FunctionTypeSyntax {
         FunctionTypeSyntax(
-            arguments: TupleTypeElementListSyntax {
-                for parameter in input.parameterList {
+            parameters: TupleTypeElementListSyntax {
+                for parameter in parameterClause.parameters {
                     TupleTypeElementSyntax(type: parameter.type, trailingComma: parameter.trailingComma)
                 }
             },
@@ -40,15 +40,15 @@ extension FunctionSignatureSyntax {
                 asyncSpecifier: effectSpecifiers?.asyncSpecifier,
                 throwsSpecifier: effectSpecifiers?.throwsSpecifier
             ),
-            output: .init(returnType: output?.returnType.trimmed ?? "Void")
+            returnClause: .init(type: returnClause?.type.trimmed ?? "Void")
         )
     }
 
     var arguments: DeclNameArgumentsSyntax {
-        if input.parameterList.isEmpty {
+        if parameterClause.parameters.isEmpty {
             DeclNameArgumentsSyntax(leftParen: .unknown(""), arguments: [], rightParen: .unknown(""))
         } else {
-            DeclNameArgumentsSyntax(arguments: .init(input.parameterList.map { .init(name: $0.firstName.trimmed) }))
+            DeclNameArgumentsSyntax(arguments: .init(parameterClause.parameters.map { .init(name: $0.firstName.trimmed) }))
         }
     }
 }

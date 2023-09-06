@@ -28,7 +28,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", branch: "release/5.9"),
+        .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0-swift-DEVELOPMENT-SNAPSHOT-2023-09-05-a"),
     ],
     targets: [
         .target(name: "CNodeAPI"),
@@ -45,9 +45,7 @@ let package = Package(
             dependencies: ["CNodeAPI", "NodeAPIMacros"],
             swiftSettings: baseSwiftSettings + (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
-            ] : []) + [
-                .enableExperimentalFeature("ExtensionMacros")
-            ]
+            ] : [])
         ),
         .target(
             name: "NodeModuleSupport",
