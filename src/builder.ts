@@ -175,7 +175,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const hasSupportLib = !!parsedPackage.targets.find((t: any) => (
         targetNames.has(t.name) &&
             t.dependencies?.find((d: any) => isDeepStrictEqual(
-                d?.product.slice(0, 2), ["NodeModuleSupport", "node-swift"]
+                d?.product?.slice(0, 2), ["NodeModuleSupport", "node-swift"]
             ))
     ));
     if (!hasSupportLib) throw new Error(`Product '${product}' must have '.product(name: "NodeModuleSupport", package: "node-swift")' as a dependency`);
