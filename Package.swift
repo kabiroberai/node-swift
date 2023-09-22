@@ -1,6 +1,7 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.9
 
 import PackageDescription
+import CompilerPluginSupport
 import Foundation
 
 let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC"] == "1"
@@ -12,24 +13,44 @@ let baseSwiftSettings: [SwiftSetting] = [
 
 let package = Package(
     name: "node-swift",
+    platforms: [
+        .macOS(.v10_15), .iOS(.v13),
+    ],
     products: [
         .library(
             name: "NodeAPI",
             type: buildDynamic ? .dynamic : nil,
             targets: ["NodeAPI"]
-        )
+        ),
+        .library(
+            name: "NodeModuleSupport",
+            targets: ["NodeModuleSupport"]
+        ),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
+    ],
     targets: [
         .target(name: "CNodeAPI"),
+        .macro(
+            name: "NodeAPIMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ],
+            swiftSettings: baseSwiftSettings
+        ),
         .target(
             name: "NodeAPI",
-            dependencies: ["CNodeAPI"],
-            exclude: ["Sugar.swift.gyb"],
+            dependencies: ["CNodeAPI", "NodeAPIMacros"],
             swiftSettings: baseSwiftSettings + (enableEvolution ? [
                 .unsafeFlags(["-enable-library-evolution"])
             ] : [])
-        )
+        ),
+        .target(
+            name: "NodeModuleSupport",
+            dependencies: ["CNodeAPI"]
+        ),
     ],
     cxxLanguageStandard: .cxx14
 )

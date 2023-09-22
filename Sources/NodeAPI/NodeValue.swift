@@ -135,8 +135,8 @@ extension NodeValueCreatable {
 }
 
 extension NodeValueConvertible {
-    @NodeActor public var nodeProperty: NodeProperty {
-        NodeProperty(attributes: .defaultProperty, value: .data(self))
+    @NodeActor public var nodeProperty: NodePropertyBase {
+        NodePropertyBase(attributes: .defaultProperty, value: .data(self))
     }
 
     @NodeActor func rawValue() throws -> napi_value {
@@ -170,14 +170,14 @@ extension NodeCallable {
         return try fn.call(on: receiver, args)
     }
 
-    public var new: NodeConstructor {
-        NodeConstructor(callable: self)
+    public var new: NodeCallableConstructor {
+        NodeCallableConstructor(callable: self)
     }
 }
 
 // this type exists due to the aforementioned callAsFunction bug
 @dynamicCallable
-@NodeActor public struct NodeConstructor {
+@NodeActor public struct NodeCallableConstructor {
     let callable: NodeCallable
     public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeObject {
         guard let fn = try callable.as(NodeFunction.self) else {

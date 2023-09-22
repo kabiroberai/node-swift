@@ -52,10 +52,10 @@ private final class NodeExecutor: SerialExecutor {
 
         if q.instanceID == NodeContext.runOnActor({ try? Node.instanceID() }) {
             // if we're already on the right thread, skip a hop
-            job._runSynchronously(on: ref)
+            job.runSynchronously(on: ref)
         } else {
             do {
-                try q.run { job._runSynchronously(on: ref) }
+                try q.run { job.runSynchronously(on: ref) }
             } catch {
                 nodeFatalError("Could not execute job on NodeActor: \(error)")
             }

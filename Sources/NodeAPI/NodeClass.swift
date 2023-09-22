@@ -19,7 +19,7 @@ extension NodeFunction {
         constructor: @escaping NodeFunction.VoidCallback
     ) throws {
         var descriptors: [napi_property_descriptor] = []
-        var callbacks: [NodeProperty.Callbacks] = []
+        var callbacks: [NodePropertyBase.Callbacks] = []
         for (propName, prop) in properties.elements {
             let nodeProp = prop.nodeProperty
             let (desc, cb) = try nodeProp.raw(name: propName)
@@ -62,23 +62,41 @@ extension NodeFunction {
 
 }
 
+public struct NodeConstructor<T: NodeClass> {
+    fileprivate let invoke: @NodeActor (NodeArguments) throws -> T
+    public init(_ invoke: @escaping @NodeActor (NodeArguments) throws -> T) {
+        self.invoke = invoke
+    }
+}
+
 @NodeActor public protocol NodeClass: AnyObject, NodeValueConvertible, NodeValueCreatable where ValueType == NodeObject {
-    // mapping from Swift -> JS props
+    // mapping from Swift -> JS props (macro-specified)
     static var properties: NodeClassPropertyList { get }
 
-    // default implementations provided:
+    // --- default implementations provided:
+
+    // class name
     static var name: String { get }
 
+    // additional JS props
+    static var extraProperties: NodeClassPropertyList { get }
+
     // constructor (default implementation throws)
-    init(_ arguments: NodeArguments) throws
+    static var construct: NodeConstructor<Self> { get }
 }
 
 extension NodeClass {
-    public init(_ arguments: NodeArguments) throws {
-        throw NodeAPIError(
-            .genericFailure, 
-            message: "Class \(Self.name) is not constructible from JavaScript"
-        )
+    public static var name: String { "\(self)" }
+
+    public static var extraProperties: NodeClassPropertyList { [:] }
+
+    public static var construct: NodeConstructor<Self> {
+        .init { _ in
+            throw NodeAPIError(
+                .genericFailure,
+                message: "Class \(Self.name) is not constructible from JavaScript"
+            )
+        }
     }
 }
 
@@ -94,8 +112,6 @@ enum NodeClassSpecialConstructor<T: NodeClass> {
 }
 
 extension NodeClass {
-    public static var name: String { "\(self)" }
-
     private static var classID: ObjectIdentifier {
         .init(self)
     }
@@ -118,6 +134,10 @@ extension NodeClass {
         return try this.as(self)
     }
 
+    private static var allProperties: NodeClassPropertyList {
+        NodeClassPropertyList(properties.elements + extraProperties.elements)
+    }
+
     private static func _constructor() throws -> (NodeFunction, NodeSymbol) {
         let id = classID
         let env = NodeEnvironment.current
@@ -131,7 +151,7 @@ extension NodeClass {
         // only be made by someone who possesses the symbol, and therefore can't be forged
         // from JS
         let sym = try NodeSymbol(description: "Special constructor for NodeSwift class '\(name)'")
-        let newCtor = try NodeFunction(className: name, properties: properties) { args in
+        let newCtor = try NodeFunction(className: name, properties: allProperties) { args in
             guard let this = args.this else { 
                 throw NodeAPIError(
                     .objectExpected, 
@@ -151,7 +171,7 @@ extension NodeClass {
                         }
                     value = try special(args)
                 } else {
-                    value = try self.init(args)
+                    value = try self.construct.invoke(args)
                 }
             try this.setWrappedValue(value, forID: id)
         }
@@ -184,16 +204,41 @@ extension NodeClass {
 
 extension NodeMethod {
     public init<T: NodeClass>(
-        attributes: NodeProperty.Attributes = .defaultMethod,
+        attributes: NodePropertyAttributes = .defaultMethod,
         _ callback: @escaping (T) -> @NodeActor (NodeArguments) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
     }
+
+    public init<T: NodeClass>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (NodeArguments) throws -> Void
+    ) {
+        self.init(attributes: attributes) { try callback(T.from(args: $0))($0) }
+    }
+
+    public init<T: NodeClass>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (NodeArguments) async throws -> NodeValueConvertible
+    ) {
+        self.init(attributes: attributes) { args in
+            try await callback(T.from(args: args))(args)
+        }
+    }
+
+    public init<T: NodeClass>(
+        attributes: NodePropertyAttributes = .defaultMethod,
+        _ callback: @escaping (T) -> @NodeActor (NodeArguments) async throws -> Void
+    ) {
+        self.init(attributes: attributes) { args in
+            try await callback(T.from(args: args))(args)
+        }
+    }
 }
 
-extension NodeComputedProperty {
+extension NodeProperty {
     public init<T: NodeClass>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible,
         set: ((T) -> @NodeActor (NodeValue) throws -> Void)? = nil
     ) {
@@ -212,7 +257,7 @@ extension NodeComputedProperty {
     }
 
     public init<T: NodeClass, U: NodeValueConvertible>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> U
     ) {
         self.init(
@@ -222,7 +267,7 @@ extension NodeComputedProperty {
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping (T) -> @NodeActor () throws -> U,
         set: @escaping (T) -> @NodeActor (U) throws -> Void
     ) {
@@ -238,15 +283,22 @@ extension NodeComputedProperty {
         )
     }
 
+    public init<T: NodeClass>(
+        attributes: NodePropertyAttributes = .defaultProperty,
+        _ keyPath: KeyPath<T, NodeValueConvertible>
+    ) {
+        self.init(attributes: attributes) { (obj: T) in { obj[keyPath: keyPath] } }
+    }
+
     public init<T: NodeClass, U: NodeValueConvertible>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         _ keyPath: KeyPath<T, U>
     ) {
         self.init(attributes: attributes) { (obj: T) in { obj[keyPath: keyPath] } }
     }
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         _ keyPath: ReferenceWritableKeyPath<T, U>
     ) {
         self.init(attributes: attributes) {

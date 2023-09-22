@@ -182,25 +182,57 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         }
     }
 
+    private enum RunState {
+        case pending
+        case running(Task<Void, Never>)
+        case cancelled
+    }
+
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     public func run<T: Sendable>(
         blocking: Bool = false,
         resultType: T.Type = T.self,
         @_implicitSelfCapture body: @escaping @Sendable @NodeActor () async throws -> T
     ) async throws -> T {
-        try await withCheckedThrowingContinuation { cont in
-            do {
-                try run(blocking: blocking) {
-                    Task {
-                        do {
-                            cont.resume(returning: try await body())
-                        } catch {
-                            cont.resume(throwing: error)
+        // TODO: Create a 'LockIsolated' helper type or use atomics here
+        let lock = Lock()
+        let state = Box<RunState>(.pending)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { cont in
+                do {
+                    try run(blocking: blocking) {
+                        lock.withLock {
+                            switch state.value {
+                            case .cancelled:
+                                cont.resume(throwing: CancellationError())
+                            case .pending:
+                                state.value = .running(Task {
+                                    do {
+                                        cont.resume(returning: try await body())
+                                    } catch {
+                                        cont.resume(throwing: error)
+                                    }
+                                })
+                            case .running:
+                                break // wat
+                            }
                         }
                     }
+                } catch {
+                    cont.resume(throwing: error)
                 }
-            } catch {
-                cont.resume(throwing: error)
+            }
+        } onCancel: { [state] in
+            lock.withLock {
+                switch state.value {
+                case .pending:
+                    state.value = .cancelled
+                case .running(let task):
+                    task.cancel()
+                    state.value = .cancelled
+                case .cancelled:
+                    break // wat
+                }
             }
         }
     }

@@ -9,12 +9,10 @@
     "test": "node test",
     "build": "tsc",
     "prepare": "npm run build",
-    "lint": "eslint .",
-    "gyb": "./vendored/swift/gyb.py --line-directive '' Sources/NodeAPI/Sugar.swift.gyb > Sources/NodeAPI/generated/Sugar.swift"
+    "lint": "eslint ."
   },
   "files": [
     "lib",
-    "NodeSwiftHost",
     "Sources",
     "vendored",
     "Package.swift"

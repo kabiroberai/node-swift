@@ -2,8 +2,9 @@ import { rm, rename, realpath } from "fs/promises";
 import { spawnSync } from "child_process";
 import { forceSymlink } from "./utils";
 import path from "path";
+import { isDeepStrictEqual } from "util";
 
-const defaultBuildPath = "build";
+const defaultBuildPath = ".build";
 
 // the name of the binary that the DLL loader *expects* to find
 // (probably doesn't need to be changed)
@@ -46,7 +47,7 @@ async function getWinLib(): Promise<string> {
             break;
         default:
             throw new Error(
-                `The arch ${process.arch} is currently unsupported by node-swift.`
+                `The arch ${process.arch} is currently unsupported by node-swift on Windows.`
             );
     }
     return path.join(__dirname, "..", "vendored", "node", "lib", filename);
@@ -92,8 +93,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     const buildDir = config.buildPath || defaultBuildPath;
 
-    let product = config.product;
-
     let napi = config.napi;
 
     if (typeof config.triple === "string") {
@@ -127,6 +126,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         ...linkerFlags.flatMap(f => ["-Xlinker", f]),
     ];
 
+    process.stdout.write("[1/2] Initializing...");
+
     const dump = spawnSync(
         "swift",
         [
@@ -142,46 +143,61 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         throw new Error(`swift package dump-package exited with status ${dump.status}`);
     }
     const parsedPackage = JSON.parse(dump.stdout.toString());
-    if (typeof product === "undefined") {
-        const products = parsedPackage.products;
-        if (products.length === 0) {
-            throw new Error("No products found in Swift Package");
-        } else if (products.length === 1) {
-            product = products[0].name;
+    const products = parsedPackage.products as any[];
+    let dylib;
+    if (typeof config.product === "undefined") {
+        const dylibs = products.filter(p => isDeepStrictEqual(p.type, { library: ["dynamic"] }));
+        if (dylibs.length === 0) {
+            throw new Error("No .dynamic products found in Swift Package");
+        } else if (dylibs.length === 1) {
+            dylib = dylibs[0];
         } else {
             throw new Error(
-                "Found more than 1 product in the Swift Package. Consider " +
+                "Found more than 1 dynamic library in the Swift Package. Consider " +
                 "specifying which product should be built via the swift.product " +
                 "field in package.json."
             );
         }
-    } else if (typeof product !== "string") {
+    } else if (typeof config.product === "string") {
+        dylib = products.find(p => p.name === config.product);
+        if (!dylib) {
+            throw new Error(`Could not find a product named '${config.product}'`);
+        }
+        if (!isDeepStrictEqual(dylib.type, { library: ["dynamic"] })) {
+            throw new Error(`Product '${config.product}' must be a .dynamic library`);
+        }
+    } else {
         throw new Error("The config product field should be of type string, if present");
     }
+    const product: string = dylib.name;
 
-    let macVersion = (parsedPackage.platforms as [any])
-        ?.find(plat => plat.platformName === "macos")
-        ?.version 
-        || "10.10";
+    const targetNames = new Set(dylib.targets as string[]);
+    const hasSupportLib = !!parsedPackage.targets.find((t: any) => (
+        targetNames.has(t.name) &&
+            t.dependencies?.find((d: any) => isDeepStrictEqual(
+                d?.product?.slice(0, 2), ["NodeModuleSupport", "node-swift"]
+            ))
+    ));
+    if (!hasSupportLib) throw new Error(`Product '${product}' must have '.product(name: "NodeModuleSupport", package: "node-swift")' as a dependency`);
 
     let libName;
     let ldflags;
     switch (process.platform) {
         case "darwin":
-            libName = "libNodeSwiftHost.dylib";
+            libName = `lib${product}.dylib`;
             ldflags = [
                 "-Xlinker", "-undefined",
                 "-Xlinker", "dynamic_lookup",
             ];
             break;
         case "linux":
-            libName = "libNodeSwiftHost.so";
+            libName = `lib${product}.so`;
             ldflags = [
                 "-Xlinker", "-undefined",
             ];
             break;
         case "win32":
-            libName = "NodeSwiftHost.dll";
+            libName = `${product}.dll`;
             ldflags = [
                 "-Xlinker", await getWinLib(),
                 "-Xlinker", "delayimp.lib",
@@ -194,20 +210,17 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             );
     }
 
-    // the NodeSwiftHost package acts as a "host" which uses the user's
-    // package as a dependency (passed via env vars). This allows us to
-    // move any flags and boilerplate that we need into the host package,
-    // keeping the user's package simple.
-    // TODO: Maybe simplify this by making NodeAPI a dynamic target, which
-    // can serve as where we put the flags?
+    process.stdout.write("\r[2/2] Initializing...");
+    console.log();
+
     const result = spawnSync(
         "swift",
         [
             "build",
             "-c", mode,
-            "--product", "NodeSwiftHost",
+            "--product", product,
             "--build-path", buildDir,
-            "--package-path", path.join(__dirname, "..", "NodeSwiftHost"),
+            "--package-path", packagePath,
             ...ldflags,
             ...spmFlags,
             ...nonSPMFlags,
@@ -215,14 +228,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         {
             stdio: "inherit",
             env: {
-                "NODE_SWIFT_TARGET_PACKAGE": parsedPackage.name,
-                "NODE_SWIFT_TARGET_PATH": packagePath,
-                "NODE_SWIFT_TARGET_NAME": product,
-                "NODE_SWIFT_HOST_BINARY": winHost,
-                "NODE_SWIFT_TARGET_MAC_VERSION": macVersion,
+                ...process.env,
                 "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
                 "NODE_SWIFT_ENABLE_EVOLUTION": enableEvolution ? "1" : "0",
-                ...process.env,
             },
         }
     );

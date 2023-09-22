@@ -49,35 +49,14 @@ public struct NodeArguments: MutableCollection, RandomAccessCollection {
         get { value[index] }
         set { value[index] = newValue }
     }
-
-    // TODO: Should we make this public? It might confuse users,
-    // since we usually recommend using .as but here they'd be
-    // expected to do something like `try args[0] as String`
-    @NodeActor subscript<T: AnyNodeValueCreatable>(index: Int) -> T {
-        get throws {
-            if index < count {
-                guard let converted = try self[index].as(T.self) else {
-                    throw try NodeError(code: nil, message: "Could not convert parameter \(index) to type \(T.self)")
-                }
-                return converted
-            } else {
-                // if we're asking for an arg that's out of bounds,
-                // return the equivalent of `undefined` if possible,
-                // else throw
-                guard let converted = try undefined.as(T.self) else {
-                    throw try NodeError(code: nil, message: "Function requires at least \(index + 1) arguments")
-                }
-                return converted
-            }
-        }
-    }
 }
 
 public final class NodeFunction: NodeObject, NodeCallable {
 
     public typealias Callback = @NodeActor (_ arguments: NodeArguments) throws -> NodeValueConvertible
-    public typealias AsyncCallback = @NodeActor (_ arguments: NodeArguments) async throws -> NodeValueConvertible
     public typealias VoidCallback = @NodeActor (_ arguments: NodeArguments) throws -> Void
+    public typealias AsyncCallback = @NodeActor (_ arguments: NodeArguments) async throws -> NodeValueConvertible
+    public typealias AsyncVoidCallback = @NodeActor (_ arguments: NodeArguments) async throws -> Void
 
     @_spi(NodeAPI) public required init(_ base: NodeValueBase) {
         super.init(base)
@@ -121,10 +100,24 @@ public final class NodeFunction: NodeObject, NodeCallable {
         try addFinalizer { _ = wrapper }
     }
 
+    public convenience init(name: String = "", callback: @escaping VoidCallback) throws {
+        try self.init(name: name) { args in
+            try callback(args)
+            return try NodeUndefined()
+        }
+    }
+
     @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     public convenience init(name: String = "", callback: @escaping AsyncCallback) throws {
         try self.init(name: name) { args in
             try NodePromise { try await callback(args) }
+        }
+    }
+
+    public convenience init(name: String = "", callback: @escaping AsyncVoidCallback) throws {
+        try self.init(name: name) { args in
+            try await callback(args)
+            return try NodeUndefined()
         }
     }
 

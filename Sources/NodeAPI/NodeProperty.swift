@@ -4,7 +4,7 @@
     NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
-        let callbacks = Unmanaged<NodeProperty.Callbacks>.fromOpaque(data).takeUnretainedValue()
+        let callbacks = Unmanaged<NodePropertyBase.Callbacks>.fromOpaque(data).takeUnretainedValue()
         return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(arguments).rawValue()
     }
 }
@@ -18,7 +18,7 @@ private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value
 }
 
 public protocol NodePropertyConvertible {
-    @NodeActor var nodeProperty: NodeProperty { get }
+    @NodeActor var nodeProperty: NodePropertyBase { get }
 }
 
 // marker protocol: some values can be represented as properties
@@ -42,16 +42,37 @@ public typealias NodeObjectPropertyList = NodePropertyList<NodePropertyConvertib
 public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConvertible>
 
 @NodeActor public struct NodeMethod: NodeClassPropertyConvertible {
-    public let nodeProperty: NodeProperty
-    public init(attributes: NodeProperty.Attributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
+    public let nodeProperty: NodePropertyBase
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.Callback) {
         nodeProperty = .init(attributes: attributes, value: .method(callback))
+    }
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.VoidCallback) {
+        self.init(attributes: attributes) { args in
+            try callback(args)
+            return try NodeUndefined()
+        }
+    }
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.AsyncCallback) {
+        self.init(attributes: attributes) { args in
+            try NodePromise { try await callback(args) }
+        }
+    }
+
+    public init(attributes: NodePropertyAttributes = .defaultMethod, _ callback: @escaping NodeFunction.AsyncVoidCallback) {
+        self.init(attributes: attributes) { args in
+            try await callback(args)
+            return try NodeUndefined()
+        }
     }
 }
 
-@NodeActor public struct NodeComputedProperty: NodeClassPropertyConvertible {
-    public let nodeProperty: NodeProperty
+@NodeActor public struct NodeProperty: NodeClassPropertyConvertible {
+    public let nodeProperty: NodePropertyBase
     public init(
-        attributes: NodeProperty.Attributes = .defaultProperty,
+        attributes: NodePropertyAttributes = .defaultProperty,
         get: @escaping NodeFunction.Callback,
         set: NodeFunction.VoidCallback? = nil
     ) {
@@ -72,30 +93,30 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
     }
 }
 
-@NodeActor public struct NodeProperty: NodePropertyConvertible {
-    typealias Callbacks = Box<(getterOrMethod: NodeFunction.Callback?, setter: NodeFunction.Callback?)>
-
-    public struct Attributes: RawRepresentable, OptionSet {
-        public let rawValue: CEnum
-        public init(rawValue: CEnum) {
-            self.rawValue = rawValue
-        }
-
-        init(_ raw: napi_property_attributes) {
-            self.rawValue = raw.rawValue
-        }
-        var raw: napi_property_attributes { .init(rawValue) }
-
-        public static let writable = Attributes(napi_writable)
-        public static let enumerable = Attributes(napi_enumerable)
-        public static let configurable = Attributes(napi_configurable)
-        // ignored by NodeObject.define
-        public static let `static` = Attributes(napi_static)
-
-        public static let `default`: Attributes = []
-        public static let defaultMethod: Attributes = [.writable, .configurable]
-        public static let defaultProperty: Attributes = [.writable, .enumerable, .configurable]
+public struct NodePropertyAttributes: RawRepresentable, OptionSet {
+    public let rawValue: CEnum
+    public init(rawValue: CEnum) {
+        self.rawValue = rawValue
     }
+
+    init(_ raw: napi_property_attributes) {
+        self.rawValue = raw.rawValue
+    }
+    var raw: napi_property_attributes { .init(rawValue) }
+
+    public static let writable = NodePropertyAttributes(napi_writable)
+    public static let enumerable = NodePropertyAttributes(napi_enumerable)
+    public static let configurable = NodePropertyAttributes(napi_configurable)
+    // ignored by NodeObject.define
+    public static let `static` = NodePropertyAttributes(napi_static)
+
+    public static let `default`: NodePropertyAttributes = []
+    public static let defaultMethod: NodePropertyAttributes = [.writable, .configurable]
+    public static let defaultProperty: NodePropertyAttributes = [.writable, .enumerable, .configurable]
+}
+
+@NodeActor public struct NodePropertyBase: NodePropertyConvertible {
+    typealias Callbacks = Box<(getterOrMethod: NodeFunction.Callback?, setter: NodeFunction.Callback?)>
 
     public enum Value {
         case data(NodeValueConvertible)
@@ -107,17 +128,17 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
         case computedSet(NodeFunction.Callback)
     }
 
-    public var nodeProperty: NodeProperty { self }
+    public var nodeProperty: NodePropertyBase { self }
 
-    public let attributes: Attributes
+    public let attributes: NodePropertyAttributes
     public let value: Value
 
-    init(attributes: Attributes, value: Value) {
+    init(attributes: NodePropertyAttributes, value: Value) {
         self.attributes = attributes
         self.value = value
     }
 
-    public init(attributes: Attributes = .defaultProperty, _ data: NodeValueConvertible) {
+    public init(attributes: NodePropertyAttributes = .defaultProperty, _ data: NodeValueConvertible) {
         self.attributes = attributes
         self.value = .data(data)
     }
