@@ -60,7 +60,7 @@ async function getWinLib(): Promise<string> {
     return path.join(__dirname, "..", "vendored", "node", "lib", filename);
 }
 
-function getFlags(config: Config, name: string) {
+function getFlags<C>(config: C, name: keyof C & string): string[] {
     const flags = (config as any)[name];
     if (typeof flags === "undefined") {
         return [];
@@ -218,7 +218,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const realBinaryPath = path.join(buildDir, mode, `${product}.node`);
     const binaryPath = path.join(buildDir, `${product}.node`);
     if (config.xcode) {
-        const destinations = (typeof config.xcode === "object" && config.xcode.destinations) || ["generic/platform=macOS"];
+        const xcode = typeof config.xcode === "object" ? config.xcode : {};
+        const settings = getFlags(xcode, "settings");
+        const destinations = xcode.destinations || ["generic/platform=macOS"];
         const derivedDataPath = path.join(buildDir, "DerivedData");
         const installPath = path.join(buildDir, mode, "install");
         const result = spawnSync(
@@ -231,8 +233,11 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "-scheme", product,
                 ...destinations.flatMap(d => ["-destination", d]),
                 `DSTROOT=${installPath}`,
-                `OTHER_LDFLAGS=${ldflags.join(" ")}`,
-                // TODO: nonSPMFlags
+                `OTHER_LDFLAGS=${[...linkerFlags, ...ldflags].join(" ")}`,
+                `OTHER_CFLAGS=${cFlags.join(" ")}`,
+                `OTHER_SWIFT_FLAGS=${swiftFlags.join(" ")}`,
+                `OTHER_CPLUSPLUSFLAGS=${cxxFlags.join(" ")}`,
+                ...settings,
             ],
             {
                 stdio: "inherit",
@@ -240,7 +245,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         );
 
         if (result.status !== 0) {
-            throw new Error(`swift build exited with status ${result.status}`);
+            throw new Error(`xcodebuild exited with status ${result.status}`);
         }
 
         await rename(
