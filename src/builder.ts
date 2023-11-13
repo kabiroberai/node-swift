@@ -246,10 +246,11 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 ...destinations.flatMap(d => ["-destination", d]),
                 "INSTALL_PATH=/",
                 `DSTROOT=${binaryDir}`, // install prefix
-                `OTHER_LDFLAGS=${[...linkerFlags, ...ldflags].join(" ")}`,
-                `OTHER_CFLAGS=${cFlags.join(" ")}`,
-                `OTHER_SWIFT_FLAGS=${swiftFlags.join(" ")}`,
-                `OTHER_CPLUSPLUSFLAGS=${cxxFlags.join(" ")}`,
+                // TODO: escape args
+                `OTHER_LDFLAGS=$(inherited) ${[...linkerFlags, ...ldflags].join(" ")}`,
+                `OTHER_CFLAGS=$(inherited) ${cFlags.join(" ")}`,
+                `OTHER_SWIFT_FLAGS=$(inherited) ${swiftFlags.join(" ")}`,
+                `OTHER_CPLUSPLUSFLAGS=$(inherited) ${cxxFlags.join(" ")}`,
                 ...settings,
             ],
             {
