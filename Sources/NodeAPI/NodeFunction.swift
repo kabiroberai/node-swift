@@ -86,7 +86,7 @@ public final class NodeFunction: NodeObject, NodeCallable {
                     napi_create_function(
                         env.raw,
                         $0.baseAddress, $0.count,
-                        cCallback,
+                        { cCallback(rawEnv: $0, info: $1) },
                         data.toOpaque(),
                         &value
                     )

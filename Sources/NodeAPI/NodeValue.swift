@@ -217,18 +217,11 @@ public protocol NodeValueCoercible: NodeValue {
     @NodeActor init(coercing value: NodeValueConvertible) throws
 }
 
-// placing this inside the NodeValue extension doesn't compile,
-// seemingly due to a bug in Swift's actor isolation checking
-// (it fails to respect the "unsafe" in @NodeActor(unsafe))
-private func describe(_ value: NodeValue) -> String? {
-    try? NodeContext.runOnActor({ try NodeString(coercing: value).string() })
-}
-
 extension NodeValue {
     public func nodeValue() throws -> NodeValue { self }
 
     public nonisolated var description: String {
-        describe(self) ?? "<\(Self.self)>"
+        (try? NodeContext.runOnActor { try NodeString(coercing: self).string() }) ?? "<\(Self.self)>"
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {

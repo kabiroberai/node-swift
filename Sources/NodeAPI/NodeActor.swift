@@ -3,9 +3,11 @@ import Foundation
 
 extension NodeContext {
     // if we're on a node thread, run `action` on it
-    @NodeActor(unsafe) static func runOnActor<T>(_ action: @NodeActor () throws -> T) rethrows -> T? {
+    static func runOnActor<T>(_ action: @NodeActor () throws -> T) rethrows -> T? {
         guard NodeContext.hasCurrent else { return nil }
-        return try action()
+        return try withoutActuallyEscaping(action) {
+            try unsafeBitCast($0, to: (() throws -> T).self)()
+        }
     }
 }
 

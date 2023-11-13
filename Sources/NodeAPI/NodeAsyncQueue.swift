@@ -196,17 +196,17 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     ) async throws -> T {
         // TODO: Create a 'LockIsolated' helper type or use atomics here
         let lock = Lock()
-        let state = Box<RunState>(.pending)
+        let state = UncheckedSendable(Box<RunState>(.pending))
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { cont in
                 do {
                     try run(blocking: blocking) {
                         lock.withLock {
-                            switch state.value {
+                            switch state.value.value {
                             case .cancelled:
                                 cont.resume(throwing: CancellationError())
                             case .pending:
-                                state.value = .running(Task {
+                                state.value.value = .running(Task {
                                     do {
                                         cont.resume(returning: try await body())
                                     } catch {
@@ -224,12 +224,12 @@ public final class NodeAsyncQueue: @unchecked Sendable {
             }
         } onCancel: { [state] in
             lock.withLock {
-                switch state.value {
+                switch state.value.value {
                 case .pending:
-                    state.value = .cancelled
+                    state.value.value = .cancelled
                 case .running(let task):
                     task.cancel()
-                    state.value = .cancelled
+                    state.value.value = .cancelled
                 case .cancelled:
                     break // wat
                 }

@@ -8,7 +8,7 @@ let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC
 let enableEvolution = ProcessInfo.processInfo.environment["NODE_SWIFT_ENABLE_EVOLUTION"] == "1"
 
 let baseSwiftSettings: [SwiftSetting] = [
-//    .unsafeFlags(["-Xfrontend", "-warn-concurrency"])
+    .enableExperimentalFeature("StrictConcurrency"),
 ]
 
 let package = Package(

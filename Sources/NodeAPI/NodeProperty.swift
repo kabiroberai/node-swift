@@ -9,11 +9,11 @@
     }
 }
 
-private func cGetterOrMethod(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+@NodeActor(unsafe) private func cGetterOrMethod(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     cCallback(rawEnv: rawEnv, info: info, isGetter: true)
 }
 
-private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+@NodeActor(unsafe) private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     cCallback(rawEnv: rawEnv, info: info, isGetter: false)
 }
 
@@ -155,17 +155,17 @@ public struct NodePropertyAttributes: RawRepresentable, OptionSet {
             raw.value = try data.rawValue()
             callbacks = nil
         case .method(let method):
-            raw.method = cGetterOrMethod
+            raw.method = { cGetterOrMethod(rawEnv: $0, info: $1) }
             callbacks = Callbacks((method, nil))
         case .computedGet(let getter):
-            raw.getter = cGetterOrMethod
+            raw.getter = { cGetterOrMethod(rawEnv: $0, info: $1) }
             callbacks = Callbacks((getter, nil))
         case .computedSet(let setter):
-            raw.setter = cSetter
+            raw.setter = { cSetter(rawEnv: $0, info: $1) }
             callbacks = Callbacks((nil, setter))
         case let .computed(getter, setter):
-            raw.getter = cGetterOrMethod
-            raw.setter = cSetter
+            raw.getter = { cGetterOrMethod(rawEnv: $0, info: $1) }
+            raw.setter = { cSetter(rawEnv: $0, info: $1) }
             callbacks = Callbacks((getter, setter))
         }
         raw.data = callbacks.map { Unmanaged.passUnretained($0).toOpaque() }

@@ -43,7 +43,7 @@ extension NodeFunction {
                         env.raw,
                         nameUTF.baseAddress,
                         nameUTF.count,
-                        cConstructor,
+                        { cConstructor(rawEnv: $0, info: $1) },
                         Unmanaged.passUnretained(ctorWrapper).toOpaque(),
                         descriptors.count,
                         descriptors,

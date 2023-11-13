@@ -138,7 +138,7 @@ extension NodeEnvironment {
         let token = CleanupHook(callback: action)
         try check(napi_add_env_cleanup_hook(
             raw,
-            cCleanupHook,
+            { cCleanupHook($0) },
             Unmanaged.passRetained(token).toOpaque()
         ))
         return token
@@ -147,7 +147,7 @@ extension NodeEnvironment {
     public func removeCleanupHook(_ hook: CleanupHook) throws {
         let arg = Unmanaged.passUnretained(hook)
         try check(napi_remove_env_cleanup_hook(
-            raw, cCleanupHook, arg.toOpaque())
+            raw, { cCleanupHook($0) }, arg.toOpaque())
         )
         // only release if we succeed at removing the hook, otherwise
         // napi may still store a dangling pointer
@@ -186,7 +186,7 @@ extension NodeEnvironment {
         let token = AsyncCleanupHook(callback: action)
         try check(napi_add_async_cleanup_hook(
             raw,
-            cAsyncCleanupHook,
+            { cAsyncCleanupHook(handle: $0, payload: $1) },
             Unmanaged.passRetained(token).toOpaque(),
             &token.handle
         ))

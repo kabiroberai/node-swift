@@ -12,6 +12,11 @@ final class Box<T> {
     init(_ value: T) { self.value = value }
 }
 
+struct UncheckedSendable<T>: @unchecked Sendable {
+    var value: T
+    init(_ value: T) { self.value = value }
+}
+
 extension String {
     func copiedCString() -> UnsafeMutablePointer<CChar> {
         let utf8 = utf8CString
