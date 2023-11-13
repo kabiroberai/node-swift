@@ -15,7 +15,7 @@ export type BuildMode = "release" | "debug";
 export type ConfigFlags = string | string[];
 
 export interface XcodeConfig {
-    destinations: string[]
+    destinations?: string[]
     settings?: ConfigFlags
 }
 
@@ -35,8 +35,8 @@ export interface Config {
     cxxFlags?: ConfigFlags
     linkerFlags?: ConfigFlags
 
-    // if non-null, build using xcodebuild instead of swift-build
-    xcode?: XcodeConfig
+    // if truthy, build using xcodebuild instead of swift-build
+    xcode?: boolean | XcodeConfig
 }
 
 export async function clean(config: Config = {}) {
@@ -218,6 +218,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const realBinaryPath = path.join(buildDir, mode, `${product}.node`);
     const binaryPath = path.join(buildDir, `${product}.node`);
     if (config.xcode) {
+        const destinations = (typeof config.xcode === "object" && config.xcode.destinations) || ["generic/platform=macOS"];
         const derivedDataPath = path.join(buildDir, "DerivedData");
         const installPath = path.join(buildDir, mode, "install");
         const result = spawnSync(
@@ -228,7 +229,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "-derivedDataPath", derivedDataPath,
                 "-workspace", path.join(packagePath, ".swiftpm", "xcode", "package.xcworkspace"),
                 "-scheme", product,
-                ...config.xcode.destinations.flatMap(d => ["-destination", d]),
+                ...destinations.flatMap(d => ["-destination", d]),
                 `DSTROOT=${installPath}`,
                 `OTHER_LDFLAGS=${ldflags.join(" ")}`,
                 // TODO: nonSPMFlags
