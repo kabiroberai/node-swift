@@ -4,7 +4,7 @@ import { forceSymlink } from "./utils";
 import path from "path";
 import { isDeepStrictEqual } from "util";
 
-const defaultBuildPath = ".build";
+const defaultBuildPath = path.join(process.cwd(), ".build");
 
 // the name of the binary that the DLL loader *expects* to find
 // (probably doesn't need to be changed)
@@ -223,13 +223,18 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     process.stdout.write("\r[2/2] Initializing...");
     console.log();
 
-    const binaryPath = path.join(buildDir, mode, `${product}.node`);
+    const binaryDir = path.join(buildDir, mode);
+    const binaryPath = path.join(binaryDir, `${product}.node`);
     if (config.builder === "xcode" || (typeof config.builder === "object" && config.builder.type === "xcode")) {
         const xcode = typeof config.builder === "object" ? config.builder : ({ type: "xcode" } as XcodeBuilder);
         const settings = getFlags(xcode, "settings");
         const destinations = xcode.destinations || ["generic/platform=macOS"];
         const derivedDataPath = path.join(buildDir, "DerivedData");
-        const installPath = path.join(buildDir, mode, "install");
+
+        if (isDynamic) {
+            ldflags.push("-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..");
+        }
+
         const result = spawnSync(
             "xcodebuild",
             [
@@ -239,7 +244,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "-workspace", path.join(packagePath, ".swiftpm", "xcode", "package.xcworkspace"),
                 "-scheme", product,
                 ...destinations.flatMap(d => ["-destination", d]),
-                `DSTROOT=${installPath}`,
+                "INSTALL_PATH=/",
+                `DSTROOT=${binaryDir}`, // install prefix
                 `OTHER_LDFLAGS=${[...linkerFlags, ...ldflags].join(" ")}`,
                 `OTHER_CFLAGS=${cFlags.join(" ")}`,
                 `OTHER_SWIFT_FLAGS=${swiftFlags.join(" ")}`,
@@ -248,6 +254,10 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             ],
             {
                 stdio: "inherit",
+                env: {
+                    ...process.env,
+                    "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
+                },
             }
         );
 
@@ -256,13 +266,13 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         }
 
         await rename(
-            path.join(installPath, "usr", "local", "lib", `${product}.framework`, "Versions", "A", product),
-            binaryPath
+            path.join(binaryDir, `${product}.framework`, "Versions", "A", product),
+            path.join(binaryDir, `${product}.framework`, "Versions", "A", `${product}.node`)
         );
 
-        await rm(
-            installPath, 
-            { recursive: true, force: true }
+        await forceSymlink(
+            path.join(`${product}.framework`, "Versions", "A", `${product}.node`),
+            path.join(binaryDir, `${product}.node`)
         );
     } else {
         const swiftPM = typeof config.builder === "object" ? config.builder : {};
