@@ -14,29 +14,43 @@ export type BuildMode = "release" | "debug";
 
 export type ConfigFlags = string | string[];
 
-export interface XcodeConfig {
-    destinations?: string[]
+export interface SwiftPMBuilder {
+    type?: "swiftpm"
+    // flags passed directly to `swift build`
     settings?: ConfigFlags
+    // --triple flag
+    // warning: cross-compilation triples break macros as of Swift 5.9
+    triple?: string
 }
+
+export interface XcodeBuilder {
+    type: "xcode"
+    // flags passed directly to `xcodebuild`
+    settings?: ConfigFlags
+    // -destination parameters
+    destinations?: string[]
+}
+
+export type Builder = SwiftPMBuilder | XcodeBuilder;
 
 export interface Config {
     buildPath?: string
     packagePath?: string
     product?: string
 
-    triple?: string
     napi?: number | "experimental"
 
     static?: boolean
 
-    spmFlags?: ConfigFlags
     cFlags?: ConfigFlags
     swiftFlags?: ConfigFlags
     cxxFlags?: ConfigFlags
     linkerFlags?: ConfigFlags
 
-    // if truthy, build using xcodebuild instead of swift-build
-    xcode?: boolean | XcodeConfig
+    // flags passed to `swift package dump-package`
+    dumpFlags?: ConfigFlags
+
+    builder?: Builder | Builder["type"]
 }
 
 export async function clean(config: Config = {}) {
@@ -74,7 +88,7 @@ function getFlags<C>(config: C, name: keyof C & string): string[] {
 }
 
 export async function build(mode: BuildMode, config: Config = {}): Promise<string> {
-    let spmFlags = getFlags(config, "spmFlags");
+    let dumpFlags = getFlags(config, "dumpFlags");
     let cFlags = getFlags(config, "cFlags");
     let swiftFlags = getFlags(config, "swiftFlags");
     let cxxFlags = getFlags(config, "cxxFlags");
@@ -101,12 +115,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const buildDir = config.buildPath || defaultBuildPath;
 
     let napi = config.napi;
-
-    if (typeof config.triple === "string") {
-        spmFlags.push("--triple", config.triple);
-    } else if (typeof config.triple !== "undefined") {
-        throw new Error("Invalid value for triple option.");
-    }
 
     if (typeof napi === "number") {
         cFlags.push(`-DNAPI_VERSION=${napi}`);
@@ -136,7 +144,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             "package",
             "dump-package",
             "--package-path", packagePath,
-            ...spmFlags.filter(f => f !== "-v"),
+            ...dumpFlags,
             ...nonSPMFlags,
         ],
         { stdio: ["inherit", "pipe", "inherit"] }
@@ -217,8 +225,8 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     const realBinaryPath = path.join(buildDir, mode, `${product}.node`);
     const binaryPath = path.join(buildDir, `${product}.node`);
-    if (config.xcode) {
-        const xcode = typeof config.xcode === "object" ? config.xcode : {};
+    if (config.builder === "xcode" || (typeof config.builder === "object" && config.builder.type === "xcode")) {
+        const xcode = typeof config.builder === "object" ? config.builder : ({ type: "xcode" } as XcodeBuilder);
         const settings = getFlags(xcode, "settings");
         const destinations = xcode.destinations || ["generic/platform=macOS"];
         const derivedDataPath = path.join(buildDir, "DerivedData");
@@ -258,6 +266,11 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             { recursive: true, force: true }
         );
     } else {
+        const swiftPM = typeof config.builder === "object" ? config.builder : {};
+        const swiftPMFlags = getFlags(swiftPM, "settings");
+        if (typeof swiftPM.triple === "string") {
+            swiftPMFlags.push("--triple", swiftPM.triple);
+        }
         const result = spawnSync(
             "swift",
             [
@@ -267,7 +280,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
                 "--build-path", buildDir,
                 "--package-path", packagePath,
                 ...ldflags,
-                ...spmFlags,
+                ...swiftPMFlags,
                 ...nonSPMFlags,
             ],
             {
