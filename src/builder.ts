@@ -14,6 +14,11 @@ export type BuildMode = "release" | "debug";
 
 export type ConfigFlags = string | string[];
 
+export interface XcodeConfig {
+    destinations: string[]
+    settings?: ConfigFlags
+}
+
 export interface Config {
     buildPath?: string
     packagePath?: string
@@ -29,6 +34,9 @@ export interface Config {
     swiftFlags?: ConfigFlags
     cxxFlags?: ConfigFlags
     linkerFlags?: ConfigFlags
+
+    // if non-null, build using xcodebuild instead of swift-build
+    xcode?: XcodeConfig
 }
 
 export async function clean(config: Config = {}) {
@@ -207,49 +215,86 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     process.stdout.write("\r[2/2] Initializing...");
     console.log();
 
-    const result = spawnSync(
-        "swift",
-        [
-            "build",
-            "-c", mode,
-            "--product", product,
-            "--build-path", buildDir,
-            "--package-path", packagePath,
-            ...ldflags,
-            ...spmFlags,
-            ...nonSPMFlags,
-        ],
-        {
-            stdio: "inherit",
-            env: {
-                ...process.env,
-                "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
-            },
+    const realBinaryPath = path.join(buildDir, mode, `${product}.node`);
+    const binaryPath = path.join(buildDir, `${product}.node`);
+    if (config.xcode) {
+        const derivedDataPath = path.join(buildDir, "DerivedData");
+        const installPath = path.join(buildDir, mode, "install");
+        const result = spawnSync(
+            "xcodebuild",
+            [
+                "install",
+                "-configuration", mode === "debug" ? "Debug" : "Release",
+                "-derivedDataPath", derivedDataPath,
+                "-workspace", path.join(packagePath, ".swiftpm", "xcode", "package.xcworkspace"),
+                "-scheme", product,
+                ...config.xcode.destinations.flatMap(d => ["-destination", d]),
+                `DSTROOT=${installPath}`,
+                `OTHER_LDFLAGS=${ldflags.join(" ")}`,
+                // TODO: nonSPMFlags
+            ],
+            {
+                stdio: "inherit",
+            }
+        );
+
+        if (result.status !== 0) {
+            throw new Error(`swift build exited with status ${result.status}`);
         }
-    );
-    if (result.status !== 0) {
-        throw new Error(`swift build exited with status ${result.status}`);
+
+        await rename(
+            path.join(installPath, "usr", "local", "lib", `${product}.framework`, "Versions", "A", product),
+            realBinaryPath
+        );
+
+        await rm(
+            installPath, 
+            { recursive: true, force: true }
+        );
+    } else {
+        const result = spawnSync(
+            "swift",
+            [
+                "build",
+                "-c", mode,
+                "--product", product,
+                "--build-path", buildDir,
+                "--package-path", packagePath,
+                ...ldflags,
+                ...spmFlags,
+                ...nonSPMFlags,
+            ],
+            {
+                stdio: "inherit",
+                env: {
+                    ...process.env,
+                    "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
+                },
+            }
+        );
+
+        if (result.status !== 0) {
+            throw new Error(`swift build exited with status ${result.status}`);
+        }
+
+        await rename(
+            path.join(buildDir, mode, libName),
+            realBinaryPath
+        );
+    
+        if (process.platform === "darwin") {
+            spawnSync(
+                "codesign",
+                ["-fs", "-", realBinaryPath],
+                { stdio: "inherit" }
+            );
+        }
     }
-
-    const binaryPath = path.join(buildDir, mode, `${product}.node`);
-
-    await rename(
-        path.join(buildDir, mode, libName),
-        binaryPath
-    );
 
     await forceSymlink(
         path.join(mode, `${product}.node`),
-        path.join(buildDir, `${product}.node`)
+        binaryPath
     );
-
-    if (process.platform === "darwin") {
-        spawnSync(
-            "codesign",
-            ["-fs", "-", binaryPath],
-            { stdio: "inherit" }
-        );
-    }
 
     return binaryPath;
 }
