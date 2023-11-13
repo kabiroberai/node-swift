@@ -223,8 +223,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     process.stdout.write("\r[2/2] Initializing...");
     console.log();
 
-    const realBinaryPath = path.join(buildDir, mode, `${product}.node`);
-    const binaryPath = path.join(buildDir, `${product}.node`);
+    const binaryPath = path.join(buildDir, mode, `${product}.node`);
     if (config.builder === "xcode" || (typeof config.builder === "object" && config.builder.type === "xcode")) {
         const xcode = typeof config.builder === "object" ? config.builder : ({ type: "xcode" } as XcodeBuilder);
         const settings = getFlags(xcode, "settings");
@@ -258,7 +257,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
         await rename(
             path.join(installPath, "usr", "local", "lib", `${product}.framework`, "Versions", "A", product),
-            realBinaryPath
+            binaryPath
         );
 
         await rm(
@@ -298,13 +297,13 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
         await rename(
             path.join(buildDir, mode, libName),
-            realBinaryPath
+            binaryPath
         );
     
         if (process.platform === "darwin") {
             spawnSync(
                 "codesign",
-                ["-fs", "-", realBinaryPath],
+                ["-fs", "-", binaryPath],
                 { stdio: "inherit" }
             );
         }
@@ -312,7 +311,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     await forceSymlink(
         path.join(mode, `${product}.node`),
-        binaryPath
+        path.join(buildDir, `${product}.node`)
     );
 
     return binaryPath;
