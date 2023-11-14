@@ -4,7 +4,7 @@ import { forceSymlink } from "./utils";
 import path from "path";
 import { isDeepStrictEqual } from "util";
 
-const defaultBuildPath = ".build";
+const defaultBuildPath = path.join(process.cwd(), ".build");
 
 // the name of the binary that the DLL loader *expects* to find
 // (probably doesn't need to be changed)
@@ -14,21 +14,43 @@ export type BuildMode = "release" | "debug";
 
 export type ConfigFlags = string | string[];
 
+export interface SwiftPMBuilder {
+    type?: "swiftpm"
+    // flags passed directly to `swift build`
+    settings?: ConfigFlags
+    // --triple flag
+    // warning: cross-compilation triples break macros as of Swift 5.9
+    triple?: string
+}
+
+export interface XcodeBuilder {
+    type: "xcode"
+    // flags passed directly to `xcodebuild`
+    settings?: ConfigFlags
+    // -destination parameters
+    destinations?: string[]
+}
+
+export type Builder = SwiftPMBuilder | XcodeBuilder;
+
 export interface Config {
     buildPath?: string
     packagePath?: string
     product?: string
 
-    triple?: string
     napi?: number | "experimental"
 
     static?: boolean
 
-    spmFlags?: ConfigFlags
     cFlags?: ConfigFlags
     swiftFlags?: ConfigFlags
     cxxFlags?: ConfigFlags
     linkerFlags?: ConfigFlags
+
+    // flags passed to `swift package dump-package`
+    dumpFlags?: ConfigFlags
+
+    builder?: Builder | Builder["type"]
 }
 
 export async function clean(config: Config = {}) {
@@ -52,7 +74,7 @@ async function getWinLib(): Promise<string> {
     return path.join(__dirname, "..", "vendored", "node", "lib", filename);
 }
 
-function getFlags(config: Config, name: string) {
+function getFlags<C>(config: C, name: keyof C & string): string[] {
     const flags = (config as any)[name];
     if (typeof flags === "undefined") {
         return [];
@@ -66,7 +88,7 @@ function getFlags(config: Config, name: string) {
 }
 
 export async function build(mode: BuildMode, config: Config = {}): Promise<string> {
-    let spmFlags = getFlags(config, "spmFlags");
+    let dumpFlags = getFlags(config, "dumpFlags");
     let cFlags = getFlags(config, "cFlags");
     let swiftFlags = getFlags(config, "swiftFlags");
     let cxxFlags = getFlags(config, "cxxFlags");
@@ -93,12 +115,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     const buildDir = config.buildPath || defaultBuildPath;
 
     let napi = config.napi;
-
-    if (typeof config.triple === "string") {
-        spmFlags.push("--triple", config.triple);
-    } else if (typeof config.triple !== "undefined") {
-        throw new Error("Invalid value for triple option.");
-    }
 
     if (typeof napi === "number") {
         cFlags.push(`-DNAPI_VERSION=${napi}`);
@@ -128,7 +144,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             "package",
             "dump-package",
             "--package-path", packagePath,
-            ...spmFlags.filter(f => f !== "-v"),
+            ...dumpFlags,
             ...nonSPMFlags,
         ],
         { stdio: ["inherit", "pipe", "inherit"] }
@@ -207,49 +223,107 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
     process.stdout.write("\r[2/2] Initializing...");
     console.log();
 
-    const result = spawnSync(
-        "swift",
-        [
-            "build",
-            "-c", mode,
-            "--product", product,
-            "--build-path", buildDir,
-            "--package-path", packagePath,
-            ...ldflags,
-            ...spmFlags,
-            ...nonSPMFlags,
-        ],
-        {
-            stdio: "inherit",
-            env: {
-                ...process.env,
-                "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
-            },
+    const binaryDir = path.join(buildDir, mode);
+    const binaryPath = path.join(binaryDir, `${product}.node`);
+    if (config.builder === "xcode" || (typeof config.builder === "object" && config.builder.type === "xcode")) {
+        const xcode = typeof config.builder === "object" ? config.builder : ({ type: "xcode" } as XcodeBuilder);
+        const settings = getFlags(xcode, "settings");
+        const destinations = xcode.destinations || ["generic/platform=macOS"];
+        const derivedDataPath = path.join(buildDir, "DerivedData");
+
+        if (isDynamic) {
+            ldflags.push("-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..");
         }
-    );
-    if (result.status !== 0) {
-        throw new Error(`swift build exited with status ${result.status}`);
+
+        const result = spawnSync(
+            "xcodebuild",
+            [
+                "install",
+                "-configuration", mode === "debug" ? "Debug" : "Release",
+                "-derivedDataPath", derivedDataPath,
+                "-workspace", path.join(packagePath, ".swiftpm", "xcode", "package.xcworkspace"),
+                "-scheme", product,
+                ...destinations.flatMap(d => ["-destination", d]),
+                "INSTALL_PATH=/",
+                `DSTROOT=${binaryDir}`, // install prefix
+                // TODO: escape args
+                `OTHER_LDFLAGS=$(inherited) ${[...linkerFlags, ...ldflags].join(" ")}`,
+                `OTHER_CFLAGS=$(inherited) ${cFlags.join(" ")}`,
+                `OTHER_SWIFT_FLAGS=$(inherited) ${swiftFlags.join(" ")}`,
+                `OTHER_CPLUSPLUSFLAGS=$(inherited) ${cxxFlags.join(" ")}`,
+                ...settings,
+            ],
+            {
+                stdio: "inherit",
+                env: {
+                    ...process.env,
+                    "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
+                },
+            }
+        );
+
+        if (result.status !== 0) {
+            throw new Error(`xcodebuild exited with status ${result.status}`);
+        }
+
+        await rename(
+            path.join(binaryDir, `${product}.framework`, "Versions", "A", product),
+            path.join(binaryDir, `${product}.framework`, "Versions", "A", `${product}.node`)
+        );
+
+        await forceSymlink(
+            path.join(`${product}.framework`, "Versions", "A", `${product}.node`),
+            path.join(binaryDir, `${product}.node`)
+        );
+    } else {
+        const swiftPM = typeof config.builder === "object" ? config.builder : {};
+        const swiftPMFlags = getFlags(swiftPM, "settings");
+        if (typeof swiftPM.triple === "string") {
+            swiftPMFlags.push("--triple", swiftPM.triple);
+        }
+        const result = spawnSync(
+            "swift",
+            [
+                "build",
+                "-c", mode,
+                "--product", product,
+                "--build-path", buildDir,
+                "--package-path", packagePath,
+                ...ldflags,
+                ...swiftPMFlags,
+                ...nonSPMFlags,
+            ],
+            {
+                stdio: "inherit",
+                env: {
+                    ...process.env,
+                    "NODE_SWIFT_BUILD_DYNAMIC": isDynamic ? "1" : "0",
+                },
+            }
+        );
+
+        if (result.status !== 0) {
+            throw new Error(`swift build exited with status ${result.status}`);
+        }
+
+        await rename(
+            path.join(buildDir, mode, libName),
+            binaryPath
+        );
+    
+        if (process.platform === "darwin") {
+            spawnSync(
+                "codesign",
+                ["-fs", "-", binaryPath],
+                { stdio: "inherit" }
+            );
+        }
     }
-
-    const binaryPath = path.join(buildDir, mode, `${product}.node`);
-
-    await rename(
-        path.join(buildDir, mode, libName),
-        binaryPath
-    );
 
     await forceSymlink(
         path.join(mode, `${product}.node`),
         path.join(buildDir, `${product}.node`)
     );
-
-    if (process.platform === "darwin") {
-        spawnSync(
-            "codesign",
-            ["-fs", "-", binaryPath],
-            { stdio: "inherit" }
-        );
-    }
 
     return binaryPath;
 }
