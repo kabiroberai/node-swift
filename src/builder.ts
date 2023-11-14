@@ -232,6 +232,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
         const derivedDataPath = path.join(buildDir, "DerivedData");
 
         if (isDynamic) {
+            // add the framework's parent directory to the rpath
             ldflags.push("-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..");
         }
 
