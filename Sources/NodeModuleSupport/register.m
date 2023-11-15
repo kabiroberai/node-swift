@@ -1,4 +1,4 @@
-#include "vendored/node_api.h"
+@import CNodeAPI;
 
 NAPI_MODULE_INIT() {
     napi_value node_swift_register(napi_env);

@@ -1,5 +1,5 @@
 import { rm, rename, realpath } from "fs/promises";
-import { spawnSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { forceSymlink } from "./utils";
 import path from "path";
 import { isDeepStrictEqual } from "util";
@@ -270,25 +270,31 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             throw new Error(`xcodebuild exited with status ${result.status}`);
         }
 
+        // the exec realpath must end with .node for it to be considered a native module.
         await Promise.all([
             rename(
                 originalBinary,
-                // the realpath must end with .node for it to be considered a native module.
                 path.join(binaryDir, `${product}.framework`, "Versions", "A", `${product}.node`)
             ),
-            forceSymlink(
-                `${product}.node`,
-                // fixes symlinks that point to the binary without the .node ext
-                originalBinary
-            ),
-            // convenience
+            rm(path.join(binaryDir, `${product}.framework`, `${product}`), { force: true }),
             forceSymlink(
                 path.join("Versions", "Current", `${product}.node`),
                 path.join(binaryDir, `${product}.framework`, `${product}.node`)
             ),
             forceSymlink(
                 path.join(`${product}.framework`, `${product}.node`),
-                path.join(binaryDir, `${product}.node`)
+                binaryPath
+            ),
+            spawn(
+                "/usr/libexec/PlistBuddy",
+                [
+                    "-c",
+                    `Set :CFBundleExecutable ${product}.node`,
+                    path.join(binaryDir, `${product}.framework`, "Resources", "Info.plist"),
+                ],
+                {
+                    stdio: "inherit",
+                }
             ),
         ]);
     } else {

@@ -30,7 +30,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
     ],
     targets: [
-        .target(name: "CNodeAPI"),
+        .systemLibrary(name: "CNodeAPI"),
+        .target(name: "CNodeAPISupport"),
         .macro(
             name: "NodeAPIMacros",
             dependencies: [
@@ -41,7 +42,7 @@ let package = Package(
         ),
         .target(
             name: "NodeAPI",
-            dependencies: ["CNodeAPI", "NodeAPIMacros"],
+            dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"],
             swiftSettings: baseSwiftSettings
         ),
         .target(

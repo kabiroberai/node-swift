@@ -1,0 +1,4 @@
+module CNodeAPI {
+    export Darwin.POSIX
+    header "vendored/node_api.h"
+}
