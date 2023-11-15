@@ -1,4 +1,5 @@
 import Foundation
+import CNodeAPISupport
 @_implementationOnly import CNodeAPI
 
 extension NodeContext {

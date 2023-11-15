@@ -43,9 +43,7 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"],
-            swiftSettings: baseSwiftSettings + [
-                .enableExperimentalFeature("AccessLevelOnImport"),
-            ]
+            swiftSettings: baseSwiftSettings
         ),
         .target(
             name: "NodeModuleSupport",
