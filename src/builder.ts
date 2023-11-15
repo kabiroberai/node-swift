@@ -267,15 +267,28 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             throw new Error(`xcodebuild exited with status ${result.status}`);
         }
 
-        await rename(
-            path.join(binaryDir, `${product}.framework`, "Versions", "A", product),
-            path.join(binaryDir, `${product}.framework`, "Versions", "A", `${product}.node`)
-        );
-
-        await forceSymlink(
-            path.join(`${product}.framework`, "Versions", "A", `${product}.node`),
-            path.join(binaryDir, `${product}.node`)
-        );
+        const originalBinary = path.join(binaryDir, `${product}.framework`, "Versions", "A", product);
+        await Promise.all([
+            rename(
+                originalBinary,
+                // the realpath must end with .node for it to be considered a native module.
+                path.join(binaryDir, `${product}.framework`, "Versions", "A", `${product}.node`)
+            ),
+            forceSymlink(
+                `${product}.node`,
+                // fixes symlinks that point to the binary without the .node ext
+                originalBinary
+            ),
+            // convenience
+            forceSymlink(
+                path.join("Versions", "Current", `${product}.node`),
+                path.join(binaryDir, `${product}.framework`, `${product}.node`)
+            ),
+            forceSymlink(
+                path.join(`${product}.framework`, `${product}.node`),
+                path.join(binaryDir, `${product}.node`)
+            ),
+        ]);
     } else {
         const swiftPM = typeof config.builder === "object" ? config.builder : {};
         const swiftPMFlags = getFlags(swiftPM, "settings");
