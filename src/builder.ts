@@ -236,6 +236,9 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             ldflags.push("-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../..");
         }
 
+        const originalBinary = path.join(binaryDir, `${product}.framework`, "Versions", "A", product);
+        await rm(originalBinary, { force: true });
+
         const result = spawnSync(
             "xcodebuild",
             [
@@ -267,7 +270,6 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
             throw new Error(`xcodebuild exited with status ${result.status}`);
         }
 
-        const originalBinary = path.join(binaryDir, `${product}.framework`, "Versions", "A", product);
         await Promise.all([
             rename(
                 originalBinary,
