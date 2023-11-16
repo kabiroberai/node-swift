@@ -1,4 +1,5 @@
 @_implementationOnly import CNodeAPI
+import Foundation
 
 extension AnyNodeValue {
     private static let exceptionKey = NodeWrappedDataKey<Error>()
@@ -28,16 +29,8 @@ extension AnyNodeValue {
     }
 }
 
-public func nodeFatalError(_ message: String = "", file: StaticString = #file, line: UInt = #line) -> Never {
-    var message = message
-    message.withUTF8 {
-        $0.withMemoryRebound(to: CChar.self) { messageBuf -> Never in
-            var loc = "\(file):\(line)"
-            loc.withUTF8 {
-                $0.withMemoryRebound(to: CChar.self) { locBuf in
-                    napi_fatal_error(locBuf.baseAddress, locBuf.count, messageBuf.baseAddress, messageBuf.count)
-                }
-            }
-        }
-    }
+public func nodeFatalError(_ message: String = "", file: StaticString = #fileID, line: UInt = #line) -> Never {
+    print("nodeFatalError: dumping call stack\n\(Thread.callStackSymbols.joined(separator: "\n"))")
+    let loc = "\(file):\(line)"
+    napi_fatal_error(loc, loc.utf8.count, message, message.utf8.count)
 }
