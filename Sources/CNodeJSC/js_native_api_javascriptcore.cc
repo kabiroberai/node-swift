@@ -2783,6 +2783,41 @@ napi_status napi_get_value_bigint_words(napi_env env,
   throw std::runtime_error("not impl");
 }
 
+// MARK: - NAPI 7: Detatchable ArrayBuffer
+
+napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybuffer) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool* result) {
+  throw std::runtime_error("not impl");
+}
+
+// MARK: - NAPI 8
+
+napi_status napi_object_freeze(napi_env env,
+                               napi_value object) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_object_seal(napi_env env,
+                             napi_value object) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_type_tag_object(napi_env env,
+                                 napi_value value,
+                                 const napi_type_tag* type_tag) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_check_object_type_tag(napi_env env,
+                                       napi_value value,
+                                       const napi_type_tag* type_tag,
+                                       bool* result) {
+  throw std::runtime_error("not impl");
+}
+
 // MARK: - Node+Fatal
 
 void napi_fatal_error(const char* location,
@@ -2942,6 +2977,19 @@ napi_status napi_remove_env_cleanup_hook(napi_env env, napi_cleanup_hook fun, vo
   return napi_ok;
 }
 
+// MARK: - Node+AsyncCleanup
+
+napi_status napi_add_async_cleanup_hook(napi_env env,
+                                        napi_async_cleanup_hook hook,
+                                        void* arg,
+                                        napi_async_cleanup_hook_handle* remove_handle) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_remove_async_cleanup_hook(napi_async_cleanup_hook_handle remove_handle) {
+  throw std::runtime_error("not impl");
+}
+
 // MARK: - Node+Buffer
 
 napi_status napi_create_buffer(napi_env env,
@@ -2978,15 +3026,5 @@ napi_status napi_get_buffer_info(napi_env env,
                                  napi_value value,
                                  void** data,
                                  size_t* length) {
-  throw std::runtime_error("not impl");
-}
-
-// MARK: - NAPI 7: Detatchable ArrayBuffer
-
-napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybuffer) {
-  throw std::runtime_error("not impl");
-}
-
-napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool* result) {
   throw std::runtime_error("not impl");
 }
