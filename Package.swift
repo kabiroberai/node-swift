@@ -63,7 +63,7 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"],
-            cSettings: [.define("NAPI_VERSION", to: "6")],
+            cSettings: [.define("NAPI_VERSION", to: "7")],
             swiftSettings: baseSwiftSettings + [
                 .define("NAPI_VERSIONED")
             ]

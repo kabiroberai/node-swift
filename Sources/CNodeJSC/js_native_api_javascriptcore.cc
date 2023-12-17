@@ -2980,3 +2980,13 @@ napi_status napi_get_buffer_info(napi_env env,
                                  size_t* length) {
   throw std::runtime_error("not impl");
 }
+
+// MARK: - NAPI 7: Detatchable ArrayBuffer
+
+napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybuffer) {
+  throw std::runtime_error("not impl");
+}
+
+napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool* result) {
+  throw std::runtime_error("not impl");
+}
