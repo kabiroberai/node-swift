@@ -12,6 +12,14 @@
         NodeContext.current.environment
     }
 
+    public nonisolated static func performUnsafe(_ raw: OpaquePointer, perform: @NodeActor () throws -> Void) {
+        NodeActor.unsafeAssumeIsolated {
+            NodeContext.withContext(environment: Self(raw)) { _ in
+                try perform()
+            }
+        }
+    }
+
     func check(_ status: napi_status) throws {
         guard status != napi_ok else { return }
 

@@ -6,9 +6,7 @@ extension NodeContext {
     // if we're on a node thread, run `action` on it
     static func runOnActor<T>(_ action: @NodeActor () throws -> T) rethrows -> T? {
         guard NodeContext.hasCurrent else { return nil }
-        return try withoutActuallyEscaping(action) {
-            try unsafeBitCast($0, to: (() throws -> T).self)()
-        }
+        return try NodeActor.unsafeAssumeIsolated(action)
     }
 }
 
@@ -90,6 +88,25 @@ private final class NodeExecutor: SerialExecutor {
 
     public static func run<T: Sendable>(resultType: T.Type = T.self, body: @NodeActor @Sendable () throws -> T) async rethrows -> T {
         try await body()
+    }
+}
+
+extension NodeActor {
+    public static func unsafeAssumeIsolated<T>(_ action: @NodeActor () throws -> T) rethrows -> T {
+        try withoutActuallyEscaping(action) {
+            try unsafeBitCast($0, to: (() throws -> T).self)()
+        }
+    }
+
+    public static func assumeIsolated<T>(
+        _ action: @NodeActor () throws -> T,
+        file: StaticString = #fileID,
+        line: UInt = #line
+    ) rethrows -> T {
+        guard NodeContext.hasCurrent else {
+            nodeFatalError("NodeActor.assumeIsolated failed", file: file, line: line)
+        }
+        return try unsafeAssumeIsolated(action)
     }
 }
 
