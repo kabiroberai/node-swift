@@ -10,8 +10,8 @@
 #include <unordered_set>
 #include <list>
 #include <thread>
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <functional>
@@ -737,8 +737,8 @@ struct napi_ref__ {
   }
 
   void unprotect(napi_env env) {
-    JSValueUnprotect(env->context, ToJSValue(_value));
     env->strong_refs.erase(_iter);
+    JSValueUnprotect(env->context, ToJSValue(_value));
     env->check_empty();
   }
 
@@ -2609,7 +2609,7 @@ static napi_value finalizer_cb(napi_env env, napi_callback_info info) {
 
 napi_status napi_add_finalizer(napi_env env,
                                napi_value js_object,
-                               void* finalize_data,
+                               void* native_object,
                                napi_finalize finalize_cb,
                                void* finalize_hint,
                                napi_ref* result) {
@@ -2629,7 +2629,7 @@ napi_status napi_add_finalizer(napi_env env,
   }
   napi_value register_fn{}, ext{};
   CHECK_NAPI(napi_get_named_property(env, finalizer_registry, "register", &register_fn));
-  CHECK_NAPI(napi_create_external(env, finalize_data, finalize_cb, finalize_hint, &ext));
+  CHECK_NAPI(napi_create_external(env, native_object, finalize_cb, finalize_hint, &ext));
   napi_value args[] { js_object, ext };
   CHECK_NAPI(napi_call_function(env, finalizer_registry, register_fn, 2, args, nullptr));
   napi_ref res;
