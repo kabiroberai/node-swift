@@ -278,12 +278,26 @@ namespace {
     Function,
     Reference,
     Wrapper,
+    Base
   };
 
   class NativeInfo {
    public:
     NativeType Type() const {
       return _type;
+    }
+
+    void tag(const napi_type_tag *tag) {
+      _tag = *tag;
+      _has_tag = true;
+    }
+
+    bool has_tag() const {
+      return _has_tag;
+    }
+
+    bool has_tag(const napi_type_tag *tag) const {
+      return _has_tag && _tag.lower == tag->lower && _tag.upper == tag->upper;
     }
 
     template<typename T>
@@ -309,6 +323,8 @@ namespace {
       }
     }
 
+    NativeInfo() : _type{NativeType::Base} {}
+
    protected:
     NativeInfo(NativeType type)
       : _type{type} {
@@ -316,6 +332,8 @@ namespace {
 
    private:
     NativeType _type;
+    bool _has_tag;
+    napi_type_tag _tag;
   };
 
   class ConstructorInfo : public NativeInfo {
@@ -2797,25 +2815,47 @@ napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool* r
 
 napi_status napi_object_freeze(napi_env env,
                                napi_value object) {
-  throw std::runtime_error("not impl");
+  napi_value global{}, object_ctor{}, freeze{};
+  CHECK_NAPI(napi_get_global(env, &global));
+  CHECK_NAPI(napi_get_named_property(env, global, "Object", &object_ctor));
+  CHECK_NAPI(napi_get_named_property(env, object_ctor, "freeze", &freeze));
+  CHECK_NAPI(napi_call_function(env, object_ctor, freeze, 1, &object, nullptr));
+  return napi_ok;
 }
 
 napi_status napi_object_seal(napi_env env,
                              napi_value object) {
-  throw std::runtime_error("not impl");
+  napi_value global{}, object_ctor{}, seal{};
+  CHECK_NAPI(napi_get_global(env, &global));
+  CHECK_NAPI(napi_get_named_property(env, global, "Object", &object_ctor));
+  CHECK_NAPI(napi_get_named_property(env, object_ctor, "seal", &seal));
+  CHECK_NAPI(napi_call_function(env, object_ctor, seal, 1, &object, nullptr));
+  return napi_ok;
 }
 
 napi_status napi_type_tag_object(napi_env env,
                                  napi_value value,
                                  const napi_type_tag* type_tag) {
-  throw std::runtime_error("not impl");
+  JSObjectRef obj = ToJSObject(env, value);
+  auto priv = static_cast<NativeInfo *>(JSObjectGetPrivate(obj));
+  if (priv) {
+    if (priv->has_tag()) return napi_invalid_arg;
+  } else {
+    priv = new NativeInfo();
+    JSObjectSetPrivate(obj, priv);
+  }
+  priv->tag(type_tag);
+  return napi_ok;
 }
 
 napi_status napi_check_object_type_tag(napi_env env,
                                        napi_value value,
                                        const napi_type_tag* type_tag,
                                        bool* result) {
-  throw std::runtime_error("not impl");
+  JSObjectRef obj = ToJSObject(env, value);
+  auto priv = static_cast<NativeInfo *>(JSObjectGetPrivate(obj));
+  *result = priv && priv->has_tag(type_tag);
+  return napi_ok;
 }
 
 // MARK: - Node+Fatal
