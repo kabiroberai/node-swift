@@ -22,6 +22,10 @@ let package = Package(
             targets: ["NodeAPI"]
         ),
         .library(
+            name: "NodeJSC",
+            targets: ["NodeJSC"]
+        ),
+        .library(
             name: "NodeModuleSupport",
             targets: ["NodeModuleSupport"]
         ),
@@ -31,6 +35,22 @@ let package = Package(
     ],
     targets: [
         .systemLibrary(name: "CNodeAPI"),
+        .target(
+            name: "CNodeJSC",
+            cSettings: [
+                .define("NODE_ADDON_API_DISABLE_DEPRECATED"),
+            ],
+            linkerSettings: [
+                .linkedFramework("JavaScriptCore"),
+            ]
+        ),
+        .target(
+            name: "NodeJSC",
+            dependencies: [
+                "CNodeJSC",
+                "NodeAPI",
+            ]
+        ),
         .target(name: "CNodeAPISupport"),
         .macro(
             name: "NodeAPIMacros",
@@ -43,12 +63,19 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"],
-            swiftSettings: baseSwiftSettings
+            cSettings: [.define("NAPI_VERSION", to: "6")],
+            swiftSettings: baseSwiftSettings + [
+                .define("NAPI_VERSIONED")
+            ]
         ),
         .target(
             name: "NodeModuleSupport",
             dependencies: ["CNodeAPI"]
         ),
+        .testTarget(
+            name: "NodeJSCTests",
+            dependencies: ["NodeJSC", "NodeAPI"]
+        ),
     ],
-    cxxLanguageStandard: .cxx14
+    cxxLanguageStandard: .cxx17
 )
