@@ -284,7 +284,7 @@ extension NodeObject {
 
 extension NodeObject {
 
-    fileprivate enum TypeTagStatus {
+    enum TypeTagStatus {
         case present
         case absent
         case unknown
@@ -302,7 +302,7 @@ extension NodeObject {
     }
 
     // can be called at most once per value
-    fileprivate func setTypeTag(_ tag: UUID) throws {
+    func setTypeTag(_ tag: UUID) throws {
         let env = base.environment
         try withTypeTag(tag) {
             try env.check(
@@ -313,7 +313,7 @@ extension NodeObject {
         }
     }
 
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus {
+    func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus {
         let env = base.environment
         var result = false
         try withTypeTag(tag) {
@@ -328,8 +328,8 @@ extension NodeObject {
 
     #else
 
-    fileprivate func setTypeTag(_ tag: UUID) throws {}
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus { .unknown }
+    func setTypeTag(_ tag: UUID) throws {}
+    func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus { .unknown }
 
     #endif
 

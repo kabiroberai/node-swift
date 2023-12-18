@@ -64,7 +64,8 @@ private:
 public:
   JSGlobalContextRef context{};
   JSValueRef last_exception{};
-  JSValueRef finalization_registry;
+  JSValueRef finalization_registry{};
+  JSValueRef tag_map{};
   napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
   std::list<napi_ref> strong_refs{};
   std::unordered_map<napi_cleanup_hook, std::unordered_set<void *>> cleanup_hooks;
@@ -273,27 +274,13 @@ namespace {
     Constructor,
     External,
     Function,
-    Wrapper,
-    Base
+    Wrapper
   };
 
   class NativeInfo {
    public:
     NativeType Type() const {
       return _type;
-    }
-
-    void tag(const napi_type_tag *tag) {
-      _tag = *tag;
-      _has_tag = true;
-    }
-
-    bool has_tag() const {
-      return _has_tag;
-    }
-
-    bool has_tag(const napi_type_tag *tag) const {
-      return _has_tag && _tag.lower == tag->lower && _tag.upper == tag->upper;
     }
 
     template<typename T>
@@ -319,8 +306,6 @@ namespace {
       }
     }
 
-    NativeInfo() : _type{NativeType::Base} {}
-
    protected:
     NativeInfo(NativeType type)
       : _type{type} {
@@ -328,8 +313,6 @@ namespace {
 
    private:
     NativeType _type;
-    bool _has_tag;
-    napi_type_tag _tag;
   };
 
   class ConstructorInfo : public NativeInfo {
@@ -2142,6 +2125,11 @@ napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool* result) {
   CHECK_ARG(env, value);
   CHECK_ARG(env, result);
 
+  if (!JSValueIsObject(env->context, ToJSValue(value))) {
+    *result = false;
+    return napi_ok;
+  }
+
   JSValueRef exception{};
   JSTypedArrayType type{JSValueGetTypedArrayType(env->context, ToJSValue(value), &exception)};
   CHECK_JSC(env, exception);
@@ -2814,15 +2802,41 @@ napi_status napi_object_seal(napi_env env,
 napi_status napi_type_tag_object(napi_env env,
                                  napi_value value,
                                  const napi_type_tag* type_tag) {
-  JSObjectRef obj = ToJSObject(env, value);
-  auto priv = static_cast<NativeInfo *>(JSObjectGetPrivate(obj));
-  if (priv) {
-    if (priv->has_tag()) return napi_invalid_arg;
+  bool newly_created = false;
+  napi_value tag_map;
+  if (env->tag_map) {
+    tag_map = ToNapi(env->tag_map);
   } else {
-    priv = new NativeInfo();
-    JSObjectSetPrivate(obj, priv);
+    newly_created = true;
+    napi_value global{}, map_ctor{};
+    CHECK_NAPI(napi_get_global(env, &global));
+    // need to use a WeakMap, otherwise tagging an object retains it forever
+    CHECK_NAPI(napi_get_named_property(env, global, "WeakMap", &map_ctor));
+    CHECK_NAPI(napi_new_instance(env, map_ctor, 0, nullptr, &tag_map));
+    JSValueRef tag_map_jsc = ToJSValue(tag_map);
+    JSValueProtect(env->context, tag_map_jsc);
+    env->tag_map = tag_map_jsc;
   }
-  priv->tag(type_tag);
+
+  if (!newly_created) {
+    napi_value map_has{}, has_result{};
+    CHECK_NAPI(napi_get_named_property(env, tag_map, "has", &map_has));
+    CHECK_NAPI(napi_call_function(env, tag_map, map_has, 1, &value, &has_result));
+    bool has_bool = true;
+    CHECK_NAPI(napi_get_value_bool(env, has_result, &has_bool));
+    if (has_bool) return napi_invalid_arg;
+  }
+
+  napi_value map_set{};
+  CHECK_NAPI(napi_get_named_property(env, tag_map, "set", &map_set));
+
+  napi_value arraybuf;
+  void *data;
+  CHECK_NAPI(napi_create_arraybuffer(env, sizeof(*type_tag), &data, &arraybuf));
+  memcpy(data, type_tag, sizeof(*type_tag));
+  napi_value args[] = { value, arraybuf };
+  CHECK_NAPI(napi_call_function(env, tag_map, map_set, 2, args, nullptr));
+
   return napi_ok;
 }
 
@@ -2830,9 +2844,30 @@ napi_status napi_check_object_type_tag(napi_env env,
                                        napi_value value,
                                        const napi_type_tag* type_tag,
                                        bool* result) {
-  JSObjectRef obj = ToJSObject(env, value);
-  auto priv = static_cast<NativeInfo *>(JSObjectGetPrivate(obj));
-  *result = priv && priv->has_tag(type_tag);
+  JSValueRef map = env->tag_map;
+  if (!map) {
+    *result = false;
+    return napi_ok;
+  }
+
+  napi_value tag_map = ToNapi(map);
+  napi_value map_get{}, get_result{};
+  CHECK_NAPI(napi_get_named_property(env, tag_map, "get", &map_get));
+  CHECK_NAPI(napi_call_function(env, tag_map, map_get, 1, &value, &get_result));
+
+  bool is_arraybuf = false;
+  CHECK_NAPI(napi_is_arraybuffer(env, get_result, &is_arraybuf));
+  if (!is_arraybuf) {
+    *result = false;
+    return napi_ok;
+  }
+
+  void *data;
+  size_t len;
+  CHECK_NAPI(napi_get_arraybuffer_info(env, get_result, &data, &len));
+
+  *result = len == sizeof(*type_tag) && memcmp(data, type_tag, len) == 0;
+
   return napi_ok;
 }
 
