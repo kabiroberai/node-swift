@@ -9,13 +9,11 @@ final class NodeJSCTests: XCTestCase {
     override func invokeTest() {
         var ran = false
         sut = JSContext()!
-        addTeardownBlock { 
-            self.sut = nil
-        }
         NodeEnvironment.withJSC(context: sut) {
             super.invokeTest()
             ran = true
         }
+        self.sut = nil
         XCTAssert(ran)
     }
 
@@ -53,11 +51,59 @@ final class NodeJSCTests: XCTestCase {
             let obj2 = MyClass { finalized2 = true }
             try Node.global.stored1.set(to: obj1)
             try Node.global.stored2.set(to: obj2)
-            try Node.global.stored2.set(to: NodeNull())
+            try Node.global.stored2.set(to: null)
         }
         sut.debugGC()
         XCTAssertFalse(finalized1)
         XCTAssertTrue(finalized2)
+    }
+
+    @NodeActor func testPromise() async throws {
+        try Node.tick.set(to: NodeFunction { _ in
+            await Task.yield()
+        })
+        let obj = try Node.run(script: """
+        (async () => {
+            await tick()
+            return 123
+        })()
+        """)
+        let value = try await obj.as(NodePromise.self)?.value.as(NodeNumber.self)?.double()
+        XCTAssertEqual(value, 123)
+    }
+
+    @NodeActor func testThrowing() async throws {
+        var threw = false
+        do {
+            try Node.run(script: "blah")
+        } catch {
+            threw = true
+            let unwrapped = try XCTUnwrap((error as? AnyNodeValue)?.as(NodeError.self))
+            let name = try unwrapped.name.as(String.self)
+            XCTAssertEqual(name, "ReferenceError")
+            let message = try unwrapped.message.as(String.self)
+            XCTAssertEqual(message, "Can't find variable: blah")
+        }
+        XCTAssert(threw, "Expected script to throw")
+    }
+
+    @NodeActor func testPropertyNames() async throws {
+        let object = try NodeObject()
+        try object.foo.set(to: "bar")
+
+        let names = try XCTUnwrap(object.propertyNames(
+            collectionMode: .includePrototypes,
+            filter: .allProperties,
+            conversion: .numbersToStrings
+        ).as([String].self))
+        XCTAssert(Set(["constructor", "__proto__", "toString", "foo"]).subtracting(names).isEmpty)
+
+        let ownNames = try XCTUnwrap(object.propertyNames(
+            collectionMode: .ownOnly,
+            filter: .allProperties,
+            conversion: .numbersToStrings
+        ).as([String].self))
+        XCTAssertEqual(ownNames, ["foo"])
     }
 }
 

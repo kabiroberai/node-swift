@@ -1251,7 +1251,7 @@ napi_status napi_get_prototype(napi_env env,
   CHECK_ARG(env, result);
 
   JSValueRef exception{};
-  JSObjectRef prototype{JSValueToObject(env->context, JSObjectGetPrototype(env->context, ToJSObject(env, object)), &exception)};
+  JSValueRef prototype = JSObjectGetPrototype(env->context, ToJSObject(env, object));
   CHECK_JSC(env, exception);
 
   *result = ToNapi(prototype);
@@ -2669,6 +2669,7 @@ napi_status napi_get_all_property_names(napi_env env,
     napi_valuetype next_type;
     CHECK_NAPI(napi_typeof(env, next, &next_type));
     if (next_type == napi_null) break;
+    current = next;
   };
 
   *result = array;
