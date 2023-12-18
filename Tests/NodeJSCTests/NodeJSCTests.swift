@@ -30,7 +30,7 @@ final class NodeJSCTests: XCTestCase {
                 finalized = true
             }
         }
-        sut.debugGC()
+        await sut.debugGC()
         XCTAssert(finalized)
 
         finalized = false
@@ -38,7 +38,7 @@ final class NodeJSCTests: XCTestCase {
         try obj.addFinalizer {
             finalized = true
         }
-        sut.debugGC()
+        await sut.debugGC()
         _ = finalized
         XCTAssertFalse(finalized)
     }
@@ -53,7 +53,7 @@ final class NodeJSCTests: XCTestCase {
             try Node.global.stored2.set(to: obj2)
             try Node.global.stored2.set(to: null)
         }
-        sut.debugGC()
+        await sut.debugGC()
         XCTAssertFalse(finalized1)
         XCTAssertTrue(finalized2)
     }

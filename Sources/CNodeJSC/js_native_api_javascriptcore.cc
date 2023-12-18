@@ -1,8 +1,8 @@
 // Based on code from BabylonNative, licensed under the MIT license.
 // See: https://github.com/BabylonJS/JsRuntimeHost
 
-#include "base.h"
-#include "NodeManagedValue.h"
+#include "../CNodeAPI/vendored/node_api.h"
+#include "embedder.h"
 #include <mutex>
 #include <unordered_set>
 #include <list>
@@ -64,8 +64,8 @@ private:
 public:
   JSGlobalContextRef context{};
   JSValueRef last_exception{};
+  JSValueRef finalization_registry;
   napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
-  std::unordered_set<napi_value> active_ref_values{};
   std::list<napi_ref> strong_refs{};
   std::unordered_map<napi_cleanup_hook, std::unordered_set<void *>> cleanup_hooks;
   std::unordered_set<void *> all_tsfns;
@@ -667,24 +667,57 @@ namespace {
   };
 }
 
-struct napi_ref__ {
-  napi_ref__(napi_value value, uint32_t count)
-    : _value{value}
-    , _count{count} {
+static napi_value finalizer_cb(napi_env env, napi_callback_info info) {
+  napi_value undefined;
+  napi_get_undefined(env, &undefined);
+
+  void *external = nullptr;
+  if (napi_get_value_external(env, info->argv[0], &external) != napi_ok || !external) return undefined;
+
+  (*static_cast<std::function<void(void)> *>(external))();
+
+  return undefined;
+}
+
+static void finalizer_data_cb(napi_env env, void *finalize_data, void *finalize_hint) {
+  delete static_cast<std::function<void(void)> *>(finalize_data);
+}
+
+static napi_status add_finalizer(napi_env env, napi_value value, std::function<void(void)> did_finalize) {
+  napi_value registry;
+  if (env->finalization_registry) {
+    registry = ToNapi(env->finalization_registry);
+  } else {
+    napi_value global{}, registry_ctor{}, registry_cb{}, registry_{};
+    CHECK_NAPI(napi_get_global(env, &global));
+    CHECK_NAPI(napi_get_named_property(env, global, "FinalizationRegistry", &registry_ctor));
+    CHECK_NAPI(napi_create_function(env, "", 0, finalizer_cb, nullptr, &registry_cb));
+    CHECK_NAPI(napi_new_instance(env, registry_ctor, 1, &registry_cb, &registry_));
+    JSValueRef js_registry = ToJSValue(registry_);
+    JSValueProtect(env->context, js_registry);
+    env->finalization_registry = js_registry;
+    registry = registry_;
   }
+  napi_value register_fn{}, ext{};
+  CHECK_NAPI(napi_get_named_property(env, registry, "register", &register_fn));
+  void *finalizer_data = new std::function<void(void)> { std::move(did_finalize) };
+  CHECK_NAPI(napi_create_external(env, finalizer_data, finalizer_data_cb, nullptr, &ext));
+  napi_value args[] { value, ext };
+  CHECK_NAPI(napi_call_function(env, registry, register_fn, 2, args, nullptr));
+  return napi_ok;
+}
 
-  napi_status init(napi_env env) {
-    // track the ref values to support weak refs
-    auto pair{env->active_ref_values.insert(_value)};
-    if (pair.second) {
-      JSAddFinalizer(env->context, ToJSValue(_value), [value = _value, env] {
-        env->active_ref_values.erase(value);
-      });
-    }
-
+struct napi_ref__ {
+  napi_ref__(napi_env env, napi_value value, uint32_t count, std::function<void(void)> did_finalize)
+  : _value{value}, _count{count} {
     if (_count != 0) {
       protect(env);
     }
+
+    add_finalizer(env, _value, [=] {
+      this->_value = nullptr;
+      did_finalize();
+    });
 
     return napi_ok;
   }
@@ -715,10 +748,6 @@ struct napi_ref__ {
   }
 
   napi_value value(napi_env env) const {
-    if (env->active_ref_values.find(_value) == env->active_ref_values.end()) {
-      return nullptr;
-    }
-
     return _value;
   }
 
@@ -1931,13 +1960,7 @@ napi_status napi_create_reference(napi_env env,
   CHECK_ARG(env, value);
   CHECK_ARG(env, result);
 
-  napi_ref__* ref{new napi_ref__{value, initial_refcount}};
-  if (ref == nullptr) {
-    return napi_set_last_error(env, napi_generic_failure);
-  }
-
-  ref->init(env);
-  *result = ref;
+  *result = new napi_ref__ { env, value, initial_refcount, []{} };
 
   return napi_ok;
 }
@@ -2599,7 +2622,7 @@ napi_status napi_add_finalizer(napi_env env,
                                napi_ref* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, js_object);
-  JSAddFinalizer(env->context, ToJSValue(js_object), [=]{
+  add_finalizer(env, js_object, [=]{
     finalize_cb(env, native_object, finalize_hint);
   });
   if (result) {
