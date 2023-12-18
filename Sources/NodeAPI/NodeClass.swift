@@ -34,7 +34,7 @@ extension NodeFunction {
         var result: napi_value!
         let ctorWrapper = ConstructorWrapper { args in
             try constructor(args)
-            return undefined
+            return args.this
         }
         try name.withUTF8 {
             try $0.withMemoryRebound(to: CChar.self) { nameUTF in

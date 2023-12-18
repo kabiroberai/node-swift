@@ -1,12 +1,9 @@
 // Based on code from BabylonNative, licensed under the MIT license.
 // See: https://github.com/BabylonJS/JsRuntimeHost
 
-#include "../CNodeAPI/vendored/js_native_api.h"
-#include "../CNodeAPI/vendored/js_native_api_types.h"
-#include "../CNodeAPI/vendored/node_api.h"
-#include "embedder.h"
+#include "base.h"
+#include "NodeManagedValue.h"
 #include <mutex>
-#include <JavaScriptCore/JavaScript.h>
 #include <unordered_set>
 #include <list>
 #include <thread>
@@ -54,30 +51,29 @@
     if (status != napi_ok) return status; \
   } while (0)
 
-struct pairhash {
-  template <typename T, typename U>
-  std::size_t operator()(const std::pair<T, U> &x) const
-  {
-    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
-  }
-};
-
 struct napi_env__ {
+private:
+  struct pairhash {
+    template <typename T, typename U>
+    std::size_t operator()(const std::pair<T, U> &x) const {
+      // bad hash fn but it'll do for now
+      return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+    }
+  };
+
+public:
   JSGlobalContextRef context{};
   JSValueRef last_exception{};
   napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
-  // lazy global FinalizationRegistry; GC protected.
-  JSValueRef finalizer_registry;
   std::unordered_set<napi_value> active_ref_values{};
   std::list<napi_ref> strong_refs{};
-  std::unordered_set<std::pair<napi_cleanup_hook, void *>, pairhash> cleanup_hooks;
+  std::unordered_map<napi_cleanup_hook, std::unordered_set<void *>> cleanup_hooks;
   std::unordered_set<void *> all_tsfns;
   std::unordered_set<void *> strong_tsfns;
   bool is_deleting = false;
 
   const napi_executor executor;
 
-  // TODO: If we're using a DispatchQueue then we should use a callback to continue on that thread
   napi_env__(JSGlobalContextRef context, napi_executor executor) : context{context}, executor{executor} {
     JSGlobalContextRetain(context);
   }
@@ -92,6 +88,7 @@ struct napi_env__ {
     if (is_deleting || !is_empty()) return;
     is_deleting = true;
     // TODO: delete
+    // in fact we should strongly retain napi_env__ until check_empty succeeds.
   }
  private:
   void deinit_refs();
@@ -276,7 +273,6 @@ namespace {
     Constructor,
     External,
     Function,
-    Reference,
     Wrapper,
     Base
   };
@@ -592,28 +588,6 @@ namespace {
     }
   };
 
-  class ReferenceInfo : public BaseInfoT<ReferenceInfo, NativeType::Reference> {
-   public:
-    static napi_status Initialize(napi_env env, napi_value object, FinalizerT finalizer) {
-      ReferenceInfo* info = new ReferenceInfo(env);
-      if (info == nullptr) {
-        return napi_set_last_error(env, napi_generic_failure);
-      }
-
-      JSObjectRef prototype{JSObjectMake(env->context, info->_class, info)};
-      JSObjectSetPrototype(env->context, prototype, JSObjectGetPrototype(env->context, ToJSObject(env, object)));
-      JSObjectSetPrototype(env->context, ToJSObject(env, object), prototype);
-
-      info->AddFinalizer(finalizer);
-      return napi_ok;
-    }
-
-   private:
-    ReferenceInfo(napi_env env)
-      : BaseInfoT{env, "Native (Reference)"} {
-    }
-  };
-
   class WrapperInfo : public BaseInfoT<WrapperInfo, NativeType::Wrapper> {
    public:
     static napi_status Wrap(napi_env env, napi_value object, WrapperInfo** result) {
@@ -703,9 +677,9 @@ struct napi_ref__ {
     // track the ref values to support weak refs
     auto pair{env->active_ref_values.insert(_value)};
     if (pair.second) {
-      CHECK_NAPI(ReferenceInfo::Initialize(env, _value, [value = _value](ReferenceInfo* info) {
-        info->Env()->active_ref_values.erase(value);
-      }));
+      JSAddFinalizer(env->context, ToJSValue(_value), [value = _value, env] {
+        env->active_ref_values.erase(value);
+      });
     }
 
     if (_count != 0) {
@@ -780,8 +754,8 @@ struct napi_threadsafe_function__ {
 };
 
 void napi_env__::deinit_refs() {
-  for (auto &hook : cleanup_hooks) {
-    hook.first(hook.second);
+  for (auto &[hook, args] : cleanup_hooks) {
+    for (auto &arg : args) hook(arg);
   }
   cleanup_hooks.clear();
   while (!strong_refs.empty()) {
@@ -2617,42 +2591,22 @@ napi_status napi_get_date_value(napi_env env,
 
 // MARK: - NAPI 5: Finalizer
 
-static napi_value finalizer_cb(napi_env env, napi_callback_info info) {
-  napi_value hint = info->argv[0];
-
-  napi_value undefined;
-  napi_get_undefined(env, &undefined);
-  return undefined;
-}
-
 napi_status napi_add_finalizer(napi_env env,
                                napi_value js_object,
                                void* native_object,
                                napi_finalize finalize_cb,
                                void* finalize_hint,
                                napi_ref* result) {
-  napi_value finalizer_registry;
-  if (env->finalizer_registry) {
-    finalizer_registry = ToNapi(env->finalizer_registry);
-  } else {
-    napi_value global{}, finalizer_registry_ctor{}, registry_cb{}, finalizer_registry_{};
-    CHECK_NAPI(napi_get_global(env, &global));
-    CHECK_NAPI(napi_get_named_property(env, global, "FinalizationRegistry", &finalizer_registry_ctor));
-    CHECK_NAPI(napi_create_function(env, "", 0, finalizer_cb, nullptr, &registry_cb));
-    CHECK_NAPI(napi_new_instance(env, finalizer_registry_ctor, 0, nullptr, &finalizer_registry_));
-    JSValueRef js_registry = ToJSValue(finalizer_registry_);
-    JSValueProtect(env->context, js_registry);
-    env->finalizer_registry = js_registry;
-    finalizer_registry = finalizer_registry_;
+  CHECK_ENV(env);
+  CHECK_ARG(env, js_object);
+  JSAddFinalizer(env->context, ToJSValue(js_object), [=]{
+    finalize_cb(env, native_object, finalize_hint);
+  });
+  if (result) {
+    napi_ref res;
+    CHECK_NAPI(napi_create_reference(env, js_object, 0, &res));
+    *result = res;
   }
-  napi_value register_fn{}, ext{};
-  CHECK_NAPI(napi_get_named_property(env, finalizer_registry, "register", &register_fn));
-  CHECK_NAPI(napi_create_external(env, native_object, finalize_cb, finalize_hint, &ext));
-  napi_value args[] { js_object, ext };
-  CHECK_NAPI(napi_call_function(env, finalizer_registry, register_fn, 2, args, nullptr));
-  napi_ref res;
-  CHECK_NAPI(napi_create_reference(env, js_object, 0, &res));
-  *result = res;
   return napi_ok;
 }
 
@@ -3006,14 +2960,16 @@ napi_status napi_get_node_version(napi_env env, const napi_node_version** versio
 napi_status napi_add_env_cleanup_hook(napi_env env, napi_cleanup_hook fun, void* arg) {
   CHECK_ENV(env);
   CHECK_ARG(env, fun);
-  env->cleanup_hooks.insert({ fun, arg });
+  env->cleanup_hooks[fun].insert(arg);
   return napi_ok;
 }
 
 napi_status napi_remove_env_cleanup_hook(napi_env env, napi_cleanup_hook fun, void* arg) {
   CHECK_ENV(env);
   CHECK_ARG(env, fun);
-  env->cleanup_hooks.erase({ fun, arg });
+  auto &set = env->cleanup_hooks[fun];
+  set.erase(arg);
+  if (set.empty()) env->cleanup_hooks.erase(fun);
   return napi_ok;
 }
 

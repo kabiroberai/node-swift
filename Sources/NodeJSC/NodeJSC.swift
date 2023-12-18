@@ -2,8 +2,8 @@ import CNodeJSC
 import NodeAPI
 
 extension NodeEnvironment {
-    public nonisolated static func withJSC(_ perform: @NodeActor () throws -> Void) {
-        let context = JSContext()!
+    public nonisolated static func withJSC(context: JSContext? = nil, _ perform: @NodeActor () throws -> Void) {
+        let context = context ?? JSContext()!
         let executor = napi_executor(
             version: 1,
             context: nil,
