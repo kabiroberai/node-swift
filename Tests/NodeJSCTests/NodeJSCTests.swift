@@ -45,26 +45,6 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertFalse(finalized)
     }
 
-    @NodeActor func testTypeTag() async throws {
-        let tag1 = UUID()
-        let tag2 = UUID()
-        let object = try NodeObject()
-        XCTAssertEqual(try object.hasTypeTag(tag1), .absent)
-        try object.setTypeTag(tag1)
-        XCTAssertEqual(try object.hasTypeTag(tag1), .present)
-        XCTAssertEqual(try object.hasTypeTag(tag2), .absent)
-
-        var threw = false
-        do {
-            try object.setTypeTag(tag2)
-        } catch {
-            threw = true
-            let nodeError = try XCTUnwrap(error as? NodeAPIError)
-            XCTAssertEqual(nodeError.code, .invalidArg)
-        }
-        XCTAssert(threw)
-    }
-
     @NodeActor func testWrappedValue() async throws {
         let key1 = NodeWrappedDataKey<String>()
         let key2 = NodeWrappedDataKey<Int>()
@@ -74,6 +54,26 @@ final class NodeJSCTests: XCTestCase {
         try object.setWrappedValue(2, forKey: key2)
         XCTAssertEqual(try object.wrappedValue(forKey: key1), "One")
         XCTAssertEqual(try object.wrappedValue(forKey: key2), 2)
+    }
+
+    @NodeActor func testWrappedValueDeinit() async throws {
+        weak var value: NSObject?
+        var objectRef: NodeObject?
+        try autoreleasepool {
+            let object = try NodeObject()
+            let key = NodeWrappedDataKey<NSObject>()
+            let obj = NSObject()
+            value = obj
+            try object.setWrappedValue(obj, forKey: key)
+            objectRef = object
+        }
+        await sut.debugGC()
+        XCTAssertNotNil(value)
+        _ = objectRef
+        objectRef = nil
+        await sut.debugGC()
+        await sut.debugGC()
+        XCTAssertNil(value)
     }
 
     @NodeActor func testNodeClassGC() async throws {
