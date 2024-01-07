@@ -2761,7 +2761,7 @@ napi_status napi_create_bigint_words(napi_env env,
                                      size_t word_count,
                                      const uint64_t* words,
                                      napi_value* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("TODO");
 }
 
 napi_status napi_get_value_bigint_words(napi_env env,
@@ -2769,17 +2769,17 @@ napi_status napi_get_value_bigint_words(napi_env env,
                                         int* sign_bit,
                                         size_t* word_count,
                                         uint64_t* words) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("TODO");
 }
 
 // MARK: - NAPI 7: Detatchable ArrayBuffer
 
 napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybuffer) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 // MARK: - NAPI 8
@@ -3043,11 +3043,11 @@ napi_status napi_add_async_cleanup_hook(napi_env env,
                                         napi_async_cleanup_hook hook,
                                         void* arg,
                                         napi_async_cleanup_hook_handle* remove_handle) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_remove_async_cleanup_hook(napi_async_cleanup_hook_handle remove_handle) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 // MARK: - Node+Buffer
@@ -3056,7 +3056,7 @@ napi_status napi_create_buffer(napi_env env,
                                size_t length,
                                void** data,
                                napi_value* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_create_external_buffer(napi_env env,
@@ -3065,7 +3065,7 @@ napi_status napi_create_external_buffer(napi_env env,
                                         napi_finalize finalize_cb,
                                         void* finalize_hint,
                                         napi_value* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_create_buffer_copy(napi_env env,
@@ -3073,18 +3073,18 @@ napi_status napi_create_buffer_copy(napi_env env,
                                     const void* data,
                                     void** result_data,
                                     napi_value* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_is_buffer(napi_env env,
                            napi_value value,
                            bool* result) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
 
 napi_status napi_get_buffer_info(napi_env env,
                                  napi_value value,
                                  void** data,
                                  size_t* length) {
-  throw std::runtime_error("not impl");
+  throw std::runtime_error("unsupported");
 }
