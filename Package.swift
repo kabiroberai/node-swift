@@ -37,9 +37,6 @@ let package = Package(
         .systemLibrary(name: "CNodeAPI"),
         .target(
             name: "CNodeJSC",
-            cSettings: [
-                .define("NODE_ADDON_API_DISABLE_DEPRECATED"),
-            ],
             linkerSettings: [
                 .linkedFramework("JavaScriptCore"),
             ]
