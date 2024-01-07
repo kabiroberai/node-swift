@@ -691,15 +691,18 @@ static napi_status add_finalizer(napi_env env, napi_value value, std::function<v
 }
 
 struct napi_ref__ {
-  napi_ref__(napi_env env, napi_value value, uint32_t count, std::function<void(void)> did_finalize)
-  : _value{value}, _count{count} {
+  napi_ref__(napi_env env, napi_value value, uint32_t count)
+  : _value{value}, _count{count}, _has_deleted{std::make_shared<bool>(false)} {
     if (_count != 0) {
       protect(env);
     }
 
-    add_finalizer(env, _value, [=] {
-      this->_value = nullptr;
-      did_finalize();
+    // we use has_deleted to signal that the napi_ref has been `delete`d
+    // via napi_delete_reference. If the ref has been deleted, setting
+    // this->_value=nullptr would be a UAF (and would be redundant) so
+    // we skip it in that case.
+    add_finalizer(env, _value, [has_deleted=_has_deleted, self=this] {
+      if (!has_deleted) self->_value = nullptr;
     });
 
     return napi_ok;
@@ -710,6 +713,7 @@ struct napi_ref__ {
       unprotect(env);
     }
 
+    *_has_deleted = true;
     _value = nullptr;
     _count = 0;
   }
@@ -747,6 +751,7 @@ struct napi_ref__ {
   }
 
   napi_value _value{};
+  std::shared_ptr<bool> _has_deleted;
   uint32_t _count{};
   std::list<napi_ref>::iterator _iter{};
 };
@@ -1943,7 +1948,7 @@ napi_status napi_create_reference(napi_env env,
   CHECK_ARG(env, value);
   CHECK_ARG(env, result);
 
-  *result = new napi_ref__ { env, value, initial_refcount, []{} };
+  *result = new napi_ref__ { env, value, initial_refcount };
 
   return napi_ok;
 }
