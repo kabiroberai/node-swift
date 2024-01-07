@@ -7,14 +7,16 @@ final class NodeJSCTests: XCTestCase {
     private var sut: JSContext!
 
     override func invokeTest() {
-        var ran = false
         sut = JSContext()!
+        var queue: NodeAsyncQueue.Handle?
         NodeEnvironment.withJSC(context: sut) {
+            queue = try NodeAsyncQueue(label: "queue").handle()
+        }
+        guard let queue else { fatalError("Could not obtain NodeAsyncQueue") }
+        NodeActor.$target.withValue(queue) {
             super.invokeTest()
-            ran = true
         }
         self.sut = nil
-        XCTAssert(ran)
     }
 
     @NodeActor func testBasic() async throws {

@@ -3,9 +3,11 @@ import NodeAPI
 
 extension JSContext {
     func debugGC() async {
-        JSSynchronousGarbageCollectForDebugging(jsGlobalContextRef)
-        // some finalizer calls happen on the next RunLoop tick
-        await Task { @NodeActor in }.value
+        // we have to executor-switch to ensure that any existing NodeContext.withContext
+        // completes and protects escaped values before GCing
+        await MainActor.run {
+            JSSynchronousGarbageCollectForDebugging(jsGlobalContextRef)
+        }
     }
 }
 
