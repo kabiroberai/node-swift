@@ -3,28 +3,44 @@ import NodeJSC
 import XCTest
 import JavaScriptCore
 
-final class NodeJSCTests: XCTestCase {
-    private var sut: JSContext!
+@NodeActor final class NodeJSCTests: XCTestCase {
+    private let sutBox = Box<JSContext?>(nil)
+    private nonisolated var sut: JSContext { sutBox.value! }
 
-    override func invokeTest() {
-        sut = JSContext()!
-        var queue: NodeAsyncQueue.Handle?
-        NodeEnvironment.withJSC(context: sut) {
-            queue = try NodeAsyncQueue(label: "queue").handle()
+    nonisolated override func invokeTest() {
+        var global: JSManagedValue?
+        autoreleasepool {
+            guard let sut = JSContext() else { fatalError("Could not create JSContext") }
+            sutBox.value = sut
+            global = JSManagedValue(value: sut.globalObject)
+            var queue: NodeAsyncQueue.Handle?
+            NodeEnvironment.withJSC(context: sut) {
+                queue = try NodeAsyncQueue(label: "queue").handle()
+            }
+            guard let queue else { fatalError("Could not obtain NodeAsyncQueue") }
+            NodeActor.$target.withValue(queue) {
+                super.invokeTest()
+            }
+            self.sutBox.value = nil
+            sut.debugGCSync()
         }
-        guard let queue else { fatalError("Could not obtain NodeAsyncQueue") }
-        NodeActor.$target.withValue(queue) {
-            super.invokeTest()
+        if let global {
+            // TODO: call napi_env_jsc_delete when the time is right
+            // we might want to use refs as the source of truth
+            // instead of relying on a unique owner
+            _ = global
+            // XCTAssertNil(global.value)
+        } else {
+            XCTFail("global == nil")
         }
-        self.sut = nil
     }
 
-    @NodeActor func testBasic() async throws {
+    func testBasic() async throws {
         let string = try NodeString("Hello, world!")
         XCTAssertEqual(try string.string(), "Hello, world!")
     }
 
-    @NodeActor func testGC() async throws {
+    func testGC() async throws {
         var finalized = false
         try autoreleasepool {
             let obj = try NodeObject()
@@ -45,7 +61,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertFalse(finalized)
     }
 
-    @NodeActor func testWrappedValue() async throws {
+    func testWrappedValue() async throws {
         let key1 = NodeWrappedDataKey<String>()
         let key2 = NodeWrappedDataKey<Int>()
         let object = try NodeObject()
@@ -56,7 +72,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertEqual(try object.wrappedValue(forKey: key2), 2)
     }
 
-    @NodeActor func testWrappedValueDeinit() async throws {
+    func testWrappedValueDeinit() async throws {
         weak var value: NSObject?
         var objectRef: NodeObject?
         try autoreleasepool {
@@ -76,7 +92,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertNil(value)
     }
 
-    @NodeActor func testNodeClassGC() async throws {
+    func testNodeClassGC() async throws {
         var finalized1 = false
         var finalized2 = false
         try autoreleasepool {
@@ -91,7 +107,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertTrue(finalized2)
     }
 
-    @NodeActor func testPromise() async throws {
+    func testPromise() async throws {
         try Node.tick.set(to: NodeFunction { _ in
             await Task.yield()
         })
@@ -105,7 +121,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssertEqual(value, 123)
     }
 
-    @NodeActor func testThrowing() async throws {
+    func testThrowing() async throws {
         var threw = false
         do {
             try Node.run(script: "blah")
@@ -120,7 +136,7 @@ final class NodeJSCTests: XCTestCase {
         XCTAssert(threw, "Expected script to throw")
     }
 
-    @NodeActor func testPropertyNames() async throws {
+    func testPropertyNames() async throws {
         let object = try NodeObject()
         try object.foo.set(to: "bar")
 

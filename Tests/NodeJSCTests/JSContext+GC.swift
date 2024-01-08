@@ -2,12 +2,14 @@ import JavaScriptCore
 import NodeAPI
 
 extension JSContext {
+    func debugGCSync() {
+        JSSynchronousGarbageCollectForDebugging(jsGlobalContextRef)
+    }
+
     func debugGC() async {
         // we have to executor-switch to ensure that any existing NodeContext.withContext
         // completes and protects escaped values before GCing
-        await MainActor.run {
-            JSSynchronousGarbageCollectForDebugging(jsGlobalContextRef)
-        }
+        await MainActor.run { debugGCSync() }
     }
 }
 
