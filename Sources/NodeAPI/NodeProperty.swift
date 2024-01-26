@@ -93,7 +93,7 @@ public typealias NodeClassPropertyList = NodePropertyList<NodeClassPropertyConve
     }
 }
 
-public struct NodePropertyAttributes: RawRepresentable, OptionSet {
+public struct NodePropertyAttributes: RawRepresentable, OptionSet, Sendable {
     public let rawValue: CEnum
     public init(rawValue: CEnum) {
         self.rawValue = rawValue
