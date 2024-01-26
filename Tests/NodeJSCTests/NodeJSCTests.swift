@@ -3,11 +3,11 @@ import NodeJSC
 import XCTest
 import JavaScriptCore
 
-@NodeActor final class NodeJSCTests: XCTestCase {
+final class NodeJSCTests: XCTestCase {
     private let sutBox = Box<JSContext?>(nil)
-    private nonisolated var sut: JSContext { sutBox.value! }
+    private var sut: JSContext { sutBox.value! }
 
-    nonisolated override func invokeTest() {
+    override func invokeTest() {
         var global: JSManagedValue?
         autoreleasepool {
             guard let sut = JSContext() else { fatalError("Could not create JSContext") }
@@ -35,12 +35,12 @@ import JavaScriptCore
         }
     }
 
-    func testBasic() async throws {
+    @NodeActor func testBasic() async throws {
         let string = try NodeString("Hello, world!")
         XCTAssertEqual(try string.string(), "Hello, world!")
     }
 
-    func testGC() async throws {
+    @NodeActor func testGC() async throws {
         var finalized = false
         try autoreleasepool {
             let obj = try NodeObject()
@@ -61,7 +61,7 @@ import JavaScriptCore
         XCTAssertFalse(finalized)
     }
 
-    func testWrappedValue() async throws {
+    @NodeActor func testWrappedValue() async throws {
         let key1 = NodeWrappedDataKey<String>()
         let key2 = NodeWrappedDataKey<Int>()
         let object = try NodeObject()
@@ -72,7 +72,7 @@ import JavaScriptCore
         XCTAssertEqual(try object.wrappedValue(forKey: key2), 2)
     }
 
-    func testWrappedValueDeinit() async throws {
+    @NodeActor func testWrappedValueDeinit() async throws {
         weak var value: NSObject?
         var objectRef: NodeObject?
         try autoreleasepool {
@@ -92,7 +92,7 @@ import JavaScriptCore
         XCTAssertNil(value)
     }
 
-    func testNodeClassGC() async throws {
+    @NodeActor func testNodeClassGC() async throws {
         var finalized1 = false
         var finalized2 = false
         try autoreleasepool {
@@ -107,7 +107,7 @@ import JavaScriptCore
         XCTAssertTrue(finalized2)
     }
 
-    func testPromise() async throws {
+    @NodeActor func testPromise() async throws {
         try Node.tick.set(to: NodeFunction { _ in
             await Task.yield()
         })
@@ -121,7 +121,7 @@ import JavaScriptCore
         XCTAssertEqual(value, 123)
     }
 
-    func testThrowing() async throws {
+    @NodeActor func testThrowing() async throws {
         var threw = false
         do {
             try Node.run(script: "blah")
@@ -136,7 +136,7 @@ import JavaScriptCore
         XCTAssert(threw, "Expected script to throw")
     }
 
-    func testPropertyNames() async throws {
+    @NodeActor func testPropertyNames() async throws {
         let object = try NodeObject()
         try object.foo.set(to: "bar")
 

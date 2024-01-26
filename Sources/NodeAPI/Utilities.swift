@@ -12,9 +12,9 @@ final class Box<T> {
     init(_ value: T) { self.value = value }
 }
 
-struct UncheckedSendable<T>: @unchecked Sendable {
-    var value: T
-    init(_ value: T) { self.value = value }
+package struct UncheckedSendable<T>: @unchecked Sendable {
+    package var value: T
+    package init(_ value: T) { self.value = value }
 }
 
 extension String {

@@ -9,7 +9,10 @@ extension NodeEnvironment {
             context: nil,
             free: { _ in },
             assert_current: { _ in },
-            dispatch_async: { _, cb, ctx in DispatchQueue.main.async { cb?(ctx) } }
+            dispatch_async: { _, cb, ctx in
+                let sendable = UncheckedSendable(ctx)
+                DispatchQueue.main.async { cb?(sendable.value) }
+            }
         )
         let raw = napi_env_jsc_create(context.jsGlobalContextRef, executor)!
         performUnsafe(raw) {
