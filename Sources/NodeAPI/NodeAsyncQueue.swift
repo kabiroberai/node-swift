@@ -117,18 +117,19 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         }
 
         deinit {
+            let raw = UncheckedSendable(queue.raw)
             // capture raw right here since `queue` might be deinitialized
             // by the time we enter the closure. Also, we use the variant
             // of `run` that doesn't do NodeContext.withContext since that
             // would result in a new handle being created, meaning that we'd
             // effectively never end up with a nil currentHandle.
-            try? queue.run { [raw = queue.raw, weak queue] env in
+            try? queue.run { [weak queue] env in
                 // unref isn't ref-counted (e.g. ref, ref, unref is equivalent
                 // to ref, unref) so we only want to call it when we're really
                 // sure we're done; that is, if we're the last handle to be
                 // deinitialized
                 guard queue?.currentHandle == nil else { return }
-                napi_unref_threadsafe_function(env.raw, raw)
+                napi_unref_threadsafe_function(env.raw, raw.value)
             }
         }
     }

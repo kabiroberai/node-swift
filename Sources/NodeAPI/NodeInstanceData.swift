@@ -77,7 +77,7 @@ extension NodeEnvironment {
 
     public var projectedValue: NodeInstanceData<Value> { self }
 
-    public nonisolated init(wrappedValue defaultValue: Value) {
+    public nonisolated init(wrappedValue defaultValue: Value) where Value: Sendable {
         self.defaultValue = defaultValue
     }
 

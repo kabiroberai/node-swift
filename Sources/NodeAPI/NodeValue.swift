@@ -1,7 +1,7 @@
 @_implementationOnly import CNodeAPI
 
 @_spi(NodeAPI) @NodeActor public final class NodeValueBase {
-    private enum Guts {
+    private enum Guts: @unchecked Sendable {
         case unmanaged(napi_value)
         case managed(napi_ref, releaseQueue: NodeAsyncQueue, isBoxed: Bool)
     }
@@ -83,10 +83,11 @@
         case .unmanaged:
             break
         case let .managed(ref, releaseQueue, _):
+            let sendable = UncheckedSendable(ref)
             try? releaseQueue.run {
                 let env = NodeEnvironment.current
                 try env.check(
-                    napi_delete_reference(env.raw, ref)
+                    napi_delete_reference(env.raw, sendable.value)
                 )
             }
         }
