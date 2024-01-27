@@ -25,14 +25,14 @@ final class NodeContext {
     }
 
     // a list of values created with this context
-    private var values: [WeakBox<NodeValueBase>] = []
+    private var values: [Weak<NodeValueBase>] = []
     func registerValue(_ value: NodeValueBase) {
         // if we're in debug mode, register the value even in
         // unmanaged mode, to allow us to do sanity checks
         #if !DEBUG
         guard isManaged else { return }
         #endif
-        values.append(WeakBox(value))
+        values.append(Weak(value))
     }
 
     @NodeActor private static func _withContext<T>(
