@@ -2,7 +2,7 @@
 
 @dynamicMemberLookup
 @NodeActor public final class NodeEnvironment {
-    let raw: napi_env
+    nonisolated let raw: napi_env
 
     nonisolated init(_ raw: napi_env) {
         self.raw = raw

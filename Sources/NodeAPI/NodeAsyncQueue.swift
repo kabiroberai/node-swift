@@ -130,7 +130,11 @@ public final class NodeAsyncQueue: @unchecked Sendable {
                 // sure we're done; that is, if we're the last handle to be
                 // deinitialized
                 guard queue?.currentHandle == nil else { return }
-                napi_unref_threadsafe_function(env.raw, raw.value)
+                // we aren't really isolated but this is necessary to suppress
+                // warnings about accessing `env.raw` off of NodeActor
+                NodeActor.unsafeAssumeIsolated {
+                    _ = napi_unref_threadsafe_function(env.raw, raw.value)
+                }
             }
         }
     }
