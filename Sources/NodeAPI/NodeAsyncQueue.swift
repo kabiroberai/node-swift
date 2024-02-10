@@ -12,7 +12,7 @@ extension NodeEnvironment {
 }
 
 private class Token {}
-private typealias CallbackBox = Box<@NodeActor (NodeEnvironment) -> Void>
+private typealias CallbackBox = Box<(NodeEnvironment) -> Void>
 
 private func cFinalizer(
     rawEnv: napi_env!,
@@ -21,7 +21,7 @@ private func cFinalizer(
     Unmanaged<Token>.fromOpaque(data).release()
 }
 
-@NodeActor(unsafe) private func cCallback(
+private func cCallback(
     env: napi_env?, cb: napi_value?,
     context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!
 ) {
@@ -29,6 +29,7 @@ private func cFinalizer(
 
     guard let env = env else { return }
 
+    // we DON'T create a new NodeContext here. See handle.deinit for rationale.
     callback.value(NodeEnvironment(env))
 }
 
@@ -156,7 +157,7 @@ public final class NodeAsyncQueue: @unchecked Sendable {
     // will throw NodeAPIError(.closing) if another thread called abort()
     private func run(
         blocking: Bool = false,
-        _ action: @escaping @Sendable @NodeActor (NodeEnvironment) -> Void
+        _ action: @escaping @Sendable (NodeEnvironment) -> Void
     ) throws {
         try ensureValid()
         let payload = CallbackBox(action)
@@ -178,8 +179,8 @@ public final class NodeAsyncQueue: @unchecked Sendable {
         blocking: Bool = false,
         @_implicitSelfCapture _ action: @escaping @Sendable @NodeActor () throws -> Void
     ) throws {
-        try run(blocking: blocking) {
-            NodeContext.withContext(environment: $0) { _ in try action() }
+        try run(blocking: blocking) { env in
+            NodeContext.withUnsafeEntrypoint(env) { _ in try action() }
         }
     }
 

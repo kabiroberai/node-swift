@@ -188,7 +188,7 @@ extension NodeObject {
         }
     }
 
-    public struct KeyFilter: RawRepresentable, OptionSet {
+    public struct KeyFilter: RawRepresentable, OptionSet, Sendable {
         public let rawValue: CEnum
         public init(rawValue: CEnum) {
             self.rawValue = rawValue

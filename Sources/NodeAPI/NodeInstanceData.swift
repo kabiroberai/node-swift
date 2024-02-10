@@ -2,8 +2,8 @@
 
 typealias InstanceDataBox = Box<[ObjectIdentifier: Any]>
 
-private class NodeInstanceDataStorage {
-    private var lock = ReadWriteLock()
+private class NodeInstanceDataStorage: @unchecked Sendable {
+    private let lock = ReadWriteLock()
     private var storage: [napi_env: InstanceDataBox] = [:]
     private init() {}
 
@@ -32,9 +32,10 @@ private class NodeInstanceDataStorage {
             storage[raw] = box
 
             // remove our associated storage when napi destroys the env
+            let sendableRaw = UncheckedSendable(raw)
             _ = try? env.addCleanupHook {
                 self.lock.withWriterLockVoid {
-                    self.storage.removeValue(forKey: raw)
+                    self.storage.removeValue(forKey: sendableRaw.value)
                 }
             }
 

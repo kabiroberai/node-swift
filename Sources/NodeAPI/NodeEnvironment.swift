@@ -126,12 +126,11 @@ extension NodeEnvironment {
 
 public final class CleanupHook {
     let callback: () -> Void
-    init(callback: @escaping () -> Void) {
+    init(callback: @escaping @Sendable () -> Void) {
         self.callback = callback
     }
 }
 
-@NodeActor(unsafe)
 private func cCleanupHook(_ payload: UnsafeMutableRawPointer?) {
     guard let payload = payload else { return }
     Unmanaged<CleanupHook>.fromOpaque(payload).takeRetainedValue().callback()
@@ -141,7 +140,7 @@ extension NodeEnvironment {
 
     @discardableResult
     public func addCleanupHook(
-        action: @escaping () -> Void
+        action: @escaping @Sendable () -> Void
     ) throws -> CleanupHook {
         let token = CleanupHook(callback: action)
         try check(napi_add_env_cleanup_hook(
@@ -176,7 +175,6 @@ public final class AsyncCleanupHook {
     }
 }
 
-@NodeActor(unsafe)
 private func cAsyncCleanupHook(handle: napi_async_cleanup_hook_handle!, payload: UnsafeMutableRawPointer!) {
     guard let payload = payload else { return }
     let hook = Unmanaged<AsyncCleanupHook>.fromOpaque(payload).takeRetainedValue()

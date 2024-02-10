@@ -118,6 +118,16 @@ final class NodeContext {
         }
     }
 
+    static func withUnsafeEntrypoint<T>(_ raw: napi_env, action: @NodeActor (NodeContext) throws -> T) -> T? {
+        withUnsafeEntrypoint(NodeEnvironment(raw), action: action)
+    }
+
+    static func withUnsafeEntrypoint<T>(_ environment: NodeEnvironment, action: @NodeActor (NodeContext) throws -> T) -> T? {
+        NodeActor.unsafeAssumeIsolated {
+            try? withContext(environment: environment, isTopLevel: true, do: action)
+        }
+    }
+
     // This should be called at any entrypoint into our code from JS, with the
     // passed in environment.
     //
