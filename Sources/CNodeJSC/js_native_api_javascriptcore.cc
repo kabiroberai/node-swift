@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 #include <locale>
-#include <codecvt>
 
 #define RETURN_STATUS_IF_FALSE(env, condition, status) \
   do {                                                 \
@@ -131,7 +130,7 @@ namespace {
     }
 
     JSString(const JSChar* string, size_t length = NAPI_AUTO_LENGTH)
-      : _string{JSStringCreateWithCharacters(string, length == NAPI_AUTO_LENGTH ? std::char_traits<JSChar>::length(string) : length)} {
+      : _string{JSStringCreateWithCharacters(string, length == NAPI_AUTO_LENGTH ? std::char_traits<char16_t>::length(reinterpret_cast<const char16_t *>(string)) : length)} {
     }
 
     ~JSString() {
@@ -200,9 +199,10 @@ namespace {
         return JSStringCreateWithUTF8CString(string);
       }
 
-      std::u16string u16str{std::wstring_convert<
-        std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(string, string + length)};
-      return JSStringCreateWithCharacters(reinterpret_cast<JSChar*>(u16str.data()), u16str.size());
+      auto cfstr = CFStringCreateWithBytesNoCopy(nullptr, reinterpret_cast<const UInt8 *>(string), length, kCFStringEncodingUTF8, false, kCFAllocatorNull);
+      auto jsstr = JSStringCreateWithCFString(cfstr);
+      CFRelease(cfstr);
+      return jsstr;
     }
 
     JSString(JSStringRef string)
