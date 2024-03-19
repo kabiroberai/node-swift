@@ -1,10 +1,10 @@
 import Foundation
 @_implementationOnly import CNodeAPI
 
-public struct NodeDataDeallocator {
-    let action: (UnsafeMutableRawBufferPointer) -> Void
+public struct NodeDataDeallocator: Sendable {
+    let action: @Sendable @NodeActor (UnsafeMutableRawBufferPointer) -> Void
 
-    public init(action: @escaping (UnsafeMutableRawBufferPointer) -> Void) {
+    public init(action: @escaping @Sendable @NodeActor (UnsafeMutableRawBufferPointer) -> Void) {
         self.action = action
     }
 
@@ -12,16 +12,18 @@ public struct NodeDataDeallocator {
 
     // retains the object until the deallocator is called, after which
     // it's released
-    public static func capture(_ object: AnyObject) -> Self {
+    public static func capture(_ object: some Sendable) -> Self {
         .init { _ in _ = object }
     }
 }
 
 typealias Hint = Box<(NodeDataDeallocator, UnsafeMutableRawBufferPointer)>
 
-func cBufFinalizer(_: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
-    deallocator.action(bytes)
+func cBufFinalizer(_ rawEnv: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
+    NodeContext.withUnsafeEntrypoint(rawEnv) { _ in
+        let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
+        deallocator.action(bytes)
+    }
 }
 
 public final class NodeArrayBuffer: NodeObject {
@@ -60,7 +62,7 @@ public final class NodeArrayBuffer: NodeObject {
     public convenience init(data: NSMutableData) throws {
         try self.init(
             bytes: UnsafeMutableRawBufferPointer(start: data.mutableBytes, count: data.length),
-            deallocator: .capture(data)
+            deallocator: .capture(UncheckedSendable(data))
         )
     }
 

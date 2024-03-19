@@ -1,0 +1,26 @@
+{
+  "configurations" : [
+    {
+      "id" : "CE0028CE-5DE1-4324-B4D9-6C17345A1156",
+      "name" : "Configuration",
+      "options" : {
+        "addressSanitizer" : {
+          "enabled" : true
+        }
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "NodeJSCTests",
+        "name" : "NodeJSCTests"
+      }
+    }
+  ],
+  "version" : 1
+}

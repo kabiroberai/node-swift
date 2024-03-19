@@ -188,7 +188,7 @@ extension NodeObject {
         }
     }
 
-    public struct KeyFilter: RawRepresentable, OptionSet {
+    public struct KeyFilter: RawRepresentable, OptionSet, Sendable {
         public let rawValue: CEnum
         public init(rawValue: CEnum) {
             self.rawValue = rawValue
@@ -252,86 +252,31 @@ extension NodeObject {
         return AnyNodeValue(raw: result)
     }
 
-    #if !NAPI_VERSIONED || NAPI_GE_8
     public final func freeze() throws {
+        #if !NAPI_VERSIONED || NAPI_GE_8
         try base.environment.check(
             napi_object_freeze(
                 base.environment.raw,
                 base.rawValue()
             )
         )
+        #else
+        try Node.Object.freeze(self)
+        #endif
     }
 
     public final func seal() throws {
+        #if !NAPI_VERSIONED || NAPI_GE_8
         try base.environment.check(
             napi_object_seal(
                 base.environment.raw,
                 base.rawValue()
             )
         )
+        #else
+        try Node.Object.seal(self)
+        #endif
     }
-    #else
-    @available(*, unavailable, message: "Requires NAPI >= 8")
-    public final func freeze() throws { fatalError() }
-
-    @available(*, unavailable, message: "Requires NAPI >= 8")
-    public final func seal() throws { fatalError() }
-    #endif
-
-}
-
-// MARK: - Object Wrap
-
-extension NodeObject {
-
-    fileprivate enum TypeTagStatus {
-        case present
-        case absent
-        case unknown
-    }
-
-    #if !NAPI_VERSIONED || NAPI_GE_8
-
-    // we could make this public but its functionality can pretty much be
-    // replicated by the wrapped value stuff
-
-    private func withTypeTag<T>(_ tag: UUID, do action: (UnsafePointer<napi_type_tag>) throws -> T) rethrows -> T {
-        try withUnsafePointer(to: tag.uuid) {
-            try $0.withMemoryRebound(to: napi_type_tag.self, capacity: 1, action)
-        }
-    }
-
-    // can be called at most once per value
-    fileprivate func setTypeTag(_ tag: UUID) throws {
-        let env = base.environment
-        try withTypeTag(tag) {
-            try env.check(
-                napi_type_tag_object(
-                    env.raw, base.rawValue(), $0
-                )
-            )
-        }
-    }
-
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus {
-        let env = base.environment
-        var result = false
-        try withTypeTag(tag) {
-            try env.check(
-                napi_check_object_type_tag(
-                    env.raw, base.rawValue(), $0, &result
-                )
-            )
-        }
-        return result ? .present : .absent
-    }
-
-    #else
-
-    fileprivate func setTypeTag(_ tag: UUID) throws {}
-    fileprivate func hasTypeTag(_ tag: UUID) throws -> TypeTagStatus { .unknown }
-
-    #endif
 
 }
 
@@ -339,63 +284,51 @@ public final class NodeWrappedDataKey<T> {
     public init() {}
 }
 
-private typealias WrappedData = Box<[ObjectIdentifier: Any]>
+extension NodeObject {
 
-private func cWrapFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    Unmanaged<WrappedData>.fromOpaque(data).release()
+    // WeakMap<any, external<Extra>>
+    @NodeInstanceData private static var objectMap: NodeObject?
+
+    private func getObjectMap() throws -> NodeObject {
+        if let map = Self.objectMap { return map }
+        let map = try Node.WeakMap.new()
+        Self.objectMap = map
+        return map
+    }
+
+    @NodeActor final class Extra {
+        var wrappedValues: [ObjectIdentifier: Any] = [:]
+    }
+
+    func extra() throws -> Extra {
+        let objectMap = try getObjectMap()
+
+        if let external = try objectMap.get(self).as(NodeExternal.self) {
+            return try external.value() as! Extra
+        }
+
+        let extra = Extra()
+        let external = try NodeExternal(value: extra)
+        try objectMap.set(self, external)
+        return extra
+    }
+
 }
 
 extension NodeObject {
 
-    private static let ourTypeTag = UUID()
-
-    // TODO: Figure out an alternative solution for wrap tag checking in NAPI < 8
-    // (atm we're just blindly trusting that the user is calling the API correctly,
-    // which is unsafe and semantically incorrect)
-
     final func setWrappedValue(_ wrap: Any?, forID id: ObjectIdentifier) throws {
-        let env = base.environment
-        let raw = try base.rawValue()
-        if try hasTypeTag(Self.ourTypeTag) == .present {
-            var objRaw: UnsafeMutableRawPointer!
-            try env.check(napi_unwrap(env.raw, raw, &objRaw))
-            let objUnmanaged = Unmanaged<WrappedData>.fromOpaque(objRaw)
-            let obj = objUnmanaged.takeUnretainedValue()
-            obj.value[id] = wrap
-            // we can't remove the wrap here because we'd also have to remove the
-            // type tag, which isn't possible with current APIs
-        } else if let wrap = wrap {
-            let obj = WrappedData([:])
-            obj.value[id] = wrap
-            let objUnmanaged = Unmanaged<WrappedData>.passRetained(obj)
-            let objRaw = objUnmanaged.toOpaque()
-            do {
-                try env.check(napi_wrap(env.raw, raw, objRaw, cWrapFinalizer, nil, nil))
-            } catch {
-                objUnmanaged.release()
-                throw error
-            }
-            try setTypeTag(Self.ourTypeTag)
-        }
+        try extra().wrappedValues[id] = wrap
     }
 
     final func wrappedValue(forID id: ObjectIdentifier) throws -> Any? {
-        guard try hasTypeTag(Self.ourTypeTag) != .absent else { return nil }
-        let env = base.environment
-        var objRaw: UnsafeMutableRawPointer!
-        try env.check(napi_unwrap(env.raw, base.rawValue(), &objRaw))
-        let obj = Unmanaged<WrappedData>.fromOpaque(objRaw).takeUnretainedValue()
-        return obj.value[id]
+        try extra().wrappedValues[id]
     }
 
-    /// - Warning: when using NAPI < 8, it is currently UB to call this on an object
-    /// that already has a wrapped value.
     public final func setWrappedValue<T>(_ wrap: T?, forKey key: NodeWrappedDataKey<T>) throws {
         try setWrappedValue(wrap, forID: ObjectIdentifier(key))
     }
 
-    /// - Warning: when using NAPI < 8, it is currently UB to call this on an object
-    /// that does not have the expected wrapped value.
     public final func wrappedValue<T>(forKey key: NodeWrappedDataKey<T>) throws -> T? {
         try wrappedValue(forID: ObjectIdentifier(key)) as? T
     }
