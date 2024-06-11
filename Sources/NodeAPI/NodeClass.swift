@@ -3,8 +3,9 @@
 private typealias ConstructorWrapper = Box<NodeFunction.Callback>
 
 private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
-    NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
-        let arguments = try NodeArguments(raw: info, in: ctx)
+    let info = UncheckedSendable(info)
+    return NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
+        let arguments = try NodeArguments(raw: info.value!, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<ConstructorWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callbacks.value(arguments).rawValue()

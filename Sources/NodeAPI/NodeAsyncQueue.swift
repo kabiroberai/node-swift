@@ -14,13 +14,6 @@ extension NodeEnvironment {
 private class Token {}
 private typealias CallbackBox = Box<(NodeEnvironment) -> Void>
 
-private func cFinalizer(
-    rawEnv: napi_env!,
-    data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer?
-) {
-    Unmanaged<Token>.fromOpaque(data).release()
-}
-
 private func cCallback(
     env: napi_env?, cb: napi_value?,
     context: UnsafeMutableRawPointer!, data: UnsafeMutableRawPointer!
@@ -31,6 +24,10 @@ private func cCallback(
 
     // we DON'T create a new NodeContext here. See handle.deinit for rationale.
     callback.value(NodeEnvironment(env))
+}
+
+private let cCallbackC: napi_threadsafe_function_call_js = {
+    cCallback(env: $0, cb: $1, context: $2, data: $3)
 }
 
 // this is the only async API we implement because it's more or less isomorphic
@@ -72,8 +69,10 @@ public final class NodeAsyncQueue: @unchecked Sendable {
                 environment.raw, nil,
                 asyncResource?.rawValue(), label.rawValue(),
                 maxQueueSize ?? 0, 1,
-                box.toOpaque(), cFinalizer,
-                nil, { cCallback(env: $0, cb: $1, context: $2, data: $3) },
+                box.toOpaque(), { rawEnv, data, hint in
+                    Unmanaged<Token>.fromOpaque(data!).release()
+                },
+                nil, cCallbackC,
                 &result
             ))
         } catch {

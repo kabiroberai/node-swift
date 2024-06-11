@@ -30,7 +30,12 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()
         try env.check(
-            napi_create_external_buffer(env.raw, bytes.count, bytes.baseAddress, cBufFinalizer, hint, &result)
+            napi_create_external_buffer(env.raw, bytes.count, bytes.baseAddress, { rawEnv, _, hint in
+                NodeContext.withUnsafeEntrypoint(rawEnv!) { _ in
+                    let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint!).takeRetainedValue().value
+                    deallocator.action(bytes)
+                }
+            }, hint, &result)
         )
         super.init(NodeValueBase(raw: result, in: ctx))
     }

@@ -2,19 +2,20 @@
 
 @dynamicMemberLookup
 @NodeActor public final class NodeEnvironment {
-    nonisolated let raw: napi_env
+    nonisolated(unsafe) let _raw: UncheckedSendable<napi_env>
+    nonisolated var raw: napi_env { _raw.value }
 
     nonisolated init(_ raw: napi_env) {
-        self.raw = raw
+        self._raw = .init(raw)
     }
 
     public static var current: NodeEnvironment {
         NodeContext.current.environment
     }
 
-    public nonisolated static func performUnsafe(_ raw: OpaquePointer, perform: @NodeActor () throws -> Void) {
-        NodeActor.unsafeAssumeIsolated {
-            NodeContext.withContext(environment: Self(raw)) { _ in
+    public nonisolated static func performUnsafe<T>(_ raw: OpaquePointer, perform: @NodeActor @Sendable () throws -> T) -> T? {
+        NodeActor.unsafeAssumeIsolated { [env = NodeEnvironment(raw)] in
+            NodeContext.withContext(environment: env) { _ in
                 try perform()
             }
         }

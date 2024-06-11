@@ -11,7 +11,7 @@ struct NodeModuleMacro: DeclarationMacro {
         let call = FunctionCallExprSyntax(
             calledExpression: "NodeAPI.NodeModuleRegistrar(env).register" as ExprSyntax,
             leftParen: node.leftParen,
-            arguments: node.argumentList,
+            arguments: node.arguments,
             rightParen: node.rightParen,
             trailingClosure: node.trailingClosure,
             additionalTrailingClosures: node.additionalTrailingClosures

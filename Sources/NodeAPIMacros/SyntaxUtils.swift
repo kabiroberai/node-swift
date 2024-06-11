@@ -36,10 +36,7 @@ extension FunctionSignatureSyntax {
                     TupleTypeElementSyntax(type: parameter.type, trailingComma: parameter.trailingComma)
                 }
             },
-            effectSpecifiers: .init(
-                asyncSpecifier: effectSpecifiers?.asyncSpecifier,
-                throwsSpecifier: effectSpecifiers?.throwsSpecifier
-            ),
+            effectSpecifiers: effectSpecifiers?.typeEffectSpecifiers,
             returnClause: .init(type: returnClause?.type.trimmed ?? "Void")
         )
     }
@@ -53,9 +50,33 @@ extension FunctionSignatureSyntax {
     }
 }
 
+extension FunctionEffectSpecifiersSyntax {
+    var typeEffectSpecifiers: TypeEffectSpecifiersSyntax {
+        #if canImport(SwiftSyntax600)
+        TypeEffectSpecifiersSyntax(
+            asyncSpecifier: asyncSpecifier,
+            throwsClause: throwsClause
+        )
+        #else
+        TypeEffectSpecifiersSyntax(
+            asyncSpecifier: asyncSpecifier,
+            throwsSpecifier: throwsSpecifier
+        )
+        #endif
+    }
+}
+
 extension VariableDeclSyntax {
     var identifier: TokenSyntax? {
         guard bindings.count == 1 else { return nil }
         return bindings.first?.pattern.as(IdentifierPatternSyntax.self)?.identifier
     }
 }
+
+#if !canImport(SwiftSyntax510)
+extension FreestandingMacroExpansionSyntax {
+    var arguments: LabeledExprListSyntax {
+        argumentList
+    }
+}
+#endif

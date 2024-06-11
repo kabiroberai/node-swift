@@ -2,7 +2,10 @@ import CNodeJSC
 import NodeAPI
 
 extension NodeEnvironment {
-    public nonisolated static func withJSC(context: JSContext? = nil, _ perform: @NodeActor () throws -> Void) {
+    public nonisolated static func withJSC<R>(
+        context: JSContext? = nil,
+        _ perform: @NodeActor @Sendable () throws -> R
+    ) -> R? {
         let context = context ?? JSContext()!
         let executor = napi_executor(
             version: 1,
@@ -15,7 +18,7 @@ extension NodeEnvironment {
             }
         )
         let raw = napi_env_jsc_create(context.jsGlobalContextRef, executor)!
-        performUnsafe(raw) {
+        return performUnsafe(raw) {
             try perform()
         }
     }

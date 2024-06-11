@@ -1,4 +1,4 @@
-import JavaScriptCore
+@preconcurrency import JavaScriptCore
 import NodeAPI
 
 extension JSContext {
