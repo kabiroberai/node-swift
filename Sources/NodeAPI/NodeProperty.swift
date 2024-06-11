@@ -1,7 +1,7 @@
 @_implementationOnly import CNodeAPI
 
-@NodeActor(unsafe) private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
+private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
+    NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<NodePropertyBase.Callbacks>.fromOpaque(data).takeUnretainedValue()
@@ -9,11 +9,11 @@
     }
 }
 
-@NodeActor(unsafe) private func cGetterOrMethod(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+private func cGetterOrMethod(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     cCallback(rawEnv: rawEnv, info: info, isGetter: true)
 }
 
-@NodeActor(unsafe) private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+private func cSetter(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
     cCallback(rawEnv: rawEnv, info: info, isGetter: false)
 }
 

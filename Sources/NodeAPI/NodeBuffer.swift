@@ -38,7 +38,7 @@ public final class NodeBuffer: NodeTypedArray<UInt8> {
     public convenience init(data: NSMutableData) throws {
         try self.init(
             bytes: UnsafeMutableRawBufferPointer(start: data.mutableBytes, count: data.length),
-            deallocator: .capture(data)
+            deallocator: .capture(UncheckedSendable(data))
         )
     }
 

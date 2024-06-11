@@ -2,8 +2,8 @@
 
 private typealias ConstructorWrapper = Box<NodeFunction.Callback>
 
-@NodeActor(unsafe) private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
-    NodeContext.withContext(environment: NodeEnvironment(rawEnv)) { ctx -> napi_value in
+private func cConstructor(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
+    NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
         let arguments = try NodeArguments(raw: info, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<ConstructorWrapper>.fromOpaque(data).takeUnretainedValue()
@@ -34,7 +34,7 @@ extension NodeFunction {
         var result: napi_value!
         let ctorWrapper = ConstructorWrapper { args in
             try constructor(args)
-            return undefined
+            return args.this
         }
         try name.withUTF8 {
             try $0.withMemoryRebound(to: CChar.self) { nameUTF in
@@ -182,7 +182,8 @@ extension NodeClass {
 
     static func invokeSpecialConstructor(_ specialConstructor: NodeClassSpecialConstructor<Self>) throws -> NodeObject {
         let (ctor, sym) = try Self._constructor()
-        return try ctor.new(sym, NodeExternal(value: specialConstructor))
+        // new(sym, ...) crashes as of swift#70602
+        return try ctor.new.dynamicallyCall(withArguments: [sym, NodeExternal(value: specialConstructor)])
     }
 
     public static func constructor() throws -> NodeFunction {

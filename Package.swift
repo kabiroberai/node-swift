@@ -22,6 +22,10 @@ let package = Package(
             targets: ["NodeAPI"]
         ),
         .library(
+            name: "NodeJSC",
+            targets: ["NodeJSC"]
+        ),
+        .library(
             name: "NodeModuleSupport",
             targets: ["NodeModuleSupport"]
         ),
@@ -31,6 +35,19 @@ let package = Package(
     ],
     targets: [
         .systemLibrary(name: "CNodeAPI"),
+        .target(
+            name: "CNodeJSC",
+            linkerSettings: [
+                .linkedFramework("JavaScriptCore"),
+            ]
+        ),
+        .target(
+            name: "NodeJSC",
+            dependencies: [
+                "CNodeJSC",
+                "NodeAPI",
+            ]
+        ),
         .target(name: "CNodeAPISupport"),
         .macro(
             name: "NodeAPIMacros",
@@ -49,6 +66,10 @@ let package = Package(
             name: "NodeModuleSupport",
             dependencies: ["CNodeAPI"]
         ),
+        .testTarget(
+            name: "NodeJSCTests",
+            dependencies: ["NodeJSC", "NodeAPI"]
+        ),
     ],
-    cxxLanguageStandard: .cxx14
+    cxxLanguageStandard: .cxx17
 )
