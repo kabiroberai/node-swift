@@ -6,7 +6,7 @@ Bridge Node.js and Swift code.
 
 NodeSwift allows you to write Swift code that talks to Node.js libraries, and vice versa. This enables possibilities such as
 
-- Using native macOS APIs and SPM in an Electron app.
+- Using native macOS APIs and SwiftPM in an Electron app.
 - Interacting with the vast array of NPM APIs from a Swift program (e.g. a macOS app, iOS app, or a Vapor server).
 - Speeding up your JS code by writing performance critical bits in Swift.
 
@@ -43,7 +43,7 @@ console.log(add(5, 10)); // 5.0 + 10.0 = 15.0
 
 ## How?
 
-A NodeSwift module consists of an [SPM](https://swift.org/package-manager/) package and [NPM](https://www.npmjs.com) package in the same folder, both of which express NodeSwift as a dependency.
+A NodeSwift module consists of an [SwiftPM](https://swift.org/package-manager/) package and [NPM](https://www.npmjs.com) package in the same folder, both of which express NodeSwift as a dependency.
 
 The Swift package is exposed to JavaScript as a native Node.js module, which can be `require`'d by the JS code. The two sides communicate via [Node-API](https://nodejs.org/api/n-api.html), which is wrapped by the `NodeAPI` module on the Swift side.
 
