@@ -11,7 +11,7 @@ struct NodeModuleMacro: DeclarationMacro {
         let call = FunctionCallExprSyntax(
             calledExpression: "NodeAPI.NodeModuleRegistrar(env).register" as ExprSyntax,
             leftParen: node.leftParen,
-            arguments: node.argumentList,
+            arguments: node.arguments,
             rightParen: node.rightParen,
             trailingClosure: node.trailingClosure,
             additionalTrailingClosures: node.additionalTrailingClosures
@@ -21,7 +21,6 @@ struct NodeModuleMacro: DeclarationMacro {
 
         return ["""
         @_cdecl("node_swift_register")
-        @NodeAPI.NodeActor(unsafe)
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
             #sourceLocation(file: \(start.file), line: \(start.line))
         \(call)

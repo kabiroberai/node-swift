@@ -1,8 +1,9 @@
 @_implementationOnly import CNodeAPI
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
-    NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
-        let arguments = try NodeArguments(raw: info, in: ctx)
+    let info = UncheckedSendable(info)
+    return NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
+        let arguments = try NodeArguments(raw: info.value!, in: ctx)
         let data = arguments.data
         let callbacks = Unmanaged<NodePropertyBase.Callbacks>.fromOpaque(data).takeUnretainedValue()
         return try (isGetter ? callbacks.value.0 : callbacks.value.1)!(arguments).rawValue()

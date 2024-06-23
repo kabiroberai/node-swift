@@ -3,15 +3,15 @@ import NodeAPI
 
 final class File: NodeClass {
     static let properties: NodeClassPropertyList = [
-        "contents": NodeComputedProperty(get: contents, set: setContents),
+        "contents": NodeProperty(get: contents, set: setContents),
         "unlink": NodeMethod(unlink),
         "default": NodeMethod(attributes: .static, `default`),
-        "filename": NodeComputedProperty(get: filename),
+        "filename": NodeProperty(get: filename),
         "reply": NodeMethod(reply),
-        "x": NodeComputedProperty(\File.x),
+        "x": NodeProperty(\File.x),
     ]
 
-    var x: Int = 0
+    nonisolated(unsafe) var x: Int = 0
 
     let url: URL
 

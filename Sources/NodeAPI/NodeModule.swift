@@ -1,15 +1,21 @@
-@NodeActor public struct NodeModuleRegistrar {
+public struct NodeModuleRegistrar {
     private let env: OpaquePointer?
     public init(_ env: OpaquePointer?) {
         self.env = env
     }
+
     // NB: these should match the #NodeModule signatures for the macro to forward properly
-    public func register(init create: @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
-        NodeContext.withContext(environment: NodeEnvironment(env!)) { _ in
+    public func register(
+        init create: @escaping @Sendable @NodeActor () throws -> NodeValueConvertible
+    ) -> OpaquePointer? {
+        NodeContext.withUnsafeEntrypoint(NodeEnvironment(env!)) { _ in
             try create().rawValue()
         }
     }
-    public func register(exports create: @autoclosure @escaping @NodeActor () throws -> NodeValueConvertible) -> OpaquePointer? {
+
+    public func register(
+        exports create: @autoclosure @escaping @Sendable @NodeActor () throws -> NodeValueConvertible
+    ) -> OpaquePointer? {
         register(init: create)
     }
 }

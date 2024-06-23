@@ -1,9 +1,5 @@
 @_implementationOnly import CNodeAPI
 
-private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    Unmanaged<AnyObject>.fromOpaque(data).release()
-}
-
 public final class NodeExternal: NodeValue {
 
     @_spi(NodeAPI) public let base: NodeValueBase
@@ -17,7 +13,9 @@ public final class NodeExternal: NodeValue {
         let unmanaged = Unmanaged.passRetained(value as AnyObject)
         let opaque = unmanaged.toOpaque()
         var result: napi_value!
-        try env.check(napi_create_external(env.raw, opaque, cFinalizer, nil, &result))
+        try env.check(napi_create_external(env.raw, opaque, { rawEnv, data, hint in
+            Unmanaged<AnyObject>.fromOpaque(data!).release()
+        }, nil, &result))
         self.base = NodeValueBase(raw: result, in: ctx)
     }
 

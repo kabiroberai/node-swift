@@ -19,13 +19,6 @@ public struct NodeDataDeallocator: Sendable {
 
 typealias Hint = Box<(NodeDataDeallocator, UnsafeMutableRawBufferPointer)>
 
-func cBufFinalizer(_ rawEnv: napi_env!, _: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    NodeContext.withUnsafeEntrypoint(rawEnv) { _ in
-        let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint).takeRetainedValue().value
-        deallocator.action(bytes)
-    }
-}
-
 public final class NodeArrayBuffer: NodeObject {
 
     override class func isObjectType(for value: NodeValueBase) throws -> Bool {
@@ -55,7 +48,12 @@ public final class NodeArrayBuffer: NodeObject {
         let env = ctx.environment
         var result: napi_value!
         let hint = Unmanaged.passRetained(Hint((deallocator, bytes))).toOpaque()
-        try env.check(napi_create_external_arraybuffer(env.raw, bytes.baseAddress, bytes.count, cBufFinalizer, hint, &result))
+        try env.check(napi_create_external_arraybuffer(env.raw, bytes.baseAddress, bytes.count, { rawEnv, _, hint in
+            NodeContext.withUnsafeEntrypoint(rawEnv!) { _ in
+                let (deallocator, bytes) = Unmanaged<Hint>.fromOpaque(hint!).takeRetainedValue().value
+                deallocator.action(bytes)
+            }
+        }, hint, &result))
         super.init(NodeValueBase(raw: result, in: ctx))
     }
 

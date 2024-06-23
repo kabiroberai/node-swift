@@ -3,8 +3,9 @@
 private typealias CallbackWrapper = Box<NodeFunction.Callback>
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!) -> napi_value? {
-    NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
-        let arguments = try NodeArguments(raw: info, in: ctx)
+    let info = UncheckedSendable(info)
+    return NodeContext.withUnsafeEntrypoint(rawEnv) { ctx -> napi_value in
+        let arguments = try NodeArguments(raw: info.value!, in: ctx)
         let data = arguments.data
         let callback = Unmanaged<CallbackWrapper>.fromOpaque(data).takeUnretainedValue()
         return try callback.value(arguments).rawValue()

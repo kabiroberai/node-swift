@@ -140,7 +140,7 @@ extension NodeMethod {
 
 extension NodeConstructor {
     public init<each A: AnyNodeValueCreatable>(
-        _ invoke: @escaping @NodeActor (repeat each A) throws -> T
+        _ invoke: @escaping @NodeActor @Sendable (repeat each A) throws -> T
     ) {
         self.init { args in
             var reader = ArgReader(args)

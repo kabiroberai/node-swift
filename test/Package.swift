@@ -21,6 +21,10 @@ func addSuite(_ suite: String) {
         type: .dynamic,
         targets: [suite]
     ))
+    package.products.append(.library(
+        name: "\(suite)-Automatic",
+        targets: [suite]
+    ))
     package.targets.append(.target(
         name: suite,
         dependencies: [

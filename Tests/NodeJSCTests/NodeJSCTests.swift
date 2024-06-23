@@ -13,9 +13,8 @@ final class NodeJSCTests: XCTestCase {
             guard let sut = JSContext() else { fatalError("Could not create JSContext") }
             sutBox.value = sut
             global = JSManagedValue(value: sut.globalObject)
-            var queue: NodeAsyncQueue.Handle?
-            NodeEnvironment.withJSC(context: sut) {
-                queue = try NodeAsyncQueue(label: "queue").handle()
+            let queue = NodeEnvironment.withJSC(context: sut) {
+                try NodeAsyncQueue(label: "queue").handle()
             }
             guard let queue else { fatalError("Could not obtain NodeAsyncQueue") }
             NodeActor.$target.withValue(queue) {

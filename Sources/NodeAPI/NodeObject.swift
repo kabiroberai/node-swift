@@ -339,13 +339,6 @@ extension NodeObject {
 
 private typealias FinalizeWrapper = Box<() -> Void>
 
-private func cFinalizer(rawEnv: napi_env!, data: UnsafeMutableRawPointer!, hint: UnsafeMutableRawPointer!) {
-    Unmanaged<FinalizeWrapper>
-        .fromOpaque(data)
-        .takeRetainedValue() // releases the wrapper post-call
-        .value()
-}
-
 extension NodeObject {
 
     // Wrap should be sufficient in most cases, but finalizers are handy
@@ -353,7 +346,12 @@ extension NodeObject {
     public final func addFinalizer(_ finalizer: @escaping () -> Void) throws {
         let data = Unmanaged.passRetained(FinalizeWrapper(finalizer)).toOpaque()
         try base.environment.check(
-            napi_add_finalizer(base.environment.raw, base.rawValue(), data, cFinalizer, nil, nil)
+            napi_add_finalizer(base.environment.raw, base.rawValue(), data, { rawEnv, data, hint in
+                Unmanaged<FinalizeWrapper>
+                    .fromOpaque(data!)
+                    .takeRetainedValue() // releases the wrapper post-call
+                    .value()
+            }, nil, nil)
         )
     }
 
