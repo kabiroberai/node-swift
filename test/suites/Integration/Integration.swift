@@ -1,7 +1,7 @@
 import NodeAPI
 import Foundation
 
-class CleanupHandler {
+final class CleanupHandler: Sendable {
     let global: NodeObject
     init(global: NodeObject) {
         self.global = global

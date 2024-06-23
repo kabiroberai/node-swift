@@ -21,7 +21,6 @@ struct NodeModuleMacro: DeclarationMacro {
 
         return ["""
         @_cdecl("node_swift_register")
-        @NodeAPI.NodeActor(unsafe)
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
             #sourceLocation(file: \(start.file), line: \(start.line))
         \(call)
