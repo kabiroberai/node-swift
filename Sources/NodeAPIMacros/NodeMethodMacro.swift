@@ -12,18 +12,21 @@ struct NodeMethodMacro: PeerMacro {
             return []
         }
 
+        // we don't need to change the attribtues for static methods
+        // because the NodeMethod.init overloads that accept non-instance
+        // methods automatically union the attributes with `.static`.
         let attributes = node.nodeAttributes ?? ".defaultMethod"
         let sig = function.signature
 
-        let type: TypeSyntax = if function.modifiers.hasKeyword(.static) {
-            "\(sig.functionType)"
+        let val: ExprSyntax = if function.modifiers.hasKeyword(.static) {
+            "_NodeSelf.\(function.name) as \(sig.functionType)"
         } else {
-            "(_NodeSelf) -> \(sig.functionType)"
+            "{ $0.\(function.name) } as (_NodeSelf) -> \(sig.functionType)"
         }
 
         return ["""
         @NodeActor static let $\(function.name)
-            = NodeMethod(attributes: \(attributes), _NodeSelf.\(function.name)\(sig.arguments) as \(type))
+            = NodeMethod(attributes: \(attributes), \(val))
         """]
     }
 }

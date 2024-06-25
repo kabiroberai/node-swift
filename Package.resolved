@@ -1,14 +1,33 @@
 {
+  "originHash" : "095706e6ea9d3d95e075939fc7510b625a2ec113294efe27d0a836d8873988b0",
   "pins" : [
+    {
+      "identity" : "swift-macro-testing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kabiroberai/swift-macro-testing.git",
+      "state" : {
+        "branch" : "kabir/fix-600-dep",
+        "revision" : "aee303ea5efcb7dcb0b31e5828769500fe994e7a"
+      }
+    },
+    {
+      "identity" : "swift-snapshot-testing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
+      "state" : {
+        "revision" : "8ddd519780452729c6634ad6bd0d2595938e9ea3",
+        "version" : "1.16.1"
+      }
+    },
     {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "fa8f95c2d536d6620cc2f504ebe8a6167c9fc2dd",
-        "version" : "510.0.1"
+        "revision" : "4c6cc0a3b9e8f14b3ae2307c5ccae4de6167ac2c",
+        "version" : "600.0.0-prerelease-2024-06-12"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }
