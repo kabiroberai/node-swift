@@ -2,6 +2,9 @@ import SwiftSyntax
 import SwiftSyntaxMacros
 
 struct NodeModuleMacro: DeclarationMacro {
+    // we avoid formatting to preserve sourceLocation info
+    static var formatMode: FormatMode { .disabled }
+
     static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext

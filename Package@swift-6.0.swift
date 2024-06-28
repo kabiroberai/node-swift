@@ -27,7 +27,8 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", "509.0.0"..."600.0.0-prerelease"),
+        .package(url: "https://github.com/apple/swift-syntax.git", "509.0.0"..<"601.0.0-prerelease"),
+        .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", revision: "4787b0b4d7b023b303d56eab0baee81d49e9f5c5"),
     ],
     targets: [
         .systemLibrary(name: "CNodeAPI"),
@@ -63,6 +64,13 @@ let package = Package(
         .testTarget(
             name: "NodeJSCTests",
             dependencies: ["NodeJSC", "NodeAPI"]
+        ),
+        .testTarget(
+            name: "NodeAPIMacrosTests",
+            dependencies: [
+                .target(name: "NodeAPIMacros"),
+                .product(name: "MacroTesting", package: "swift-macro-testing"),
+            ]
         ),
     ],
     swiftLanguageVersions: [.v5, .v6],

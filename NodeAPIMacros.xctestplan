@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "C616BF7E-11A9-4348-B376-F7574A149179",
+      "name" : "Configuration",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "NodeAPIMacrosTests",
+        "name" : "NodeAPIMacrosTests"
+      }
+    }
+  ],
+  "version" : 1
+}
