@@ -11,14 +11,21 @@ struct NodeModuleMacro: DeclarationMacro {
     ) throws -> [DeclSyntax] {
         let name = context.makeUniqueName("register")
 
-        let call = FunctionCallExprSyntax(
-            calledExpression: "NodeAPI.NodeModuleRegistrar(env).register" as ExprSyntax,
-            leftParen: node.leftParen,
-            arguments: node.arguments,
-            rightParen: node.rightParen,
-            trailingClosure: node.trailingClosure,
-            additionalTrailingClosures: node.additionalTrailingClosures
-        )
+        let call: CodeBlockItemSyntax
+        if node.arguments.count == 1,
+           let argument = node.arguments.first,
+           argument.label?.text == "exports" {
+            call = "NodeAPI.NodeModuleRegistrar(env).register { \(argument.expression) }"
+        } else {
+            call = CodeBlockItemSyntax(item: .expr(ExprSyntax(FunctionCallExprSyntax(
+                calledExpression: "NodeAPI.NodeModuleRegistrar(env).register" as ExprSyntax,
+                leftParen: node.leftParen,
+                arguments: node.arguments,
+                rightParen: node.rightParen,
+                trailingClosure: node.trailingClosure,
+                additionalTrailingClosures: node.additionalTrailingClosures
+            ))))
+        }
 
         let start = context.location(of: node, at: .afterLeadingTrivia, filePathMode: .filePath)!
 

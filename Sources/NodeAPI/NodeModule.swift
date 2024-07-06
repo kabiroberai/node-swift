@@ -4,7 +4,7 @@ public struct NodeModuleRegistrar {
         self.env = env
     }
 
-    // NB: these should match the #NodeModule signatures for the macro to forward properly
+    // NB: this API is used by NodeModuleMacro and is sensitive to changes.
     public func register(
         init create: @escaping @Sendable @NodeActor () throws -> NodeValueConvertible
     ) -> OpaquePointer? {
@@ -13,6 +13,7 @@ public struct NodeModuleRegistrar {
         }
     }
 
+    @available(*, deprecated, message: "Use register(init:) instead.")
     public func register(
         exports create: @autoclosure @escaping @Sendable @NodeActor () throws -> NodeValueConvertible
     ) -> OpaquePointer? {
