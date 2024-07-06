@@ -92,8 +92,8 @@ final class NodeJSCTests: XCTestCase {
     }
 
     @NodeActor func testNodeClassGC() async throws {
-        var finalized1 = false
-        var finalized2 = false
+        nonisolated(unsafe) var finalized1 = false
+        nonisolated(unsafe) var finalized2 = false
         try autoreleasepool {
             let obj1 = MyClass { finalized1 = true }
             let obj2 = MyClass { finalized2 = true }
@@ -156,8 +156,8 @@ final class NodeJSCTests: XCTestCase {
 }
 
 @NodeClass final class MyClass {
-    let onDeinit: () -> Void
-    init(onDeinit: @escaping () -> Void) {
+    let onDeinit: @Sendable () -> Void
+    init(onDeinit: @escaping @Sendable () -> Void) {
         self.onDeinit = onDeinit
     }
 
