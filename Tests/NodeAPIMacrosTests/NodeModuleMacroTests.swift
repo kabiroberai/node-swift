@@ -45,6 +45,11 @@ final class NodeModuleMacrosTests: NodeMacroTest {
     }
 
     func testExports() {
+        // This MUST be rewritten to a closure because autoclosures appear to use
+        // caller isolation instead of callee isolation as of Swift 5.10. This means
+        // anything that requires @NodeActor isolation would otherwise fail.
+        //
+        // See: https://github.com/kabiroberai/node-swift/issues/26
         assertMacro {
             """
             #NodeModule(exports: ["foo": 1])

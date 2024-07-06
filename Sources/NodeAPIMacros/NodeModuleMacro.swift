@@ -15,6 +15,8 @@ struct NodeModuleMacro: DeclarationMacro {
         if node.arguments.count == 1,
            let argument = node.arguments.first,
            argument.label?.text == "exports" {
+            // wrap `exports:` argument in a closure to allow for NodeActor isolation.
+            // https://github.com/kabiroberai/node-swift/issues/26
             call = "NodeAPI.NodeModuleRegistrar(env).register { \(argument.expression) }"
         } else {
             call = CodeBlockItemSyntax(item: .expr(ExprSyntax(FunctionCallExprSyntax(
