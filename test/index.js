@@ -5,7 +5,10 @@ const { spawnSync } = require("child_process");
 process.chdir(__dirname);
 
 function usage() {
-    console.log("Usage: test [all|suite <suite name>]");
+    console.log("Usage: test [all | suite <suite name> | _suite <suite name>]");
+    console.log("     all: clean & run all tests");
+    console.log("   suite: clean & run suite with given name");
+    console.log("  _suite: run suite with given name without cleaning");
     process.exit(1);
 }
 
