@@ -164,6 +164,7 @@ final class NodeClassMacroTests: XCTestCase {
                     = NodeProperty(attributes: .enumerable, \_NodeSelf.y)
                 var z = 7
 
+                @NodeName("longerFooName")
                 func foo(_ x: String) async throws {
                     throw SomeError(x)
                 }
