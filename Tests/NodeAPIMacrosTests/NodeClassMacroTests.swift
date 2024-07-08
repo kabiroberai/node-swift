@@ -62,6 +62,42 @@ final class NodeClassMacroTests: XCTestCase {
         }
     }
 
+    func testCustomName() {
+        assertMacro {
+            #"""
+            @NodeClass final class Foo {
+                @NodeName("q")
+                @NodeProperty var x = 5
+                @NodeName(NodeSymbol.someGlobalSymbol)
+                @NodeProperty var y = 6
+                var z = 7
+
+                @NodeMethod func foo() {}
+                func bar() {}
+                @NodeMethod func baz() {}
+            }
+            """#
+        } expansion: {
+            """
+            final class Foo {
+                @NodeName("q")
+                @NodeProperty var x = 5
+                @NodeName(NodeSymbol.someGlobalSymbol)
+                @NodeProperty var y = 6
+                var z = 7
+
+                @NodeMethod func foo() {}
+                func bar() {}
+                @NodeMethod func baz() {}
+            }
+
+            extension Foo {
+                @NodeActor public static let properties: NodeClassPropertyList = ["q": $x, NodeSymbol.someGlobalSymbol: $y, "foo": $foo, "baz": $baz]
+            }
+            """
+        }
+    }
+
     func testNonClass() {
         assertMacro {
             #"""
@@ -98,6 +134,7 @@ final class NodeClassMacroTests: XCTestCase {
                 @NodeProperty(.enumerable) var y = "hello"
                 var z = 7
 
+                @NodeName("longerFooName")
                 @NodeMethod func foo(_ x: String) async throws {
                     throw SomeError(x)
                 }
@@ -157,7 +194,7 @@ final class NodeClassMacroTests: XCTestCase {
             }
 
             extension Foo {
-                @NodeActor public static let properties: NodeClassPropertyList = ["x": $x, "y": $y, "foo": $foo, "baz": $baz]
+                @NodeActor public static let properties: NodeClassPropertyList = ["x": $x, "y": $y, "longerFooName": $foo, "baz": $baz]
             }
             """#
         }
