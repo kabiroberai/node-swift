@@ -2,8 +2,6 @@ const fs = require("fs").promises;
 const builder = require("../lib/builder");
 const { spawnSync } = require("child_process");
 
-const CLEAN = process.env.CLEAN && process.env.CLEAN !== "0"
-
 process.chdir(__dirname);
 
 function usage() {
@@ -43,7 +41,7 @@ async function runAll() {
     switch (command) {
         case "all":
             if (process.argv.length > 3) usage();
-            if (CLEAN || CLEAN === undefined) await builder.clean();
+            await builder.clean();
             await runAll();
             break;
         case "_suite":
@@ -52,7 +50,7 @@ async function runAll() {
         case "suite":
             if (process.argv.length !== 4) usage();
             const suite = process.argv[3];
-            if (!isChild && CLEAN) await builder.clean();
+            if (!isChild) await builder.clean();
             await runSuite(suite, isChild);
             break;
         default:
