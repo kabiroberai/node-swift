@@ -116,6 +116,22 @@ public struct NodeDeferredValue: NodeValueConvertible, Sendable {
     }
 }
 
+// Utility for APIs that take NodeValueConvertible: useful when you
+// want to defer NodeValue creation to the API, for example for
+// accessing global or well-known Symbols.
+public struct NodeDeferredName: NodeValueConvertible, Sendable, NodeName {
+    let wrapper: @Sendable @NodeActor () throws -> NodeValue
+
+    // thread-safe
+    public init(_ wrapper: @escaping @Sendable @NodeActor () throws -> NodeValue) {
+        self.wrapper = wrapper
+    }
+
+    @NodeActor public func nodeValue() throws -> NodeValue {
+        try wrapper()
+    }
+}
+
 public protocol AnyNodeValueCreatable {
     @NodeActor static func from(_ value: NodeValue) throws -> Self?
 }
