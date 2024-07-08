@@ -8,5 +8,6 @@ import SwiftSyntaxMacros
         NodeConstructorMacro.self,
         NodeClassMacro.self,
         NodeModuleMacro.self,
+        NodeNameMacro.self,
     ]
 }

@@ -199,3 +199,7 @@ public macro NodeMethod(_: NodePropertyAttributes = .defaultMethod)
 @attached(peer, names: prefixed(`$`))
 public macro NodeProperty(_: NodePropertyAttributes = .defaultProperty)
     = #externalMacro(module: "NodeAPIMacros", type: "NodePropertyMacro")
+
+@attached(peer, names: prefixed(`$`))
+public macro NodeName(_: NodeName)
+    = #externalMacro(module: "NodeAPIMacros", type: "NodeNameMacro")

@@ -37,4 +37,8 @@ extension DiagnosticMessage where Self == NodeDiagnosticMessage {
     static var expectedInit: Self {
         .init("@NodeConstructor can only be applied to an initializer")
     }
+
+    static var expectedName: Self {
+        .init("@NodeName must have a name provided")
+    }
 }

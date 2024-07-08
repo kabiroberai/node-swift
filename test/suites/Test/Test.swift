@@ -58,4 +58,22 @@ final class File: NodeClass {
     }
 }
 
-#NodeModule(exports: ["File": File.deferredConstructor])
+final class SomeIterable: NodeClass {
+    typealias Element = String
+  
+    static let properties: NodeClassPropertyList = [
+        NodeSymbol.iterator: NodeMethod(nodeIterator),
+    ]
+
+    static let construct = NodeConstructor(SomeIterable.init(_:))
+    init(_ args: NodeArguments) throws { }
+
+    private let values: [String] = ["one", "two", "three"]
+  
+    func nodeIterator() throws -> NodeIterator {
+        values.nodeIterator()
+    }
+
+}
+
+#NodeModule(exports: ["File": File.deferredConstructor, "SomeIterable": SomeIterable.deferredConstructor])

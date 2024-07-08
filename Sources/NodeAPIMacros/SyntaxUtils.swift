@@ -1,14 +1,31 @@
 import SwiftSyntax
 
-extension AttributeListSyntax {
-    func hasAttribute(named name: String) -> Bool {
-        contains {
-            if case let .attribute(value) = $0 {
-                value.attributeName.as(IdentifierTypeSyntax.self)?.name.trimmed.text == name
-            } else {
-                false
-            }
+extension DeclSyntax {
+    var attributes: AttributeListSyntax? {
+        if let function = self.as(FunctionDeclSyntax.self) {
+            function.attributes
+        } else if let property = self.as(VariableDeclSyntax.self) {
+            property.attributes
+        } else {
+            nil
         }
+    }
+}
+
+extension AttributeListSyntax {
+    func findAttribute(named name: String) -> AttributeSyntax? {
+        lazy.compactMap { 
+            if case let .attribute(value) = $0 {
+                if value.attributeName.as(IdentifierTypeSyntax.self)?.name.trimmed.text == name {
+                    return value
+                }
+            }
+            return nil
+        }.first
+    }
+
+    func hasAttribute(named name: String) -> Bool {
+        findAttribute(named: name) != nil
     }
 }
 
