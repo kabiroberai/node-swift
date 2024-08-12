@@ -247,7 +247,7 @@ extension NodeProperty {
         self.init(
             attributes: attributes, 
             get: { try get(T.from(args: $0))() },
-            set: set.map { setter in
+            set: set.map { setter -> NodeFunction.VoidCallback in
                 { args in
                     guard args.count == 1 else {
                         throw NodeAPIError(.invalidArg, message: "Expected 1 argument to setter, got \(args.count)")

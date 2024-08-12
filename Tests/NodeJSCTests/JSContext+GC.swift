@@ -6,7 +6,7 @@ extension JSContext {
         JSSynchronousGarbageCollectForDebugging(jsGlobalContextRef)
     }
 
-    func debugGC() async {
+    @NodeActor func debugGC() async {
         // we have to executor-switch to ensure that any existing NodeContext.withContext
         // completes and protects escaped values before GCing
         await MainActor.run { debugGCSync() }

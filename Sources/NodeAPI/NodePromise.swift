@@ -112,8 +112,8 @@ extension NodePromise {
 
     public var value: AnyNodeValue {
         get async throws {
-            try await withCheckedThrowingContinuation {
-                get(completion: $0.resume)
+            try await withCheckedThrowingContinuation { continuation in
+                self.get { continuation.resume(with: $0) }
             }
         }
     }

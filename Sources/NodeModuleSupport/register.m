@@ -1,3 +1,4 @@
+@import Foundation;
 @import CNodeAPI;
 
 NAPI_MODULE_INIT() {
