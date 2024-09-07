@@ -2,7 +2,7 @@
 
 @dynamicMemberLookup
 @NodeActor public final class NodeEnvironment {
-    nonisolated(unsafe) let _raw: UncheckedSendable<napi_env>
+    let _raw: UncheckedSendable<napi_env>
     nonisolated var raw: napi_env { _raw.value }
 
     nonisolated init(_ raw: napi_env) {
