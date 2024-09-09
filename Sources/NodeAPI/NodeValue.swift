@@ -116,6 +116,22 @@ public struct NodeDeferredValue: NodeValueConvertible, Sendable {
     }
 }
 
+// Utility for APIs that take NodeValueConvertible: useful when you
+// want to defer NodeValue creation to the API, for example for
+// accessing global or well-known Symbols.
+public struct NodeDeferredName: NodeValueConvertible, Sendable, NodeName {
+    let wrapper: @Sendable @NodeActor () throws -> NodeValue
+
+    // thread-safe
+    public init(_ wrapper: @escaping @Sendable @NodeActor () throws -> NodeValue) {
+        self.wrapper = wrapper
+    }
+
+    @NodeActor public func nodeValue() throws -> NodeValue {
+        try wrapper()
+    }
+}
+
 public protocol AnyNodeValueCreatable {
     @NodeActor static func from(_ value: NodeValue) throws -> Self?
 }
@@ -166,13 +182,21 @@ extension NodeCallable {
     @discardableResult
     public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> AnyNodeValue {
         guard let fn = try self.as(NodeFunction.self) else {
-            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function")
+            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function: \(try debugDescription())")
         }
         return try fn.call(on: receiver, args)
     }
 
     public var new: NodeCallableConstructor {
         NodeCallableConstructor(callable: self)
+    }
+
+    internal func debugDescription() throws -> String {
+        let actual = "\(try self.nodeValue()) (\(self))"
+        if let dynamicProperty = self as? NodeObject.DynamicProperty {
+            return "\(receiver).\(dynamicProperty.key) is \(actual)"
+        }
+        return "is \(actual)"
     }
 }
 
@@ -182,7 +206,7 @@ extension NodeCallable {
     let callable: NodeCallable
     public func dynamicallyCall(withArguments args: [NodeValueConvertible]) throws -> NodeObject {
         guard let fn = try callable.as(NodeFunction.self) else {
-            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function")
+            throw NodeAPIError(.functionExpected, message: "Cannot call a non-function as constructor: \(try callable.debugDescription())")
         }
         return try fn.construct(withArguments: args)
     }

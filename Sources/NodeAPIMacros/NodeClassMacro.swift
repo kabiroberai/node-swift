@@ -31,9 +31,11 @@ struct NodeClassMacro: ExtensionMacro {
                     } else {
                         nil as TokenSyntax?
                     }
+                
                 if let identifier = identifier?.trimmed {
+                    let key = member.decl.attributes?.findAttribute(named: "NodeName")?.nodeAttributes ?? "\(literal: identifier.text)" as ExprSyntax
                     DictionaryElementSyntax(
-                        key: "\(literal: identifier.text)" as ExprSyntax,
+                        key: key,
                         value: "$\(identifier)" as ExprSyntax
                     )
                 }
