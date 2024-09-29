@@ -134,7 +134,7 @@ final class NodeClassMacroTests: XCTestCase {
                 @NodeActor static let $foo
                     = NodeMethod(attributes: .defaultMethod, {
                         $0.foo
-                    } as (_NodeSelf) -> (String) async throws -> Void)
+                    } as (_NodeSelf) -> @NodeActor (String) async throws -> Void)
 
                 func bar() {}
 
@@ -146,14 +146,14 @@ final class NodeClassMacroTests: XCTestCase {
                 @NodeActor static let $baz
                     = NodeMethod(attributes: .defaultMethod, {
                         $0.baz
-                    } as (_NodeSelf) -> (Bool) async throws -> any NodeValueConvertible)
+                    } as (_NodeSelf) -> @NodeActor (Bool) async throws -> any NodeValueConvertible)
 
                 init(x: Int) throws {
                     self.x = x
                 }
 
                 @NodeActor public static let construct
-                    = NodeConstructor(_NodeSelf.init(x:) as (Int) throws -> _NodeSelf)
+                    = NodeConstructor(_NodeSelf.init(x:) as @NodeActor (Int) throws -> _NodeSelf)
             }
 
             extension Foo {

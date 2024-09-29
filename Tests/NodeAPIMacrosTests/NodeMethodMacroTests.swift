@@ -15,7 +15,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () -> Void)
+                } as (_NodeSelf) -> @NodeActor () -> Void)
             """
         }
     }
@@ -51,7 +51,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () -> Void)
+                } as (_NodeSelf) -> @NodeActor () -> Void)
             """
         }
     }
@@ -73,7 +73,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .writable, {
                     $0.foo
-                } as (_NodeSelf) -> () -> Void)
+                } as (_NodeSelf) -> @NodeActor () -> Void)
             """
         }
     }
@@ -95,7 +95,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () -> Void)
+                } as (_NodeSelf) -> @NodeActor () -> Void)
             """
         }
     }
@@ -117,7 +117,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () async throws -> Void)
+                } as (_NodeSelf) -> @NodeActor () async throws -> Void)
             """
         }
     }
@@ -146,7 +146,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () throws(CancellationError) -> Void)
+                } as (_NodeSelf) -> @NodeActor () throws(CancellationError) -> Void)
             """
         }
     }
@@ -168,7 +168,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> () throws -> String)
+                } as (_NodeSelf) -> @NodeActor () throws -> String)
             """
         }
     }
@@ -190,7 +190,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> (Int) async -> String)
+                } as (_NodeSelf) -> @NodeActor (Int) async -> String)
             """#
         }
     }
@@ -212,7 +212,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             @NodeActor static let $foo
                 = NodeMethod(attributes: .defaultMethod, {
                     $0.foo
-                } as (_NodeSelf) -> (Int, Double) throws -> Void)
+                } as (_NodeSelf) -> @NodeActor (Int, Double) throws -> Void)
             """#
         }
     }
@@ -232,7 +232,7 @@ final class NodeMethodMacrosTests: NodeMacroTest {
             }
 
             @NodeActor static let $foo
-                = NodeMethod(attributes: .defaultMethod, _NodeSelf.foo as (Int) throws -> String)
+                = NodeMethod(attributes: .defaultMethod, _NodeSelf.foo as @NodeActor (Int) throws -> String)
             """#
         }
     }

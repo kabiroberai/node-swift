@@ -12,7 +12,7 @@ final class NodeConstructorMacroTests: NodeMacroTest {
             init() {}
 
             @NodeActor public static let construct
-                = NodeConstructor(_NodeSelf.init as () -> _NodeSelf)
+                = NodeConstructor(_NodeSelf.init as @NodeActor () -> _NodeSelf)
             """
         }
     }
@@ -41,7 +41,7 @@ final class NodeConstructorMacroTests: NodeMacroTest {
             init() async throws {}
 
             @NodeActor public static let construct
-                = NodeConstructor(_NodeSelf.init as () async throws -> _NodeSelf)
+                = NodeConstructor(_NodeSelf.init as @NodeActor () async throws -> _NodeSelf)
             """
         }
     }
@@ -60,7 +60,7 @@ final class NodeConstructorMacroTests: NodeMacroTest {
             }
 
             @NodeActor public static let construct
-                = NodeConstructor(_NodeSelf.init(_:y:) as (Int, String) -> _NodeSelf)
+                = NodeConstructor(_NodeSelf.init(_:y:) as @NodeActor (Int, String) -> _NodeSelf)
             """
         }
     }
