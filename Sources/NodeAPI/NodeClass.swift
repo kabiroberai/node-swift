@@ -241,6 +241,7 @@ extension NodeMethod {
 extension NodeProperty {
     public init<T: NodeClass>(
         attributes: NodePropertyAttributes = .defaultProperty,
+        of _: T.Type = T.self,
         get: @escaping (T) -> @NodeActor () throws -> NodeValueConvertible,
         set: ((T) -> @NodeActor (NodeValue) throws -> Void)? = nil
     ) {
@@ -260,6 +261,7 @@ extension NodeProperty {
 
     public init<T: NodeClass, U: NodeValueConvertible>(
         attributes: NodePropertyAttributes = .defaultProperty,
+        of _: T.Type = T.self,
         get: @escaping (T) -> @NodeActor () throws -> U
     ) {
         self.init(
@@ -270,6 +272,7 @@ extension NodeProperty {
 
     public init<T: NodeClass, U: NodeValueConvertible & AnyNodeValueCreatable>(
         attributes: NodePropertyAttributes = .defaultProperty,
+        of _: T.Type = T.self,
         get: @escaping (T) -> @NodeActor () throws -> U,
         set: @escaping (T) -> @NodeActor (U) throws -> Void
     ) {

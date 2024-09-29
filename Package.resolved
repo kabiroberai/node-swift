@@ -1,4 +1,5 @@
 {
+  "originHash" : "3ae1f16f36baf09c4d4de408f60142a9de3e47fa45813b15ec84d56473a77e05",
   "pins" : [
     {
       "identity" : "swift-macro-testing",
@@ -23,10 +24,10 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "4c6cc0a3b9e8f14b3ae2307c5ccae4de6167ac2c",
-        "version" : "600.0.0-prerelease-2024-06-12"
+        "revision" : "0687f71944021d616d34d922343dcef086855920",
+        "version" : "600.0.1"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

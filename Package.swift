@@ -1,14 +1,10 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 
 import PackageDescription
 import CompilerPluginSupport
 import Foundation
 
 let buildDynamic = ProcessInfo.processInfo.environment["NODE_SWIFT_BUILD_DYNAMIC"] == "1"
-
-let baseSwiftSettings: [SwiftSetting] = [
-    .enableExperimentalFeature("StrictConcurrency"),
-]
 
 let package = Package(
     name: "node-swift",
@@ -31,7 +27,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", "509.0.0"..<"601.0.0-prerelease"),
+        .package(url: "https://github.com/apple/swift-syntax.git", "509.0.0"..<"601.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-macro-testing.git", .upToNextMinor(from: "0.4.2")),
     ],
     targets: [
@@ -55,13 +51,11 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ],
-            swiftSettings: baseSwiftSettings
+            ]
         ),
         .target(
             name: "NodeAPI",
-            dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"],
-            swiftSettings: baseSwiftSettings
+            dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"]
         ),
         .target(
             name: "NodeModuleSupport",
@@ -79,5 +73,6 @@ let package = Package(
             ]
         ),
     ],
+    swiftLanguageModes: [.v5, .v6],
     cxxLanguageStandard: .cxx17
 )
