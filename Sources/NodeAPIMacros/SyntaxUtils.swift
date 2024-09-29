@@ -73,6 +73,16 @@ extension VariableDeclSyntax {
     }
 }
 
+extension TokenSyntax {
+    var textWithoutBackticks: String {
+        var text = text
+        if text.count >= 2 && text.first == "`" && text.last == "`" {
+            text = String(text.dropFirst().dropLast())
+        }
+        return text
+    }
+}
+
 #if !canImport(SwiftSyntax510)
 extension FreestandingMacroExpansionSyntax {
     var arguments: LabeledExprListSyntax {

@@ -31,10 +31,10 @@ struct NodeClassMacro: ExtensionMacro {
                     } else {
                         nil as TokenSyntax?
                     }
-                if let identifier = identifier?.trimmed {
+                if let identifier = identifier?.trimmed.textWithoutBackticks {
                     DictionaryElementSyntax(
-                        key: "\(literal: identifier.text)" as ExprSyntax,
-                        value: "$\(identifier)" as ExprSyntax
+                        key: "\(literal: identifier)" as ExprSyntax,
+                        value: "$\(raw: identifier)" as ExprSyntax
                     )
                 }
             }

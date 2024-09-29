@@ -48,6 +48,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodePropertyAttributes = .defaultMethod,
+        of _: T.Type = T.self,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
@@ -60,6 +61,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodePropertyAttributes = .defaultMethod,
+        of _: T.Type = T.self,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) throws -> Void
     ) {
         self.init(attributes: attributes) { (target: T) in
@@ -72,6 +74,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodePropertyAttributes = .defaultMethod,
+        of _: T.Type = T.self,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) async throws -> NodeValueConvertible
     ) {
         self.init(attributes: attributes) { (target: T) in
@@ -84,6 +87,7 @@ extension NodeMethod {
 
     public init<T: NodeClass, each A: AnyNodeValueCreatable>(
         attributes: NodePropertyAttributes = .defaultMethod,
+        of _: T.Type = T.self,
         _ callback: @escaping (T) -> @NodeActor (repeat each A) async throws -> Void
     ) {
         self.init(attributes: attributes) { (target: T) in

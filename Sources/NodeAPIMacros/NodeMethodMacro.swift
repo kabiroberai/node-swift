@@ -19,13 +19,13 @@ struct NodeMethodMacro: PeerMacro {
         let sig = function.signature
 
         let val: ExprSyntax = if function.modifiers.hasKeyword(.static) {
-            "_NodeSelf.\(function.name) as \(sig.functionType)"
+            "_NodeSelf.\(function.name) as @NodeActor \(sig.functionType)"
         } else {
-            "{ $0.\(function.name) } as (_NodeSelf) -> \(sig.functionType)"
+            "{ $0.\(function.name) } as (_NodeSelf) -> @NodeActor \(sig.functionType)"
         }
 
         return ["""
-        @NodeActor static let $\(function.name)
+        @NodeActor static let $\(raw: function.name.textWithoutBackticks)
             = NodeMethod(attributes: \(attributes), \(val))
         """]
     }
