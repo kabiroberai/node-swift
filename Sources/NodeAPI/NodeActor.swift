@@ -30,12 +30,12 @@ private final class NodeExecutor: SerialExecutor {
     private let schedulerQueue = DispatchQueue(label: "NodeExecutorScheduler")
 
     fileprivate init() {
-        if #unavailable(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0) {
-            // checkExecutor isn't respected prior to these OS versions, so
-            // we end up with a lot of false alarms. Disable unexpected executor
-            // checking to suppress this.
-            setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
-        }
+        // Swift often thinks that we're on the wrong executor, so we end up
+        // with a lot of false alarms. This is what `checkIsolation` ostensibly
+        // mitigates, but that method doesn't seem to be called in many
+        // circumstances (pre macOS 15, but also on macOS 15 if the host node binary
+        // is built with an older SDK.) Best we can do is disable the checks for now.
+        setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
     }
 
     func enqueue(_ job: UnownedJob) {
