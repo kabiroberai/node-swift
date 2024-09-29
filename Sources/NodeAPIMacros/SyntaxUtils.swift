@@ -76,7 +76,7 @@ extension VariableDeclSyntax {
 extension TokenSyntax {
     var textWithoutBackticks: String {
         var text = text
-        if text.hasPrefix("`") && text.hasSuffix("`") {
+        if text.count >= 2 && text.hasPrefix("`") && text.hasSuffix("`") {
             text = String(text.dropFirst().dropLast())
         }
         return text
