@@ -90,6 +90,38 @@ final class NodeClassMacroTests: XCTestCase {
         }
     }
 
+    func testEscaping() {
+        assertMacro(.node) {
+            #"""
+            @NodeClass final class Escaping {
+                @NodeProperty var `case` = 0
+            
+                @NodeMethod func `default`() {}
+            }
+            """#
+        } expansion: {
+            #"""
+            final class Escaping {
+                var `case` = 0
+
+                @NodeActor static let $case
+                    = NodeProperty(attributes: .defaultProperty, \_NodeSelf.`case`)
+
+                func `default`() {}
+
+                @NodeActor static let $default
+                    = NodeMethod(attributes: .defaultMethod, {
+                        $0.`default`
+                    } as (_NodeSelf) -> @NodeActor () -> Void)
+            }
+
+            extension Escaping {
+                @NodeActor public static let properties: NodeClassPropertyList = ["case": $case, "default": $default]
+            }
+            """#
+        }
+    }
+
     func testIntegration() {
         assertMacro(.node) {
             #"""
