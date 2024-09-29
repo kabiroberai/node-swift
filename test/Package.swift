@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:6.0
 
 import PackageDescription
 import Foundation
@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [.package(name: "node-swift", path: nodeSwiftPath)]
 )
 
-func addSuite(_ suite: String) {
+@MainActor func addSuite(_ suite: String) {
     package.products.append(.library(
         name: suite,
         type: .dynamic,

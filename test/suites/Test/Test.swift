@@ -1,17 +1,21 @@
 import Foundation
 import NodeAPI
 
-final class File: NodeClass {
-    static let properties: NodeClassPropertyList = [
-        "contents": NodeProperty(get: contents, set: setContents),
-        "unlink": NodeMethod(unlink),
-        "default": NodeMethod(attributes: .static, `default`),
-        "filename": NodeProperty(get: filename),
-        "reply": NodeMethod(reply),
-        "x": NodeProperty(\File.x),
+@NodeClass @NodeActor final class File {
+    static let extraProperties: NodeClassPropertyList = [
+        "contents": NodeProperty(
+            of: File.self,
+            get: { $0.contents },
+            set: { $0.setContents }
+        ),
+        "filename": NodeProperty(
+            of: File.self,
+            get: { $0.filename }
+        ),
     ]
 
-    nonisolated(unsafe) var x: Int = 0
+    @NodeProperty
+    var x: Int = 0
 
     let url: URL
 
@@ -19,19 +23,13 @@ final class File: NodeClass {
         self.url = url
     }
 
-    init(_ args: NodeArguments) throws {
-        guard let path = try args[0].as(String.self) else {
-            throw try NodeError(
-                typeErrorCode: "ERR_INVALID_ARG_TYPE",
-                message: "Expected string"
-            )
-        }
+    @NodeConstructor
+    init(_ path: String) {
         url = URL(fileURLWithPath: path)
     }
 
-    static let construct = NodeConstructor(File.init(_:))
-
-    static func `default`(_ args: NodeArguments) throws -> NodeValueConvertible {
+    @NodeMethod
+    static func `default`() throws -> NodeValueConvertible {
         return try File(url: URL(fileURLWithPath: "default.txt")).wrapped()
     }
 
@@ -48,10 +46,12 @@ final class File: NodeClass {
     }
 
     // unrelated to files but an important test nonetheless
+    @NodeMethod
     func reply(_ parameter: String?) -> String {
         "You said \(parameter ?? "nothing")"
     }
 
+    @NodeMethod
     func unlink() throws -> NodeValueConvertible {
         try FileManager.default.removeItem(at: url)
         return undefined
