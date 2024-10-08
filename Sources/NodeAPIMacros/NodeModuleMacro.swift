@@ -1,3 +1,4 @@
+import Foundation
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -30,14 +31,18 @@ struct NodeModuleMacro: DeclarationMacro {
         }
 
         let start = context.location(of: node, at: .afterLeadingTrivia, filePathMode: .filePath)!
+        
+        // Escape backslashes on Windows
+        let escapedFilePath = start.file.description
+            .replacingOccurrences(of: "\\", with: "\\\\")
 
-        return ["""
+        return [DeclSyntax(stringLiteral: """
         @_cdecl("node_swift_register")
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
-            #sourceLocation(file: \(start.file), line: \(start.line))
+            #sourceLocation(file: "\(escapedFilePath)", line: \(start.line))
         \(call)
             #sourceLocation()
         }
-        """]
+        """)]
     }
 }
