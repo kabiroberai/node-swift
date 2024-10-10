@@ -1,6 +1,10 @@
 import Foundation
 import CNodeAPISupport
 @_implementationOnly import CNodeAPI
+#if os(Windows)
+    import WinSDK
+#endif
+
 
 extension NodeContext {
     // if we're on a node thread, run `action` on it
@@ -35,7 +39,11 @@ private final class NodeExecutor: SerialExecutor {
         // mitigates, but that method doesn't seem to be called in many
         // circumstances (pre macOS 15, but also on macOS 15 if the host node binary
         // is built with an older SDK.) Best we can do is disable the checks for now.
-        setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
+        #if os(Windows)
+            SetEnvironmentVariableA("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0")
+        #else
+            setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
+        #endif
     }
 
     func enqueue(_ job: UnownedJob) {
