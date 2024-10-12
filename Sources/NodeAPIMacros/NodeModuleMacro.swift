@@ -43,13 +43,13 @@ struct NodeModuleMacro: DeclarationMacro {
         }
         #endif
 
-        return [DeclSyntax(stringLiteral: """
+        return ["""
         @_cdecl("node_swift_register")
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
             #sourceLocation(file: \(file), line: \(start.line))
         \(call)
             #sourceLocation()
         }
-        """)]
+        """]
     }
 }
