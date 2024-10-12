@@ -1,4 +1,4 @@
-#import <stdint.h>
+#include <stdint.h>
 #include "../../CNodeAPI/vendored/node_api.h"
 
 NAPI_MODULE_INIT() {
