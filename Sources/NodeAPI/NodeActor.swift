@@ -32,10 +32,12 @@ private final class NodeExecutor: SerialExecutor {
     fileprivate init() {
         // Swift often thinks that we're on the wrong executor, so we end up
         // with a lot of false alarms. This is what `checkIsolation` ostensibly
-        // mitigates, but that method doesn't seem to be called in many
+        // mitigates, but on Darwin that method doesn't seem to be called in many
         // circumstances (pre macOS 15, but also on macOS 15 if the host node binary
         // is built with an older SDK.) Best we can do is disable the checks for now.
+        #if canImport(Darwin)
         setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
+        #endif
     }
 
     func enqueue(_ job: UnownedJob) {

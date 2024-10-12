@@ -1,5 +1,5 @@
-@import Foundation;
-@import CNodeAPI;
+#include <stdint.h>
+#include "../../CNodeAPI/vendored/node_api.h"
 
 NAPI_MODULE_INIT() {
     napi_value node_swift_register(napi_env);
