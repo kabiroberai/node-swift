@@ -1,4 +1,3 @@
-import Foundation
 import SwiftSyntax
 import SwiftSyntaxMacros
 
@@ -31,15 +30,23 @@ struct NodeModuleMacro: DeclarationMacro {
         }
 
         let start = context.location(of: node, at: .afterLeadingTrivia, filePathMode: .filePath)!
-        
-        // Escape backslashes on Windows
-        let escapedFilePath = start.file.description
-            .replacingOccurrences(of: "\\", with: "\\\\")
+        var file = start.file
+        #if os(Windows)
+        // on Windows, the literal will use raw string syntax by default:
+        // along the lines of #"C:\Users\..."#. But sourceLocation doesn't
+        // like this, so extract the underlying string and re-encode it
+        // as an escaped string instead: "C:\\Users\\..."
+        if let literal = file.as(StringLiteralExprSyntax.self),
+           literal.openingPounds != nil,
+           let raw = literal.representedLiteralValue {
+            file = "\"\(raw: raw.replacing("\\", with: "\\\\"))\""
+        }
+        #endif
 
         return [DeclSyntax(stringLiteral: """
         @_cdecl("node_swift_register")
         public func \(name)(env: Swift.OpaquePointer) -> Swift.OpaquePointer? {
-            #sourceLocation(file: "\(escapedFilePath)", line: \(start.line))
+            #sourceLocation(file: \(file), line: \(start.line))
         \(call)
             #sourceLocation()
         }
