@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 // TODO: Can we implement NodeArrayBuffer as a collection and make
 // DataView its slice? How would that interact with typed arrays?

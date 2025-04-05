@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 @dynamicMemberLookup
 @NodeActor public final class NodeEnvironment {

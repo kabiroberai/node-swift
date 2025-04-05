@@ -2717,7 +2717,10 @@ static napi_status bigint_to_string(napi_env env, napi_value value, std::string 
   JSString js_string{ToJSString(env, value, &exception)};
   CHECK_JSC(env, exception);
 
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wvla"
   char buf[js_string.LengthUTF8()];
+  #pragma clang diagnostic pop
   js_string.CopyToUTF8(buf, sizeof(buf), nullptr);
   string = std::string { buf };
   return napi_ok;

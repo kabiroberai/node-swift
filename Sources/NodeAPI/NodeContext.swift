@@ -1,6 +1,6 @@
 import Foundation
 import CNodeAPISupport
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 extension NodeEnvironment {
     @NodeInstanceData private static var defaultQueue: NodeAsyncQueue?

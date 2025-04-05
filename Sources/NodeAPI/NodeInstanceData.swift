@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 typealias InstanceDataBox = Box<[ObjectIdentifier: Any]>
 

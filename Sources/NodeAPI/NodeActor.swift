@@ -1,6 +1,6 @@
 import Foundation
 import CNodeAPISupport
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 extension NodeContext {
     // if we're on a node thread, run `action` on it
