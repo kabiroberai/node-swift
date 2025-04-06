@@ -3,6 +3,27 @@ import CNodeAPISupport
 internal import CNodeAPI
 
 extension NodeAsyncQueue {
+    fileprivate enum GlobalQueueStatus: Sendable {
+        // we haven't seen _any_ `NodeEnvironment`s yet
+        case unset
+
+        // we've seen a single NodeEnvironment, and here is
+        // its default queue
+        case single(NodeAsyncQueue)
+
+        // we've seen multiple `NodeEnvironment`s. we don't
+        // offer a default queue in this case since there is
+        // ambiguity due to there being multiple options.
+        case multiple
+
+        var value: NodeAsyncQueue? {
+            switch self {
+            case .unset, .multiple: nil
+            case .single(let q): q
+            }
+        }
+    }
+
     fileprivate static let globalDefaultQueueLock = Lock()
 
     // Note that this is NOT a Handle, which means that the global default
@@ -10,11 +31,11 @@ extension NodeAsyncQueue {
     // mean that Node might die unexpectedly if the only remaining enqueues are
     // on the global default. One should leverage structured concurrency or
     // explicit `Handle`s if this is an issue.
-    fileprivate nonisolated(unsafe) static var _globalDefaultQueue: NodeAsyncQueue?
+    fileprivate nonisolated(unsafe) static var _globalDefaultQueue = GlobalQueueStatus.unset
 
     static var globalDefaultQueue: NodeAsyncQueue? {
         globalDefaultQueueLock.withLock {
-            _globalDefaultQueue
+            _globalDefaultQueue.value
         }
     }
 }
@@ -26,8 +47,13 @@ extension NodeEnvironment {
         let q = try NodeAsyncQueue(label: "NAPI_SWIFT_EXECUTOR")
         Self.defaultQueue = q
         NodeAsyncQueue.globalDefaultQueueLock.withLock {
-            if NodeAsyncQueue._globalDefaultQueue == nil {
-                NodeAsyncQueue._globalDefaultQueue = q
+            switch NodeAsyncQueue._globalDefaultQueue {
+            case .unset:
+                NodeAsyncQueue._globalDefaultQueue = .single(q)
+            case .single:
+                NodeAsyncQueue._globalDefaultQueue = .multiple
+            case .multiple:
+                break
             }
         }
         return q
