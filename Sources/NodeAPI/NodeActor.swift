@@ -1,5 +1,4 @@
 import Foundation
-import CNodeAPISupport
 internal import CNodeAPI
 
 extension NodeContext {
@@ -7,21 +6,6 @@ extension NodeContext {
     static func runOnActor<T>(_ action: @NodeActor @Sendable () throws -> T) rethrows -> T? {
         guard NodeContext.hasCurrent else { return nil }
         return try NodeActor.unsafeAssumeIsolated(action)
-    }
-}
-
-@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
-extension UnownedJob {
-    func asCurrent<T>(work: () -> T) -> T {
-        withoutActuallyEscaping(work) { work in
-            var result: T!
-            node_swift_as_current_task(unsafeBitCast(self, to: OpaquePointer.self), { ctx in
-                Unmanaged<Box<() -> Void>>.fromOpaque(ctx).takeRetainedValue().value()
-            }, Unmanaged.passRetained(Box<() -> Void> {
-                result = work()
-            }).toOpaque())
-            return result
-        }
     }
 }
 
@@ -46,29 +30,7 @@ private final class NodeExecutor: SerialExecutor {
         // NodeExecutor.enqueue is invoked with the same isolation as the caller,
         // which means we can simply read out the TaskLocal value to obtain
         // this.
-        let target: NodeAsyncQueue.Handle?
-        #if compiler(>=6.0)
-        target = NodeActor.target
-        #else
-        // It's a bit trickier in Swift <= 5.10 as Swift first makes a hop to the
-        // global executor before invoking this method. So instead we have to use
-        // some runtime spelunking to read the TaskLocal value from `job`.
-        // To do so, we temporarily swap ResumeTask for our own function.
-        // Then, swift_job_run is called, which sets the active task to
-        // the receiver and invokes its ResumeTask. We then execute the
-        // given closure, allowing us to grab task-local values. Finally,
-        // we "suspend" the task and return ResumeTask to its old value.
-        //
-        // on Darwin we can instead replace the "current task" thread-local
-        // (key 103) temporarily, but that isn't portable.
-        //
-        // This is sort of like inserting a "work(); await Task.yield()" block
-        // at the top of the task, since when a Task awaits it similarly changes
-        // the Resume function and suspends. Note that we can assume that this
-        // is a Task and not a basic Job, because Executor.enqueue is only
-        // called from swift_task_enqueue.
-        target = job.asCurrent { NodeActor.target }
-        #endif
+        let target = NodeActor.target
 
         guard let q = target?.queue else {
             nodeFatalError("There is no target NodeAsyncQueue associated with this Task")
