@@ -55,6 +55,12 @@ final class CleanupHandler: Sendable {
         try print(Node.run(script: "1+1"))
     }
 
+    // this should run on the default global NodeAsyncQueue
+    Task.detached { @Sendable @NodeActor in
+        try await Task.sleep(nanoseconds: 1 * NSEC_PER_SEC)
+        try print("Detached 1+1 = \(Node.run(script: "1+1"))")
+    }
+
     let promise = try NodePromise {
         try await Task.sleep(nanoseconds: 2 * NSEC_PER_SEC)
         return 5
