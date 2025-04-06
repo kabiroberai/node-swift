@@ -2,12 +2,34 @@ import Foundation
 import CNodeAPISupport
 internal import CNodeAPI
 
+extension NodeAsyncQueue {
+    fileprivate static let globalDefaultQueueLock = Lock()
+
+    // Note that this is NOT a Handle, which means that the global default
+    // doesn't keep Node.js alive (otherwise it would live forever.) This does
+    // mean that Node might die unexpectedly if the only remaining enqueues are
+    // on the global default. One should leverage structured concurrency or
+    // explicit `Handle`s if this is an issue.
+    fileprivate nonisolated(unsafe) static var _globalDefaultQueue: NodeAsyncQueue?
+
+    static var globalDefaultQueue: NodeAsyncQueue? {
+        globalDefaultQueueLock.withLock {
+            _globalDefaultQueue
+        }
+    }
+}
+
 extension NodeEnvironment {
     @NodeInstanceData private static var defaultQueue: NodeAsyncQueue?
     func getDefaultQueue() throws -> NodeAsyncQueue {
         if let q = Self.defaultQueue { return q }
         let q = try NodeAsyncQueue(label: "NAPI_SWIFT_EXECUTOR")
         Self.defaultQueue = q
+        NodeAsyncQueue.globalDefaultQueueLock.withLock {
+            if NodeAsyncQueue._globalDefaultQueue == nil {
+                NodeAsyncQueue._globalDefaultQueue = q
+            }
+        }
         return q
     }
 }

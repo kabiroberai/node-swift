@@ -30,10 +30,20 @@ private final class NodeExecutor: SerialExecutor {
         // NodeExecutor.enqueue is invoked with the same isolation as the caller,
         // which means we can simply read out the TaskLocal value to obtain
         // this.
-        let target = NodeActor.target
+        //
+        // If there is no task-local value, try the global default, which is saved
+        // the first time we enter a Node context.
 
-        guard let q = target?.queue else {
-            nodeFatalError("There is no target NodeAsyncQueue associated with this Task")
+        let q: NodeAsyncQueue
+        if let target = NodeActor.target {
+            q = target.queue
+        } else if let globalQueue = NodeAsyncQueue.globalDefaultQueue {
+            q = globalQueue
+        } else {
+            nodeFatalError("""
+            There is no target NodeAsyncQueue associated with this Task, \
+            and there is no global default queue.
+            """)
         }
 
         let ref = self.asUnownedSerialExecutor()
