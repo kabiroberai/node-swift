@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 public struct NodeAPIError: Error {
     public enum Code: Sendable {

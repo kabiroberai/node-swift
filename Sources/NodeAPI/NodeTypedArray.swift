@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 public enum NodeTypedArrayKind {
     struct UnknownKindError: Error {

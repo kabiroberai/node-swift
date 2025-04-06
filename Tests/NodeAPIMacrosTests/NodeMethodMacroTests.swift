@@ -123,13 +123,6 @@ final class NodeMethodMacrosTests: NodeMacroTest {
     }
 
     func testTypedThrows() throws {
-        let isSwift6: Bool
-        #if canImport(SwiftSyntax600)
-        isSwift6 = true
-        #else
-        isSwift6 = false
-        #endif
-        try XCTSkipUnless(isSwift6, "Typed throws requires SwiftSyntax 600")
         assertMacro {
             """
             @NodeMethod

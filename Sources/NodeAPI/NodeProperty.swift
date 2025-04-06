@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 private func cCallback(rawEnv: napi_env!, info: napi_callback_info!, isGetter: Bool) -> napi_value? {
     let info = UncheckedSendable(info)

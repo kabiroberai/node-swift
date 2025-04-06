@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 extension AnyNodeValue {
     private static let exceptionKey = NodeWrappedDataKey<Error>()

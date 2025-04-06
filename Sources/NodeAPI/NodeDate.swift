@@ -1,5 +1,5 @@
 import Foundation
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 public final class NodeDate: NodeObject {
 

@@ -52,17 +52,10 @@ extension FunctionSignatureSyntax {
 
 extension FunctionEffectSpecifiersSyntax {
     var typeEffectSpecifiers: TypeEffectSpecifiersSyntax {
-        #if canImport(SwiftSyntax600)
         TypeEffectSpecifiersSyntax(
             asyncSpecifier: asyncSpecifier,
             throwsClause: throwsClause
         )
-        #else
-        TypeEffectSpecifiersSyntax(
-            asyncSpecifier: asyncSpecifier,
-            throwsSpecifier: throwsSpecifier
-        )
-        #endif
     }
 }
 
@@ -82,11 +75,3 @@ extension TokenSyntax {
         return text
     }
 }
-
-#if !canImport(SwiftSyntax510)
-extension FreestandingMacroExpansionSyntax {
-    var arguments: LabeledExprListSyntax {
-        argumentList
-    }
-}
-#endif

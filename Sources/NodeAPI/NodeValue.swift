@@ -1,4 +1,4 @@
-@_implementationOnly import CNodeAPI
+internal import CNodeAPI
 
 @_spi(NodeAPI) @NodeActor public final class NodeValueBase {
     private enum Guts: @unchecked Sendable {
