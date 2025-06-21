@@ -1,6 +1,6 @@
 const assert = require("assert");
 
-const { File } = require("../../.build/Test.node");
+const { File } = require("../../../.build/Test.node");
 
 assert.strictEqual(File.default().filename, "default.txt")
 
