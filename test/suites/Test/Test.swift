@@ -56,6 +56,17 @@ import NodeAPI
         try FileManager.default.removeItem(at: url)
         return undefined
     }
+
+    @NodeMethod
+    func mainActorMethod() async -> String {
+        await Task { @MainActor in
+            await Task.yield()
+            return "Message from main actor"
+        }.value
+    }
 }
 
-#NodeModule(exports: ["File": File.deferredConstructor])
+#NodeModule {
+    UV.setup()
+    return ["File": File.deferredConstructor]
+}
