@@ -4,13 +4,33 @@ import Foundation
 import CNodeAPISupport
 
 public enum UV {
-    @MainActor private static let setupOnce: Void = _setup()
+    // would ideally be marked @MainActor but we can't prove that
+    // MainActor == NodeActor, because the runtime notices that the Node actor
+    // is active when it runs (although this is also on the main thread...),
+    // causing MainActor.assumeIsolated to abort.
+    private nonisolated(unsafe) static var cancelHandlers: (() -> Void)?
+    private nonisolated(unsafe) static var shouldContinue = true
 
-    @NodeActor public static func setup() {
-        MainActor.assumeIsolated { _ = setupOnce }
+    @NodeActor public static func enable() {
+        if cancelHandlers == nil {
+            cancelHandlers = _enable()
+        }
     }
 
-    @MainActor private static func _setup() {
+    public static func disable() {
+        if Thread.isMainThread {
+            _disable()
+        } else {
+            Task { @MainActor in _disable() }
+        }
+    }
+
+    private static func _disable() {
+        cancelHandlers?()
+        cancelHandlers = nil
+    }
+
+    private static func _enable() -> (() -> Void) {
         // By default, node takes over the main thread with an indefinite uv_run().
         // This causes CFRunLoop sources to not be processed (also breaking GCD & MainActor)
         // since the CFRunLoop never gets ticked. We instead need to flip things on their
@@ -26,13 +46,15 @@ public enum UV {
         // https://github.com/indutny/node-cf/blob/de90092bb65bbdb6acbd0b00e18a360028b815f5/src/cf.cc
         // [SpinEventLoopInternal]: https://github.com/nodejs/node/blob/11222f1a272b9b2ab000e75cbe3e09942bd2d877/src/api/embed_helpers.cc#L41
 
+        UV.shouldContinue = true
+
         let loop = uv_default_loop()
         let fd = uv_backend_fd(loop)
 
         let reader = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
         let timer = DispatchSource.makeTimerSource(queue: .main)
 
-        let wakeUpUV = {
+        nonisolated(unsafe) let wakeUpUV = {
             let runResult = uv_run(loop, UV_RUN_NOWAIT)
             guard runResult != 0 else { return }
 
@@ -53,7 +75,7 @@ public enum UV {
         // Now that we've set up the CF/GCD sources, we need to
         // start the CFRunLoop. Ideally, we'd patch the Node.js
         // source to 1) perform the above setup and 2) replace
-        // its uv_run with CFRunLoopRun: insertion point would
+        // its uv_run with RunLoop.run: insertion point would
         // be [SpinEventLoopInternal] linked above.
         // However, the hacky alternative (while avoiding the need
         // to patch Node) is to kick off the CFRunLoop inside the next
@@ -72,9 +94,16 @@ public enum UV {
             alignment: MemoryLayout<max_align_t>.alignment
         ))
         uv_async_init(loop, uvAsync) { _ in
-            RunLoop.main.run()
+            while UV.shouldContinue && RunLoop.main.run(mode: .default, before: .distantFuture) {}
         }
         uv_async_send(uvAsync)
+
+        return {
+            reader.cancel()
+            timer.cancel()
+            uv_close(uvAsync, nil)
+            UV.shouldContinue = false
+        }
     }
 }
 

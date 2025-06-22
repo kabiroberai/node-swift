@@ -67,6 +67,10 @@ import NodeAPI
 }
 
 #NodeModule {
-    UV.setup()
+    UV.enable()
+    Task { @NodeActor in
+        try await Task.sleep(nanoseconds: 1 * NSEC_PER_SEC)
+        UV.disable()
+    }
     return ["File": File.deferredConstructor]
 }
