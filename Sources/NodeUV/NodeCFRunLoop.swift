@@ -1,7 +1,7 @@
 #if canImport(Darwin)
 
 import Foundation
-import CNodeAPISupport
+import CNodeUV
 
 public enum NodeCFRunLoop {
     // would ideally be marked @MainActor but we can't prove that
@@ -11,7 +11,7 @@ public enum NodeCFRunLoop {
     private nonisolated(unsafe) static var cancelHandlers: (() -> Void)?
     private nonisolated(unsafe) static var refCount = 0
 
-    @NodeActor public static func ref() {
+    public static func ref() {
         refCount += 1
         // check the mode to determine whether the RunLoop is already running.
         // this could be the case if we're in an Electron (or other embedder)
@@ -114,7 +114,7 @@ public enum NodeCFRunLoop {
 #else
 
 public enum NodeCFRunLoop {
-    @NodeActor public static func ref() {}
+    public static func ref() {}
     public static func unref()
 }
 
