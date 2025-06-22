@@ -1,5 +1,6 @@
 import Foundation
 import NodeAPI
+import NodeUV
 
 @NodeClass @NodeActor final class File {
     static let extraProperties: NodeClassPropertyList = [
