@@ -4,8 +4,10 @@ import Foundation
 import CNodeAPISupport
 
 public enum UV {
-    public static func setup() {
-        MainActor.assumeIsolated { _setup() }
+    @MainActor private static let setupOnce: Void = _setup()
+
+    @NodeActor public static func setup() {
+        MainActor.assumeIsolated { _ = setupOnce }
     }
 
     @MainActor private static func _setup() {
@@ -74,6 +76,12 @@ public enum UV {
         }
         uv_async_send(uvAsync)
     }
+}
+
+#else
+
+public enum UV {
+    @NodeActor public static func setup() {}
 }
 
 #endif
