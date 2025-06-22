@@ -58,6 +58,10 @@ let package = Package(
             dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"]
         ),
         .target(
+            name: "NodeUV",
+            dependencies: ["CNodeAPISupport"]
+        ),
+        .target(
             name: "NodeModuleSupport",
             dependencies: ["CNodeAPI"]
         ),
