@@ -15,11 +15,13 @@ typedef enum {
     UV_ASYNC = 1,
 } uv_handle_type;
 
+typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_async_s uv_async_t;
 typedef void (*uv_async_cb)(uv_async_t *handle);
 
 size_t uv_handle_size(uv_handle_type type);
+void uv_close(uv_handle_t *handle, void *close_cb);
 
 uv_loop_t *uv_default_loop(void);
 int uv_backend_fd(const uv_loop_t *);
@@ -31,8 +33,6 @@ int uv_async_init(uv_loop_t *loop,
                   uv_async_t *async,
                   uv_async_cb async_cb);
 int uv_async_send(uv_async_t *async);
-
-void uv_close(uv_async_t *handle, void *close_cb);
 
 #endif /* __APPLE__ */
 
