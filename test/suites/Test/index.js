@@ -7,7 +7,7 @@ assert.strictEqual(File.default().filename, "default.txt")
 const file = new File("test.txt");
 assert.strictEqual(file.filename, "test.txt")
 
-(async () => {
+;(async () => {
     console.log("Getting main actor message");
     const msg = await file.mainActorMethod();
     console.log("Main actor message:", msg);
