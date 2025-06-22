@@ -2,7 +2,6 @@
 
 import Foundation
 import CNodeAPISupport
-internal import CNodeAPI
 
 public enum UV {
     public static func setup() {

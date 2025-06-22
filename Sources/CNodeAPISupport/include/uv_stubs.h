@@ -25,6 +25,7 @@ uv_loop_t *uv_default_loop(void);
 int uv_backend_fd(const uv_loop_t *);
 int uv_backend_timeout(const uv_loop_t *);
 int uv_run(uv_loop_t *, uv_run_mode mode);
+int uv_loop_alive(const uv_loop_t *loop);
 
 int uv_async_init(uv_loop_t *loop,
                   uv_async_t *async,
