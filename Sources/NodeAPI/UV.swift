@@ -9,28 +9,32 @@ public enum UV {
     // is active when it runs (although this is also on the main thread...),
     // causing MainActor.assumeIsolated to abort.
     private nonisolated(unsafe) static var cancelHandlers: (() -> Void)?
-    private nonisolated(unsafe) static var shouldContinue = true
+    private nonisolated(unsafe) static var refCount = 0
 
-    @NodeActor public static func enable() {
-        if cancelHandlers == nil {
-            cancelHandlers = _enable()
+    @NodeActor public static func ref() {
+        refCount += 1
+        if refCount == 1 {
+            cancelHandlers = setUp()
         }
     }
 
-    public static func disable() {
+    public static func unref() {
         if Thread.isMainThread {
-            _disable()
+            _unref()
         } else {
-            Task { @MainActor in _disable() }
+            Task { @MainActor in _unref() }
         }
     }
 
-    private static func _disable() {
-        cancelHandlers?()
-        cancelHandlers = nil
+    private static func _unref() {
+        refCount -= 1
+        if refCount == 0 {
+            cancelHandlers?()
+            cancelHandlers = nil
+        }
     }
 
-    private static func _enable() -> (() -> Void) {
+    private static func setUp() -> (() -> Void) {
         // By default, node takes over the main thread with an indefinite uv_run().
         // This causes CFRunLoop sources to not be processed (also breaking GCD & MainActor)
         // since the CFRunLoop never gets ticked. We instead need to flip things on their
@@ -45,8 +49,6 @@ public enum UV {
         // https://github.com/electron/electron/blob/dac5e0cd1a8d31272f428d08289b4b66cb9192fc/shell/common/node_bindings_mac.cc#L24
         // https://github.com/indutny/node-cf/blob/de90092bb65bbdb6acbd0b00e18a360028b815f5/src/cf.cc
         // [SpinEventLoopInternal]: https://github.com/nodejs/node/blob/11222f1a272b9b2ab000e75cbe3e09942bd2d877/src/api/embed_helpers.cc#L41
-
-        UV.shouldContinue = true
 
         let loop = uv_default_loop()
         let fd = uv_backend_fd(loop)
@@ -94,7 +96,7 @@ public enum UV {
             alignment: MemoryLayout<max_align_t>.alignment
         ))
         uv_async_init(loop, uvAsync) { _ in
-            while UV.shouldContinue && RunLoop.main.run(mode: .default, before: .distantFuture) {}
+            while UV.refCount > 0 && RunLoop.main.run(mode: .default, before: .distantFuture) {}
         }
         uv_async_send(uvAsync)
 
@@ -102,7 +104,6 @@ public enum UV {
             reader.cancel()
             timer.cancel()
             uv_close(uvAsync, nil)
-            UV.shouldContinue = false
         }
     }
 }
@@ -110,8 +111,8 @@ public enum UV {
 #else
 
 public enum UV {
-    @NodeActor public static func enable() {}
-    public static func disable()
+    @NodeActor public static func ref() {}
+    public static func unref()
 }
 
 #endif
