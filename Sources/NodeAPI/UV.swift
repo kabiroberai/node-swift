@@ -110,7 +110,8 @@ public enum UV {
 #else
 
 public enum UV {
-    @NodeActor public static func setup() {}
+    @NodeActor public static func enable() {}
+    public static func disable()
 }
 
 #endif
