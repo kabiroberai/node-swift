@@ -54,10 +54,11 @@ public enum UV {
         // its uv_run with CFRunLoopRun: insertion point would
         // be [SpinEventLoopInternal] linked above.
         // However, the hacky alternative (while avoiding the need
-        // to patch Node) is to kick off the CFRunLoop on the next
+        // to patch Node) is to kick off the CFRunLoop inside the next
         // uv tick. This is hacky because we eventually end up with
         // a callstack that looks like:
-        // uv_run -> [process uv_async_t] -> RunLoop.run -> wakeUpUV -> uv_run
+        // uv_run -> [process uv_async_t] -> RunLoop.run
+        // -> [some event uv cares about] -> wakeUpUV -> uv_run
         // Note that uv_run is called re-entrantly here, which is
         // explicitly unsupported per the documentation. This seems
         // to work okay based on rudimentary testing but could definitely
