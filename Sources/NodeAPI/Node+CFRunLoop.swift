@@ -13,7 +13,10 @@ public enum NodeCFRunLoop {
 
     @NodeActor public static func ref() {
         refCount += 1
-        if refCount == 1 {
+        // check the mode to determine whether the RunLoop is already running.
+        // this could be the case if we're in an Electron (or other embedder)
+        // context. only set up our own loop if it's not running.
+        if refCount == 1 && RunLoop.main.currentMode == nil {
             cancelHandlers = setUp()
         }
     }
