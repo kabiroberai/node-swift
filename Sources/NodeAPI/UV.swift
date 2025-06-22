@@ -45,6 +45,7 @@ public enum UV {
 
         reader.setEventHandler { wakeUpUV() }
         timer.setEventHandler { wakeUpUV() }
+        // bootstrap
         DispatchQueue.main.async { wakeUpUV() }
 
         // Now that we've set up the CF/GCD sources, we need to
