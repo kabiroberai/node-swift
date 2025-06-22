@@ -103,7 +103,7 @@ public enum NodeCFRunLoop {
         return {
             reader.cancel()
             timer.cancel()
-            uv_close(uvAsync, nil)
+            uv_close(uvAsync) { UnsafeMutableRawPointer($0)?.deallocate() }
         }
     }
 }

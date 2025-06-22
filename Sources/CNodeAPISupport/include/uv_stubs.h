@@ -18,10 +18,12 @@ typedef enum {
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_async_s uv_async_t;
+
 typedef void (*uv_async_cb)(uv_async_t *handle);
+typedef void (*uv_close_cb)(uv_handle_t *handle);
 
 size_t uv_handle_size(uv_handle_type type);
-void uv_close(uv_handle_t *handle, void *close_cb);
+void uv_close(uv_handle_t *handle, uv_close_cb close_cb);
 
 uv_loop_t *uv_default_loop(void);
 int uv_backend_fd(const uv_loop_t *);
