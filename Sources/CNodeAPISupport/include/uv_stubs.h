@@ -3,12 +3,7 @@
 
 #ifdef __APPLE__
 
-#include <sys/select.h>
 #include <stdlib.h>
-
-static inline void node_swift_fd_set(int fd, struct fd_set *const p) {
-    FD_SET(fd, p);
-}
 
 typedef enum {
     UV_RUN_DEFAULT = 0,

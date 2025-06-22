@@ -6,38 +6,44 @@ internal import CNodeAPI
 
 public enum UV {
     public static func setup() {
-        nonisolated(unsafe) let loop = uv_default_loop()
+        MainActor.assumeIsolated { _setup() }
+    }
 
+    @MainActor private static func _setup() {
         // https://github.com/electron/electron/blob/dac5e0cd1a8d31272f428d08289b4b66cb9192fc/shell/common/node_bindings.cc#L962
-        let poller = Thread {
-            nonisolated(unsafe) let loop = loop
+        // https://github.com/electron/electron/blob/dac5e0cd1a8d31272f428d08289b4b66cb9192fc/shell/common/node_bindings_mac.cc#L24
 
-            while !Thread.current.isCancelled {
-                // https://github.com/electron/electron/blob/dac5e0cd1a8d31272f428d08289b4b66cb9192fc/shell/common/node_bindings_mac.cc#L24
-                let fd = uv_backend_fd(loop)
-                let timeoutMS = Int(uv_backend_timeout(loop))
-                var readset = fd_set()
-                node_swift_fd_set(fd, &readset)
-                var result: Int32
-                repeat {
-                    if timeoutMS == -1 {
-                        result = select(fd + 1, &readset, nil, nil, nil)
-                    } else {
-                        var timeout = timeval(
-                            tv_sec: timeoutMS / 1000,
-                            tv_usec: Int32((timeoutMS % 1000) * 1000)
-                        )
-                        result = select(fd + 1, &readset, nil, nil, &timeout)
-                    }
-                } while result == -1 && errno == EINTR
+        let loop = uv_default_loop()
 
-                let runResult = DispatchQueue.main.sync {
-                    uv_run(loop, UV_RUN_NOWAIT)
-                }
-                if runResult == 0 { break }
+        let fd = uv_backend_fd(loop)
+
+        let reader = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+
+        let wakeUpUV = {
+            let runResult = uv_run(loop, UV_RUN_NOWAIT)
+            guard runResult != 0 else { return }
+
+            reader.activate()
+
+            let timeout = Int(uv_backend_timeout(loop))
+            if timeout != -1 {
+                timer.schedule(deadline: .now() + .milliseconds(timeout))
+                timer.activate()
             }
         }
-        poller.start()
+
+        reader.setEventHandler {
+            wakeUpUV()
+        }
+
+        timer.setEventHandler {
+            wakeUpUV()
+        }
+
+        DispatchQueue.main.async {
+            wakeUpUV()
+        }
 
         // TODO: figure out whether this is supported.
         // specifically, RunLoop.main.run inside an async block,
