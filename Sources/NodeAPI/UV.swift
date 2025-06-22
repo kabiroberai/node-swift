@@ -3,7 +3,7 @@
 import Foundation
 import CNodeAPISupport
 
-public enum UV {
+public enum NodeCFRunLoop {
     // would ideally be marked @MainActor but we can't prove that
     // MainActor == NodeActor, because the runtime notices that the Node actor
     // is active when it runs (although this is also on the main thread...),
@@ -96,7 +96,7 @@ public enum UV {
             alignment: MemoryLayout<max_align_t>.alignment
         ))
         uv_async_init(loop, uvAsync) { _ in
-            while UV.refCount > 0 && RunLoop.main.run(mode: .default, before: .distantFuture) {}
+            while NodeCFRunLoop.refCount > 0 && RunLoop.main.run(mode: .default, before: .distantFuture) {}
         }
         uv_async_send(uvAsync)
 
@@ -110,7 +110,7 @@ public enum UV {
 
 #else
 
-public enum UV {
+public enum NodeCFRunLoop {
     @NodeActor public static func ref() {}
     public static func unref()
 }

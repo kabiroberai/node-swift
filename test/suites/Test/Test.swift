@@ -67,10 +67,10 @@ import NodeAPI
 }
 
 #NodeModule {
-    UV.ref()
+    NodeCFRunLoop.ref()
     Task { @NodeActor in
         try await Task.sleep(nanoseconds: 1 * NSEC_PER_SEC)
-        UV.unref()
+        NodeCFRunLoop.unref()
     }
     return ["File": File.deferredConstructor]
 }
