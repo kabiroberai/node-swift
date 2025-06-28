@@ -129,15 +129,7 @@ public enum NodeCFRunLoop {
         //
         // https://github.com/swiftlang/swift-corelibs-foundation/blob/ae61520/Sources/CoreFoundation/CFRunLoop.c#L3014
 
-        let port = _dispatch_get_main_queue_port_4CF()
-        var portset = mach_port_t()
-        mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_PORT_SET, &portset)
-        mach_port_insert_member(mach_task_self_, port, portset)
-
-        let fd = kqueue()
-        let changelist = [node_swift_create_event_descriptor_for_portset(portset)]
-        var timeout = timespec(tv_sec: 0, tv_nsec: 0)
-        kevent64(fd, changelist, numericCast(changelist.count), nil, 0, 0, &timeout)
+        let fd = getDispatchFileDescriptor()
 
         let uvPoll = OpaquePointer(UnsafeMutableRawPointer.allocate(
             byteCount: uv_handle_size(UV_POLL),
@@ -153,6 +145,28 @@ public enum NodeCFRunLoop {
                 UnsafeMutableRawPointer($0)?.deallocate()
             }
         }
+        #endif
+    }
+
+    // TODO: error handling
+    private static func getDispatchFileDescriptor() -> CInt {
+        let port = _dispatch_get_main_queue_port_4CF()
+
+        #if canImport(Darwin)
+        var portset = mach_port_t()
+        mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_PORT_SET, &portset)
+        mach_port_insert_member(mach_task_self_, port, portset)
+
+        let fd = kqueue()
+        let changelist = [node_swift_create_event_descriptor_for_mach_port(portset)]
+        var timeout = timespec(tv_sec: 0, tv_nsec: 0)
+        kevent64(fd, changelist, numericCast(changelist.count), nil, 0, 0, &timeout)
+
+        return fd
+        #elseif os(Linux)
+        // TODO: drop the top level canImport guard
+        // also support BSD (and Windows if possible)
+        return CInt(port)
         #endif
     }
 }
