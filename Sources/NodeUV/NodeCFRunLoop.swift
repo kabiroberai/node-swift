@@ -38,6 +38,7 @@ public enum NodeCFRunLoop {
     }
 
     private static func setUp() -> (() -> Void) {
+        #if false
         // By default, node takes over the main thread with an indefinite uv_run().
         // This causes CFRunLoop sources to not be processed (also breaking GCD & MainActor)
         // since the CFRunLoop never gets ticked. We instead need to flip things on their
@@ -108,6 +109,51 @@ public enum NodeCFRunLoop {
             timer.cancel()
             uv_close(uvAsync) { UnsafeMutableRawPointer($0)?.deallocate() }
         }
+        #else
+        // This is a slightly less intrusive approach than the above,
+        // since it doesn't replace the existing uv loop (but it's less
+        // powerful):
+        //
+        // It's fragile to try extracting the CFRunLoop's entire waitset,
+        // but if we're okay with only supporting the GCD bits,
+        // we can extract GCD's mach port with _dispatch_get_main_queue_port_4CF
+        // and integrate it into uv. Inspiration:
+        // https://gist.github.com/daurnimator/8cc2ef09ad72a5577b66f34957559e47
+        //
+        // It's theoretically possible to support all of CF this way, but it
+        // would be fragile. Specifically, we can union the GCD port with
+        // CFRunLoop->_currentMode->_portSet and create a uv_poll from there
+        // (like we currently do in this code), and also add a uv_timer_t with
+        // `CFRunLoopGetNextTimerFireDate`. The issue is that extracting the
+        // port set is extra fragile due to unstable struct layout.
+        //
+        // https://github.com/swiftlang/swift-corelibs-foundation/blob/ae61520/Sources/CoreFoundation/CFRunLoop.c#L3014
+
+        let port = _dispatch_get_main_queue_port_4CF()
+        var portset = mach_port_t()
+        mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_PORT_SET, &portset)
+        mach_port_insert_member(mach_task_self_, port, portset)
+
+        let fd = kqueue()
+        let changelist = [node_swift_create_event_descriptor_for_portset(portset)]
+        var timeout = timespec(tv_sec: 0, tv_nsec: 0)
+        kevent64(fd, changelist, numericCast(changelist.count), nil, 0, 0, &timeout)
+
+        let uvPoll = OpaquePointer(UnsafeMutableRawPointer.allocate(
+            byteCount: uv_handle_size(UV_POLL),
+            alignment: MemoryLayout<max_align_t>.alignment
+        ))
+        uv_poll_init(uv_default_loop(), uvPoll, fd)
+        uv_poll_start(uvPoll, CInt(UV_READABLE.rawValue)) { _, _, _ in
+            _dispatch_main_queue_callback_4CF()
+        }
+
+        return {
+            uv_close(uvPoll) {
+                UnsafeMutableRawPointer($0)?.deallocate()
+            }
+        }
+        #endif
     }
 }
 
