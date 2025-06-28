@@ -7,6 +7,16 @@ assert.strictEqual(File.default().filename, "default.txt")
 const file = new File("test.txt");
 assert.strictEqual(file.filename, "test.txt")
 
+// setInterval(() => {
+//     console.log("hi")
+// }, 1000);
+
+;(async () => {
+    console.log("Getting main actor message");
+    const msg = await file.mainActorMethod();
+    console.log("Main actor message:", msg);
+})()
+
 let err = "";
 try {
     file.contents

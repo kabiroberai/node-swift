@@ -1,5 +1,6 @@
 import Foundation
 import NodeAPI
+import NodeUV
 
 @NodeClass @NodeActor final class File {
     static let extraProperties: NodeClassPropertyList = [
@@ -56,6 +57,21 @@ import NodeAPI
         try FileManager.default.removeItem(at: url)
         return undefined
     }
+
+    @NodeMethod
+    func mainActorMethod() async -> String {
+        await Task { @MainActor in
+            await Task.yield()
+            return "Message from main actor"
+        }.value
+    }
 }
 
-#NodeModule(exports: ["File": File.deferredConstructor])
+#NodeModule {
+    NodeCFRunLoop.ref()
+    Task { @NodeActor in
+        try await Task.sleep(nanoseconds: 1 * NSEC_PER_SEC)
+        NodeCFRunLoop.unref()
+    }
+    return ["File": File.deferredConstructor]
+}
