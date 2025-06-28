@@ -191,16 +191,24 @@ extension NodeClass {
         try _constructor().0
     }
 
-    nonisolated public static var deferredConstructor: NodeValueConvertible {
-        NodeDeferredValue { try constructor() }
-    }
-
     public func wrapped() throws -> NodeObject {
         try Self.invokeSpecialConstructor(.wrap(self))
     }
 
     public func nodeValue() throws -> NodeValue {
         try wrapped()
+    }
+}
+
+#if swift(>=6.2)
+public typealias NodeClassWithSendableMetatype = NodeClass & SendableMetatype
+#else
+public typealias NodeClassWithSendableMetatype = NodeClass
+#endif
+
+extension NodeClass where Self: NodeClassWithSendableMetatype {
+    nonisolated public static var deferredConstructor: NodeValueConvertible {
+        NodeDeferredValue { try constructor() }
     }
 }
 
