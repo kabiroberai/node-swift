@@ -87,7 +87,7 @@ private final class NodeExecutor: SerialExecutor {
         executor = NodeExecutor(defaultTarget: target)
     }
 
-    private static nonisolated(unsafe) var cache: [ObjectIdentifier: Weak<NodeActor>] = [:]
+    private static nonisolated(unsafe) var cache: [UUID: Weak<NodeActor>] = [:]
     private static let lock = Lock()
     private static let defaultShared = NodeActor(target: nil)
 
@@ -95,7 +95,7 @@ private final class NodeExecutor: SerialExecutor {
         // hack: NodeActor.shared seems to be evaluated every time Swift dispatches
         // to the actor. Use this opportunity to remember the target queue.
         guard let target else { return defaultShared }
-        let key = ObjectIdentifier(target)
+        let key = target.queue.instanceID
         return lock.withLock {
             if let item = cache[key]?.value {
                 return item
