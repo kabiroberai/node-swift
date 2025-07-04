@@ -137,7 +137,7 @@ public enum NodeCFRunLoop {
         ))
         uv_poll_init(uv_default_loop(), uvPoll, fd)
         uv_poll_start(uvPoll, CInt(UV_READABLE.rawValue)) { _, _, _ in
-            _dispatch_main_queue_callback_4CF()
+            _dispatch_main_queue_callback_4CF(nil)
         }
 
         return {

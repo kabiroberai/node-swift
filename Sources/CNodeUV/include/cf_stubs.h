@@ -28,7 +28,7 @@ typedef void *dispatch_runloop_handle_t;
 
 #ifndef NODE_SWIFT_NO_GCD_RUNLOOP
 dispatch_runloop_handle_t _dispatch_get_main_queue_port_4CF(void);
-void _dispatch_main_queue_callback_4CF(void);
+void _dispatch_main_queue_callback_4CF(void *unused);
 #endif
 
 #endif /* cf_stubs_h */
