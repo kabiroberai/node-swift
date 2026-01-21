@@ -66,6 +66,9 @@ async function getWinLib(): Promise<string> {
         case "x64":
             filename = "node-win32-x64.lib";
             break;
+        case "arm64":
+            filename = "node-win32-arm64.lib";
+            break;
         default:
             throw new Error(
                 `The arch ${process.arch} is currently unsupported by node-swift on Windows.`
