@@ -705,8 +705,6 @@ struct napi_ref__ {
     add_finalizer(env, _value, [has_deleted=_has_deleted, self=this] {
       if (!has_deleted) self->_value = nullptr;
     });
-
-    return napi_ok;
   }
 
   void deinit(napi_env env) {
