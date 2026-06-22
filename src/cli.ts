@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as builder from "./builder";
+import importCwd from "import-cwd";
 
 function usage(): never {
     console.log("Usage: node-swift [rebuild [--debug] | build [--debug] | clean]");
@@ -21,7 +22,7 @@ async function doBuild() {
     } else {
         usage();
     }
-    const config = require("import-cwd")("./package.json").swift || {};
+    const config = (importCwd("./package.json") as any).swift || {};
     await builder.build(mode, config);
 }
 

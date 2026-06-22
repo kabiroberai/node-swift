@@ -6,10 +6,10 @@
         "outDir": "lib",
         "strict": true,
         "sourceMap": true,
-        "declaration": true
+        "declaration": true,
     },
     "include": [
-        "./src"
+        "./src",
     ],
     "exclude": [
         "node_modules"

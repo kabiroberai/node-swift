@@ -88,11 +88,11 @@ function getFlags<C>(config: C, name: keyof C & string): string[] {
 }
 
 export async function build(mode: BuildMode, config: Config = {}): Promise<string> {
-    let dumpFlags = getFlags(config, "dumpFlags");
-    let cFlags = getFlags(config, "cFlags");
-    let swiftFlags = getFlags(config, "swiftFlags");
-    let cxxFlags = getFlags(config, "cxxFlags");
-    let linkerFlags = getFlags(config, "linkerFlags");
+    const dumpFlags = getFlags(config, "dumpFlags");
+    const cFlags = getFlags(config, "cFlags");
+    const swiftFlags = getFlags(config, "swiftFlags");
+    const cxxFlags = getFlags(config, "cxxFlags");
+    const linkerFlags = getFlags(config, "linkerFlags");
 
     let isDynamic: boolean;
     if (typeof config.static === "boolean") {
@@ -114,7 +114,7 @@ export async function build(mode: BuildMode, config: Config = {}): Promise<strin
 
     const buildDir = config.buildPath || defaultBuildPath;
 
-    let napi = config.napi;
+    const napi = config.napi;
 
     if (typeof napi === "number") {
         cFlags.push(`-DNAPI_VERSION=${napi}`);
