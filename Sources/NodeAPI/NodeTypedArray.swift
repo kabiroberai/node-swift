@@ -72,6 +72,20 @@ public enum NodeTypedArrayKind {
             return napi_biguint64_array
         }
     }
+
+    /// Size in bytes of one element of this typed-array kind.
+    var byteSize: Int {
+        switch self {
+        case .int8, .uint8, .uint8Clamped:
+            return 1
+        case .int16, .uint16:
+            return 2
+        case .int32, .uint32, .float32:
+            return 4
+        case .float64, .int64, .uint64:
+            return 8
+        }
+    }
 }
 
 public protocol NodeTypedArrayElement {
@@ -172,11 +186,13 @@ public class NodeAnyTypedArray: NodeObject {
 
     public final func withUnsafeMutableRawBytes<T>(_ body: (UnsafeMutableRawBufferPointer) throws -> T) throws -> T {
         let env = base.environment
+        var type = napi_int8_array
         var data: UnsafeMutableRawPointer?
-        var count = 0
-        try env.check(napi_get_typedarray_info(env.raw, base.rawValue(), nil, &count, &data, nil, nil))
-        // TODO: Do we need to advance `data` by `offset`/a multiple of offset?
-        return try body(UnsafeMutableRawBufferPointer(start: data, count: count))
+        var length = 0
+        try env.check(napi_get_typedarray_info(env.raw, base.rawValue(), &type, &length, &data, nil, nil))
+        // `napi_get_typedarray_info` returns the *element* count in `length`, not the byte count.
+        let byteCount = try length * NodeTypedArrayKind(raw: type).byteSize
+        return try body(UnsafeMutableRawBufferPointer(start: data, count: byteCount))
     }
 
 }
