@@ -29,6 +29,7 @@ let package = Package(
         name: suite,
         dependencies: [
             .product(name: "NodeAPI", package: "node-swift"),
+            .product(name: "NodeUV", package: "node-swift"),
             .product(name: "NodeModuleSupport", package: "node-swift"),
         ],
         path: "suites/\(suite)",
