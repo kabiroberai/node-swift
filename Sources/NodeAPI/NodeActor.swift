@@ -11,9 +11,10 @@ extension NodeContext {
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 private final class NodeExecutor: SerialExecutor {
+    private let defaultTarget: NodeAsyncQueue.Handle?
     private let schedulerQueue = DispatchQueue(label: "NodeExecutorScheduler")
 
-    fileprivate init() {
+    fileprivate init(defaultTarget: NodeAsyncQueue.Handle?) {
         // Swift often thinks that we're on the wrong executor, so we end up
         // with a lot of false alarms. This is what `checkIsolation` ostensibly
         // mitigates, but on Darwin that method doesn't seem to be called in many
@@ -22,6 +23,7 @@ private final class NodeExecutor: SerialExecutor {
         #if canImport(Darwin)
         setenv("SWIFT_UNEXPECTED_EXECUTOR_LOG_LEVEL", "0", 1)
         #endif
+        self.defaultTarget = defaultTarget
     }
 
     func enqueue(_ job: UnownedJob) {
@@ -37,6 +39,8 @@ private final class NodeExecutor: SerialExecutor {
         let q: NodeAsyncQueue
         if let target = NodeActor.target {
             q = target.queue
+        } else if let defaultTarget {
+            q = defaultTarget.queue
         } else if let globalQueue = NodeAsyncQueue.globalDefaultQueue {
             q = globalQueue
         } else {
@@ -60,7 +64,14 @@ private final class NodeExecutor: SerialExecutor {
     }
 
     func checkIsolated() {
-        // TODO: crash if we're not on a Node thread
+        if !isIsolatingCurrentContext() {
+            nodeFatalError("NodeExecutor.checkIsolated: not in an isolated context")
+        }
+    }
+
+    func isIsolatingCurrentContext() -> Bool {
+        // TODO: return false if we're not on a Node thread
+        return true
     }
 }
 
@@ -72,12 +83,33 @@ private final class NodeExecutor: SerialExecutor {
 // Task.detatched closure will crash.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @globalActor public actor NodeActor {
-    private init() {}
-    public static let shared = NodeActor()
+    private init(target: NodeAsyncQueue.Handle?) {
+        executor = NodeExecutor(defaultTarget: target)
+    }
+
+    private static nonisolated(unsafe) var cache: [UUID: Weak<NodeActor>] = [:]
+    private static let lock = Lock()
+    private static let defaultShared = NodeActor(target: nil)
+
+    public static var shared: NodeActor {
+        // hack: NodeActor.shared seems to be evaluated every time Swift dispatches
+        // to the actor. Use this opportunity to remember the target queue.
+        guard let target else { return defaultShared }
+        let key = target.queue.instanceID
+        return lock.withLock {
+            if let item = cache[key]?.value {
+                return item
+            } else {
+                let newActor = NodeActor(target: target)
+                cache[key] = Weak(newActor)
+                return newActor
+            }
+        }
+    }
 
     @TaskLocal static var target: NodeAsyncQueue.Handle?
 
-    private nonisolated let executor = NodeExecutor()
+    private nonisolated let executor: NodeExecutor
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
         executor.asUnownedSerialExecutor()
     }
