@@ -25,6 +25,10 @@ let package = Package(
             name: "NodeModuleSupport",
             targets: ["NodeModuleSupport"]
         ),
+        .library(
+            name: "NodeUV",
+            targets: ["NodeUV"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"604.0.0"),
@@ -56,6 +60,11 @@ let package = Package(
         .target(
             name: "NodeAPI",
             dependencies: ["CNodeAPI", "CNodeAPISupport", "NodeAPIMacros"]
+        ),
+        .target(name: "CNodeUV"),
+        .target(
+            name: "NodeUV",
+            dependencies: ["CNodeUV"]
         ),
         .target(
             name: "NodeModuleSupport",
